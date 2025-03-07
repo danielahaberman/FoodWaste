@@ -1,125 +1,147 @@
+/* eslint-disable no-unused-vars */
 // @ts-nocheck
 /* eslint-disable no-undef */
-require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const sqlite3 = require("sqlite3").verbose(); // Import sqlite3
-
-const db = new sqlite3.Database("./database.sqlite", (err) => {
-  if (err) {
-    console.error("Error opening database:", err);
-  } else {
-    console.log("Connected to SQLite database");
-
-    // Create users table if it doesn't exist
-    db.run(`
-      CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE,
-        name TEXT,
-        password TEXT
-      )
-    `);
-    
-  }
-});
-
+const bcrypt = require("bcrypt");
+const db = require("./db");  
 const app = express();
-const PORT = process.env.PORT || 5001;
 
-// Middleware
-app.use(cors());
 app.use(express.json());
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true,
+}));
 
-// Register new user with hashed password
+// Middleware to verify user ID in request
+function requireUserId(req, res, next) {
+  const user_id = req.body.user_id || req.query.user_id; // Explicitly check both
+
+  if (!user_id) {
+    return res.status(403).json({ error: "User ID is required." });
+  }
+
+  req.user_id = user_id;
+  next();
+}
+
+// 1. Register route
 app.post("/register", (req, res) => {
-  const { name, username, password } = req.body;
+  const { username, name, password } = req.body;
 
-  // Hash the password before saving to DB
-  bcrypt.hash(password, 10, (err, hashedPassword) => {
-    if (err) {
-      console.error("Error hashing password:", err);
-      return res.status(500).json({ error: "Error hashing password" });
-    }
+  if (!username || !name || !password) {
+    return res.status(400).json({ error: "Username, name, and password are required" });
+  }
 
-    db.run(
-      "INSERT INTO users (name, username, password) VALUES (?, ?, ?)",
-      [name, username, hashedPassword],
-      function (err) {
-        if (err) {
-          console.error("Database error during registration:", err);  // Log error in server terminal
-          return res.status(500).json({ error: "Database error", details: err.message });
-        }
-        res.json({ id: this.lastID, name, username });
-      }
-    );
+  const saltRounds = 10;
+  bcrypt.hash(password, saltRounds, (err, hashedPassword) => {
+    if (err) return res.status(500).json({ error: "Error hashing password" });
+
+    const query = `INSERT INTO users (username, name, password) VALUES (?, ?, ?)`;
+
+    db.run(query, [username, name, hashedPassword], function (err) {
+      if (err) return res.status(500).json({ error: "Error registering user" });
+
+      res.status(201).json({ id: this.lastID, username, name });
+    });
   });
 });
 
-
-
-// Login endpoint with password verification and JWT generation
-// Login route - check username and password
-// Login endpoint with password verification and JWT generation
-const cookieOptions = {
-  httpOnly: true,    // Ensures that the cookie can't be accessed via JavaScript
-  secure: false,  // Use secure cookies in production (requires HTTPS)
-  maxAge: 60 * 60 * 1000,  // 1 hour expiration time
-  sameSite: 'Strict', // Prevents CSRF attacks by ensuring the cookie is only sent in first-party contexts
-};
-
-app.post("/login", async (req, res) => {
+// 2. Login route (returns user ID instead of setting a cookie)
+app.post("/login", (req, res) => {
   const { username, password } = req.body;
 
   if (!username || !password) {
     return res.status(400).json({ error: "Username and password are required" });
   }
 
-  // Get the user by username
-  db.get("SELECT * FROM users WHERE username = ?", [username], async (err, row) => {
-    if (err) {
-      return res.status(500).json({ error: "Database error" });
-    }
+  const query = `SELECT * FROM users WHERE username = ?`;
 
-    if (!row) {
-      return res.status(401).json({ error: "Invalid username or password" });
-    }
+  db.get(query, [username], (err, user) => {
+    if (err) return res.status(500).json({ error: "Error logging in" });
+    if (!user) return res.status(404).json({ error: "User not found" });
 
-    // Compare the hashed password
-    const isMatch = await bcrypt.compare(password, row.password);
-    if (!isMatch) {
-      return res.status(401).json({ error: "Invalid username or password" });
-    }
+    bcrypt.compare(password, user.password, (err, result) => {
+      if (err) return res.status(500).json({ error: "Error comparing passwords" });
+      if (!result) return res.status(401).json({ error: "Invalid credentials" });
 
-    // Generate a JWT token
-    const token = jwt.sign(
-      { username: row.username, id: row.id },  // Include more info if needed
-      process.env.JWT_SECRET || "mysecretkey",
-      { expiresIn: "1h" }
-    );
-
-    // Send the JWT as a cookie
-    res.cookie("token", token, cookieOptions);
-
-    // Return user data in response body
-    return res.json({
-      id: row.id,
-      username: row.username,
-      name: row.name,
-      message: "Login successful"
+      res.json({ message: "Login successful", user_id: user.id });
     });
   });
 });
 
+// 3. Get all food items by user ID
+app.get("/food-items", requireUserId, (req, res) => {
+  const { user_id, search, category, date } = req.query;
 
+  let query = `
+    SELECT f.id, f.name, f.category, f.price, p.quantity, qt.name AS quantity_type, p.purchase_date
+    FROM food_items f
+    JOIN purchases p ON f.id = p.food_item_id
+    LEFT JOIN quantity_types qt ON f.quantity_type_id = qt.id
+    WHERE p.user_id = ?
+  `;
+  
+  const params = [user_id];
 
+  if (search) {
+    query += ` AND f.name LIKE ?`;
+    params.push(`%${search}%`);
+  }
+  if (category) {
+    query += ` AND f.category = ?`;
+    params.push(category);
+  }
+  if (date) {
+    query += ` AND p.purchase_date = ?`;
+    params.push(date);
+  }
 
-
-// Start Server
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  db.all(query, params, (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
 });
 
-module.exports = db; // Export the db connection
+// 4. Add a new food item (requires user_id)
+app.post("/food-items", requireUserId, (req, res) => {
+  const { user_id, name, category, price, quantity, quantity_type_id } = req.body;
+
+  if (!name || !category || !price || quantity == null || !quantity_type_id) {
+    return res.status(400).json({ error: "All fields are required" });
+  }
+
+  const query = `
+    INSERT INTO food_items (name, category, price, quantity, quantity_type_id) 
+    VALUES (?, ?, ?, ?, ?)
+  `;
+
+  db.run(query, [name, category, price, quantity, quantity_type_id], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+
+    res.status(201).json({ id: this.lastID, name, category, price, quantity, quantity_type_id });
+  });
+});
+
+// 5. Delete a food item by ID (requires user_id)
+app.delete("/food-items/:id", requireUserId, (req, res) => {
+  const foodItemId = req.params.id;
+  const userId = req.user_id;
+
+  const query = `DELETE FROM food_items WHERE id = ? AND id IN 
+                (SELECT food_item_id FROM purchases WHERE user_id = ?)`;
+
+  db.run(query, [foodItemId, userId], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    if (this.changes === 0) {
+      return res.status(404).json({ error: "Food item not found or not owned by user" });
+    }
+    res.status(200).json({ message: "Food item deleted successfully" });
+  });
+});
+
+// Start the server
+const PORT = process.env.PORT || 5001;
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+});

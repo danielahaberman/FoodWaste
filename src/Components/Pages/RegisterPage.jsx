@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* eslint-disable no-unused-vars */
 import React, { useState } from "react";
 import PageLayout from "../PageLayout";
@@ -55,7 +56,7 @@ function RegisterPage() {
         style={{
           border: "1px solid black",
           width: "80vw",
-          height: "60vw",
+          height: "fit-content",
           borderRadius: "8px",
           marginLeft: "auto",
           marginRight: "auto",
@@ -100,8 +101,13 @@ function RegisterPage() {
             }}
           />
           
-          <Button variant="contained" color="primary" onClick={handleRegister}>
+          <Button disabled={!username || !password || !name} variant="contained" color="primary" onClick={handleRegister}>
             Register
+          </Button>
+          <Button variant="standard" color="primary" onClick={()=>{
+            navigate("/")
+          }}>
+            back
           </Button>
         </div>
       </div>

@@ -8,10 +8,10 @@ import Users from './Components/Pages/Users';
 import SidebarLayout from './SideBarLayout'; // Import your SidebarLayout component
 import RegisterPage from './Components/Pages/RegisterPage'; // Import RegisterPage
 import React from 'react';
-
+import FoodLog from './Components/Pages/FoodLog';
 function App() {
   return (
-    <div>
+    <div style={{ height:"100vh", width:"100vw", boxSizing:"border-box"}}>
       <BrowserRouter>
         <Routes>
           {/* Pages that don't require SidebarLayout */}
@@ -22,7 +22,7 @@ function App() {
           {/* SidebarLayout wrapped routes */}
           <Route element={<SidebarLayout />}>
             <Route path="/users" element={<Users />} />
-            <Route path="/home" element={<div>Home</div>} />
+            <Route path="/home" element={<FoodLog/>} />
           </Route>
         </Routes>
       </BrowserRouter>

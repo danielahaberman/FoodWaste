@@ -17,6 +17,7 @@ const navigate = useNavigate()
         password,
       });
       // Store the token in localStorage or state
+      console.log("response", response)
       localStorage.setItem("token", response.data.token);
       navigate("/home")
     } catch (err) {
