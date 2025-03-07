@@ -1,3 +1,5 @@
+// @ts-nocheck
+/* eslint-disable no-undef */
 const sqlite3 = require("sqlite3").verbose();
 
 // Create a database file
@@ -11,10 +13,12 @@ const db = new sqlite3.Database("./database.sqlite", (err) => {
     db.run(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE,
         name TEXT,
-        email TEXT
+        password TEXT
       )
     `);
+    
   }
 });
 

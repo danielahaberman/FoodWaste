@@ -2,25 +2,37 @@
 import React, { useState } from "react";
 import PageLayout from "../PageLayout";
 import { TextField, Button } from "@mui/material";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
-function LoginPage() {
-  const [email, setEmail] = useState("");
+function RegisterPage() {
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [error, setError] = useState("");
-const navigate = useNavigate()
-  const handleLogin = async () => {
+  const navigate = useNavigate()
+  
+  
+
+  const handleRegister = async () => {
     try {
-      const response = await axios.post("http://localhost:5001/login", {
-        username: email,
-        password,
+      const response = await fetch("http://localhost:5001/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, password, name }),
       });
-      // Store the token in localStorage or state
-      localStorage.setItem("token", response.data.token);
-      navigate("/home")
+
+      const data = await response.json();
+      if (response.ok) {
+        setError("");
+        console.log("User registered successfully:", data);
+        navigate("/login")
+      } else {
+        setError(data.error);
+      }
     } catch (err) {
-      setError("Invalid credentials or server error");
+      setError("An error occurred");
     }
   };
 
@@ -36,7 +48,7 @@ const navigate = useNavigate()
           fontFamily: "cursive",
         }}
       >
-        Login
+        Register
       </div>
 
       <div
@@ -65,8 +77,16 @@ const navigate = useNavigate()
             label="Username"
             variant="standard"
             placeholder="User Name"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+           <TextField
+            type="name"
+            label="name"
+            variant="standard"
+            placeholder="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
           />
           <TextField
             type="password"
@@ -74,16 +94,21 @@ const navigate = useNavigate()
             variant="standard"
             placeholder="Password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+
+                setPassword(e.target.value)
+            }}
           />
-          {error && <div style={{ color: "red" }}>{error}</div>}
-          <Button onClick={handleLogin}>Login</Button>
+          
+          <Button variant="contained" color="primary" onClick={handleRegister}>
+            Register
+          </Button>
         </div>
       </div>
 
-      <div>image</div>
+      {error && <div style={{ color: "red" }}>{error}</div>}
     </PageLayout>
   );
 }
 
-export default LoginPage;
+export default RegisterPage;
