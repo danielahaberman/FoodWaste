@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* eslint-disable no-unused-vars */
 import React, { useState } from "react";
 import PageLayout from "../PageLayout";
@@ -18,7 +19,7 @@ const navigate = useNavigate()
       });
       // Store the token in localStorage or state
       console.log("response", response)
-      localStorage.setItem("token", response.data.token);
+      localStorage.setItem("userId", response.data.user_id);
       navigate("/home")
     } catch (err) {
       setError("Invalid credentials or server error");
@@ -26,11 +27,11 @@ const navigate = useNavigate()
   };
 
   return (
-    <PageLayout backgroundColor={"#f7be81"}>
+    <PageLayout>
       <div
         style={{
           fontSize: "20px",
-          width: "fit-content",
+          width: "100%",
           marginLeft: "auto",
           marginRight: "auto",
           fontWeight: "bold",
@@ -43,8 +44,8 @@ const navigate = useNavigate()
       <div
         style={{
           border: "1px solid black",
-          width: "80vw",
-          height: "60vw",
+          width: "100%",
+          height: "100%",
           borderRadius: "8px",
           marginLeft: "auto",
           marginRight: "auto",

@@ -2,10 +2,12 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import moment from "moment";
-
+import PageLayout from "../PageLayout";
+import AddPurchaseCard from "../AddPurchaseCard";
 const FoodLog = () => {
+  const [foodPurchases, setFoodPurchases] = useState([]);
   const [foodItems, setFoodItems] = useState([]);
-  const [showForm, setShowForm] = useState(false)
+  const [showForm, setShowForm] = useState(false);
   const [newFoodItem, setNewFoodItem] = useState({
     name: "",
     category: "",
@@ -14,50 +16,81 @@ const FoodLog = () => {
     quantityType: "",
   });
   const [quantityTypes, setQuantityTypes] = useState([]);
+  const [foodCategories, setFoodCategories] = useState([]);
+
+  // Fetches all food items (without date filter)
   const fetchFoodItems = async () => {
     try {
-      const currentDate = moment().format("YYYY-MM-DD");
-      const params = { date: currentDate, user_id: 1 };  // Pass the current date as a query parameter
-  
+      const params = { user_id: localStorage.getItem("userId") };
       const response = await axios.get("http://localhost:5001/food-items", {
         params,
-    
       });
-  
-      console.log("response", response);
-      setFoodItems(response.data);  // Make sure to set the food items from the response
+      setFoodItems(response.data);
     } catch (error) {
       console.error("Error fetching food items:", error);
     }
   };
+
+  // Fetches food purchases with optional date filtering
+  const fetchFoodPurchases = async () => {
+    try {
+      const currentDate = moment().format("YYYY-MM-DD");
+      const params = { user_id: localStorage.getItem("userId") };
+      const response = await axios.get("http://localhost:5001/food-purchases", {
+        params,
+      });
+      setFoodPurchases(response.data);
+    } catch (error) {
+      console.error("Error fetching food purchases:", error);
+    }
+  };
+
   const fetchQuantityTypes = async () => {
     try {
-      const response = await axios.get("http://localhost:5001/quantity-types");
+      const params = { user_id: localStorage.getItem("userId") };
+      const response = await axios.get("http://localhost:5001/quantity-types", {
+        params,
+      });
       setQuantityTypes(response.data);
     } catch (error) {
       console.error("Error fetching quantity types:", error);
     }
   };
-  useEffect(() => {
-   
 
+  const fetchFoodCategories = async () => {
+    try {
+      const params = { user_id: localStorage.getItem("userId") };
+      const response = await axios.get("http://localhost:5001/food-categories", {
+        params,
+      });
+      setFoodCategories(response.data);
+    } catch (error) {
+      console.error("Error fetching food categories:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchFoodCategories();
     fetchFoodItems();
+    fetchFoodPurchases();
     fetchQuantityTypes();
-  }, []);  // Empty dependency array means it runs once when the component mounts
+  }, []);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     try {
-      await axios.post("http://localhost:5001/food-items", 
+      await axios.post(
+        "http://localhost:5001/add-food-item",
         {
           ...newFoodItem,
           quantity_type_id: newFoodItem.quantityType,
+          user_id: localStorage.getItem("userId"),
         },
         {
-          withCredentials: true,  // Include the JWT token with the request
+          withCredentials: true,
         }
       );
-      
+
       setNewFoodItem({
         name: "",
         category: "",
@@ -65,9 +98,32 @@ const FoodLog = () => {
         quantity: "",
         quantityType: "",
       });
-      fetchFoodItems();  // Fetch food items again after adding a new one
+      fetchFoodItems();
     } catch (error) {
       console.error("Error adding food item:", error);
+    }
+  };
+  const handleAddToPurchase = async (foodItem) => {
+    
+    try {
+      const response = await axios.post(
+        "http://localhost:5001/purchase",
+        {
+          user_id: localStorage.getItem("userId"),
+          name: foodItem.name,
+          category: foodItem.category,
+          category_id: foodItem.category_id,
+          price: foodItem.price,
+          quantity: foodItem.quantity,
+          quantity_type_id: foodItem.quantity_type_id,
+
+        },
+        { withCredentials: true }
+      );
+      console.log(response.data);
+      fetchFoodPurchases();  // Refresh the list of purchases after adding the new purchase
+    } catch (error) {
+      console.error("Error adding purchase:", error);
     }
   };
 
@@ -75,55 +131,88 @@ const FoodLog = () => {
     <div>
       <h1>Food Log</h1>
 
-      {/* Display current food items */}
+      {/* Display current food purchases */}
+      <h2>Today's Purchases</h2>
       <ul>
-        {foodItems && foodItems.map((item) => (
+        {foodPurchases.map((item) => (
           <li key={item.id}>
             {item.name} - {item.quantity} {item.quantity_type} - ${item.price} - {item.purchase_date}
           </li>
         ))}
       </ul>
-
-      {/* Add Food Item Form */}
-      <button onClick={() => setShowForm(true)}>+</button>
-{showForm &&  <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          placeholder="Food Name"
-          value={newFoodItem.name}
-          onChange={(e) => setNewFoodItem({ ...newFoodItem, name: e.target.value })}
-        />
-        <input
-          type="text"
-          placeholder="Category"
-          value={newFoodItem.category}
-          onChange={(e) => setNewFoodItem({ ...newFoodItem, category: e.target.value })}
-        />
-        <input
-          type="number"
-          placeholder="Price"
-          value={newFoodItem.price}
-          onChange={(e) => setNewFoodItem({ ...newFoodItem, price: e.target.value })}
-        />
-        <input
-          type="number"
-          placeholder="Quantity"
-          value={newFoodItem.quantity}
-          onChange={(e) => setNewFoodItem({ ...newFoodItem, quantity: e.target.value })}
-        />
-        <select
-          value={newFoodItem.quantityType}
-          onChange={(e) => setNewFoodItem({ ...newFoodItem, quantityType: e.target.value })}
-        >
-          {quantityTypes.map((type) => (
-            <option key={type.id} value={type.id}>
-              {type.name}
-            </option>
-          ))}
-        </select>
-        <button type="submit">Add Food Item</button>
-      </form>}
+<div style={{marginBottom:"20px"}}>
+   {!showForm && <button onClick={() => setShowForm(true)}>Add New Food Type</button>}
+</div>
+<div>
+   <button onClick={() => setShowForm(true)}>Log New Purchase</button>
+</div>
      
+     
+
+      {showForm && (
+        <form onSubmit={handleSubmit}>
+          <div style={{ display: "flex", gap: "20px" }}>
+            <input
+              type="text"
+              placeholder="Food Name"
+              value={newFoodItem.name}
+              onChange={(e) => setNewFoodItem({ ...newFoodItem, name: e.target.value })}
+            />
+            <input
+              type="number"
+              placeholder="Price"
+              value={newFoodItem.price}
+              onChange={(e) => setNewFoodItem({ ...newFoodItem, price: e.target.value })}
+            />
+            <input
+              type="number"
+              placeholder="Quantity"
+              value={newFoodItem.quantity}
+              onChange={(e) => setNewFoodItem({ ...newFoodItem, quantity: e.target.value })}
+            />
+          </div>
+
+          <div style={{ display: "flex", gap: "30px" }}>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <label htmlFor="category">Food Category:</label>
+              <select
+                id="category"
+                value={newFoodItem.category}
+                onChange={(e) => setNewFoodItem({ ...newFoodItem, category: e.target.value })}
+              >
+                {foodCategories.map((type) => (
+                  <option key={type.id} value={type.id}>
+                    {type.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <label htmlFor="quantity">Quantity Type:</label>
+              <select
+                id="quantity"
+                value={newFoodItem.quantityType}
+                onChange={(e) => setNewFoodItem({ ...newFoodItem, quantityType: e.target.value })}
+              >
+                {quantityTypes.map((type) => (
+                  <option key={type.id} value={type.id}>
+                    {type.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <button style={{ marginTop: "20px" }} type="submit">
+            Add Food Item
+          </button>
+        </form>
+      )}
+      {foodItems.map((item)=>{
+        console.log("item", item)
+        return(<AddPurchaseCard key={item.name} handleAddPurchase={handleAddToPurchase} item={item}/>)
+      })}
     </div>
   );
 };
