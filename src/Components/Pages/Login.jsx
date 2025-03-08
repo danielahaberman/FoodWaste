@@ -10,7 +10,8 @@ function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-const navigate = useNavigate()
+  const navigate = useNavigate();
+
   const handleLogin = async () => {
     try {
       const response = await axios.post("http://localhost:5001/login", {
@@ -18,9 +19,9 @@ const navigate = useNavigate()
         password,
       });
       // Store the token in localStorage or state
-      console.log("response", response)
+      console.log("response", response);
       localStorage.setItem("userId", response.data.user_id);
-      navigate("/home")
+      navigate("/home");
     } catch (err) {
       setError("Invalid credentials or server error");
     }
@@ -30,12 +31,15 @@ const navigate = useNavigate()
     <PageLayout>
       <div
         style={{
-          fontSize: "20px",
-          width: "100%",
-          marginLeft: "auto",
-          marginRight: "auto",
+          fontSize: "28px",
           fontWeight: "bold",
-          fontFamily: "cursive",
+          fontFamily: "Arial, sans-serif",
+          textAlign: "center",
+          color: "#F2F3F4",
+          marginBottom: "16px",
+          backgroundColor: "#FF9F43",
+          padding: "12px",
+          borderRadius: "8px"
         }}
       >
         Login
@@ -43,47 +47,51 @@ const navigate = useNavigate()
 
       <div
         style={{
-          border: "1px solid black",
+          border: "1px solid #01796F",
           width: "100%",
-          height: "100%",
-          borderRadius: "8px",
-          marginLeft: "auto",
-          marginRight: "auto",
+          maxWidth: "400px",
+          borderRadius: "12px",
+          margin: "auto",
+          padding: "24px",
+          backgroundColor: "#FFB37A",
           display: "flex",
-          justifyContent: "center",
+          flexDirection: "column",
+          alignItems: "center",
+          boxShadow: "0px 4px 10px rgba(0,0,0,0.1)",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            gap: "20px",
-            width: "200px",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
+        <TextField
+          label="Username"
+          variant="standard"
+          placeholder="User Name"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          style={{ width: "100%" }}
+        />
+        <TextField
+          type="password"
+          label="Password"
+          variant="standard"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          style={{ width: "100%", marginTop: "16px" }}
+        />
+        {error && <div style={{ color: "red", marginTop: "8px" }}>{error}</div>}
+        <Button
+          onClick={handleLogin}
+          style={{ 
+            backgroundColor: "#01796F", 
+            color: "#F2F3F4", 
+            marginTop: "16px",
+            width: "100%",
+            borderRadius: "8px"
           }}
+          variant="contained"
         >
-          <TextField
-            label="Username"
-            variant="standard"
-            placeholder="User Name"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <TextField
-            type="password"
-            label="Password"
-            variant="standard"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          {error && <div style={{ color: "red" }}>{error}</div>}
-          <Button onClick={handleLogin}>Login</Button>
-        </div>
+          Login
+        </Button>
       </div>
-
-      <div>image</div>
     </PageLayout>
   );
 }

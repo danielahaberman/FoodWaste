@@ -1,38 +1,11 @@
-// @ts-nocheck
 import { useState } from "react";
-import { AppBar, Toolbar, Typography, List, ListItem, ListItemText, IconButton, Box, Container } from "@mui/material";
+import { AppBar, Toolbar, Typography, List, ListItem, ListItemText, IconButton, Drawer, Box, Container } from "@mui/material";
 import { Outlet, useNavigate } from "react-router-dom";
-import MenuIcon from '@mui/icons-material/Menu';
+import MenuIcon from "@mui/icons-material/Menu";
+import CloseIcon from "@mui/icons-material/Close";
 import PageLayout from "./Components/PageLayout";
-import zIndex from "@mui/material/styles/zIndex";
 
-const drawerWidth = 120;
-
-const CustomDrawer = ({ open, onClose, children }) => {
-  return (
-    <Box
-      sx={{
-        position: "absolute",
-        top: 0,
-        left:`0`,
-        width: open ? `${drawerWidth}px` : "0px",
-        // opacity: open ? 1 : 0,
-        height: "100%",
-        backgroundColor: "white",
-        boxShadow: 3,
-        transition: "width 0.3s ease-in-out",
-        zIndex: 1300,
-      }}
-    >
-      {open &&  <Box style={{zIndex:"99999"}} sx={{ p: 2 }}>
-        <IconButton onClick={onClose}>✖</IconButton>
-        {children}
-      </Box>}
-     
-     
-    </Box>
-  );
-};
+const drawerWidth = 200;
 
 const SidebarLayout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -48,16 +21,6 @@ const SidebarLayout = () => {
     { text: "Contact", path: "/contact" }
   ];
 
-  const drawer = (
-    <List>
-      {menuItems.map((item) => (
-        <ListItem button key={item.text} onClick={() => navigate(item.path)}>
-          <ListItemText style={{color:"black"}} primary={item.text} />
-        </ListItem>
-      ))}
-    </List>
-  );
-
   return (
     <PageLayout>
       <Container 
@@ -68,42 +31,67 @@ const SidebarLayout = () => {
           alignItems: "center", 
           justifyContent: "center", 
           height: "100vh",
-          position: "relative" 
+          position: "relative",
+          backgroundColor: "#FFB37A", 
+          borderRadius: "12px",
+          boxShadow: "0px 4px 10px rgba(0,0,0,0.1)",
+          padding: "24px"
         }}
       >
         {/* AppBar (Header) */}
-        <div style={{backgroundColor:"blue", height:"60px", width:"100%", display:"flex", alignItems:"Center", gap:"50px"}}>
-          <MenuIcon onClick={handleDrawerToggle}/>
-          <div>
-            Home
-          </div>
-        </div>
-        {/* <AppBar position="fixed" sx={{ width: "100%", maxWidth: "600px", marginRight:"auto" }}>
-          <Toolbar>
-            <IconButton edge="start" color="inherit" aria-label="menu"  sx={{ mr: 2 }}>
-              
+        <AppBar position="static" sx={{ backgroundColor: "#01796F", borderRadius: "8px" }}>
+          <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
+            <IconButton
+              edge="start"
+              color="inherit"
+              aria-label="menu"
+              onClick={handleDrawerToggle}
+              sx={{
+                position: "absolute",
+                top: "16px",
+                left: "16px",
+                zIndex: 1000 // Ensure it's always above other content
+              }}
+            >
+              <MenuIcon />
             </IconButton>
-            <Typography variant="h6" noWrap>
+            <Typography variant="h6" sx={{ fontFamily: "Arial, sans-serif", fontWeight: "bold", color: "#F2F3F4" }}>
               My App
             </Typography>
           </Toolbar>
-        </AppBar> */}
-        
-        {/* Custom Drawer */}
-        <CustomDrawer open={mobileOpen} onClose={handleDrawerToggle}>
-          {drawer}
-        </CustomDrawer>
-        
+        </AppBar>
+
+        {/* Sidebar Drawer */}
+        <Drawer
+          anchor="left"
+          open={mobileOpen}
+          onClose={handleDrawerToggle}
+          sx={{ '& .MuiDrawer-paper': { width: drawerWidth, backgroundColor: "#F2F3F4" } }}
+        >
+          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "16px" }}>
+            <IconButton onClick={handleDrawerToggle} sx={{ alignSelf: "flex-end" }}>
+              <CloseIcon />
+            </IconButton>
+            <List>
+              {menuItems.map((item) => (
+                <ListItem button key={item.text} onClick={() => navigate(item.path)}>
+                  <ListItemText primary={item.text} sx={{ textAlign: "center", fontFamily: "Arial, sans-serif", fontWeight: "bold", color: "black" }} />
+                </ListItem>
+              ))}
+            </List>
+          </Box>
+        </Drawer>
+
         {/* Main Content */}
         <Box 
           component="main" 
           sx={{ 
             flexGrow: 1, 
             p: 3, 
-            mt: 8, 
+            mt: 2, 
             width: "100%", 
             maxWidth: "600px", 
-            margin: "0 auto" 
+            textAlign: "center" 
           }}
         >
           <Outlet />
