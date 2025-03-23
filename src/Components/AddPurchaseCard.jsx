@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { useState } from "react";
-
+import { Button } from "@mui/material";
 function AddPurchaseCard({ item, handleAddPurchase }) {
   const [openCard, setOpenCard] = useState(false);
   const [quantity, setQuantity] = useState(1); // Default quantity
@@ -29,7 +29,7 @@ function AddPurchaseCard({ item, handleAddPurchase }) {
     handleAddPurchase(purchaseData);
     setOpenCard(false); // Close the card after adding the purchase
   };
-
+console.log("item", item)
   return (
     <div>
       {/* Display the food item name, and toggle to show more details */}
@@ -50,6 +50,9 @@ function AddPurchaseCard({ item, handleAddPurchase }) {
       {/* Show details when the card is open */}
       {openCard && (
         <div style={{ padding: "10px", border: "1px solid", width: "200px" }}>
+        <Button onClick={()=>{
+          setOpenCard(false)
+        }}>x</Button>
           <div>
             <strong>Name:</strong> {item.name}
           </div>

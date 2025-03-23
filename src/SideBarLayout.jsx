@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState } from "react";
 import { AppBar, Toolbar, Typography, List, ListItem, ListItemText, IconButton, Drawer, Box, Container } from "@mui/material";
 import { Outlet, useNavigate } from "react-router-dom";
@@ -55,8 +56,8 @@ const SidebarLayout = () => {
             >
               <MenuIcon />
             </IconButton>
-            <Typography variant="h6" sx={{ fontFamily: "Arial, sans-serif", fontWeight: "bold", color: "#F2F3F4" }}>
-              My App
+            <Typography variant="h6" sx={{ fontFamily: "Arial, sans-serif", fontWeight: "bold", color: "#F2F3F4", marginLeft:"20px" }}>
+              Food Waste
             </Typography>
           </Toolbar>
         </AppBar>

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React from "react";
 import { Button } from "@mui/material";
 import { useNavigate } from "react-router-dom";
@@ -39,14 +40,14 @@ function LandingPage() {
         <Button
           variant="contained"
           style={{ backgroundColor: "#01796F", color: "#F2F3F4" }}
-          onClick={() => navigate("/login")}
+          onClick={() => navigate("/auth/login")}
         >
           Login
         </Button>
         <Button
           variant="contained"
           style={{ backgroundColor: "#50C878", color: "#000000" }}
-          onClick={() => navigate("/register")}
+          onClick={() => navigate("/auth/register")}
         >
           Register
         </Button>

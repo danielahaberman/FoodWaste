@@ -16,7 +16,7 @@ function RegisterPage() {
 
   const handleRegister = async () => {
     try {
-      const response = await fetch("http://localhost:5001/register", {
+      const response = await fetch("http://localhost:5001/auth/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -28,7 +28,7 @@ function RegisterPage() {
       if (response.ok) {
         setError("");
         console.log("User registered successfully:", data);
-        navigate("/login")
+        navigate("/auth/login")
       } else {
         setError(data.error);
       }
@@ -56,6 +56,7 @@ function RegisterPage() {
         style={{
           border: "1px solid black",
           width: "80vw",
+          maxWidth:"600px",
           height: "fit-content",
           borderRadius: "8px",
           marginLeft: "auto",

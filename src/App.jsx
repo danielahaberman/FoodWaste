@@ -16,8 +16,8 @@ function App() {
         <Routes>
           {/* Pages that don't require SidebarLayout */}
           <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} /> {/* RegisterPage outside SidebarLayout */}
+          <Route path="/auth/login" element={<LoginPage />} />
+          <Route path="/auth/register" element={<RegisterPage />} /> {/* RegisterPage outside SidebarLayout */}
 
           {/* SidebarLayout wrapped routes */}
           <Route element={<SidebarLayout />}>

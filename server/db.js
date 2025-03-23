@@ -40,26 +40,32 @@ const db = new sqlite3.Database("./database.sqlite", (err) => {
           price REAL,
           quantity INTEGER,
           quantity_type_id INTEGER,
-          UNIQUE(name),
+          user_id TEXT NOT NULL DEFAULT '*', -- '*' means any user can see it
+          UNIQUE(name, user_id), -- Ensures uniqueness per user
           FOREIGN KEY(category_id) REFERENCES categories(id),
-          FOREIGN KEY(quantity_type_id) REFERENCES quantity_types(id)
+          FOREIGN KEY(quantity_type_id) REFERENCES quantity_types(id),
+          FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         )
       `);
 
+      // Updated purchases table
       db.run(`
         CREATE TABLE IF NOT EXISTS purchases (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           user_id INTEGER,
-          food_item_id INTEGER,
-          quantity INTEGER,
-          price REAL,
-          purchase_date TEXT,
+          name TEXT NOT NULL,
+          category TEXT,
+          category_id INTEGER,               -- Add category_id column
+          quantity INTEGER NOT NULL,
+          price REAL NOT NULL,
+          purchase_date TEXT NOT NULL,
+          quantity_type TEXT,
           FOREIGN KEY(user_id) REFERENCES users(id),
-          FOREIGN KEY(food_item_id) REFERENCES food_items(id)
+          FOREIGN KEY(category_id) REFERENCES categories(id)  -- Add foreign key reference to 'categories' table
         )
       `);
 
-      // Insert categories **after** ensuring the table exists
+      // Insert default categories
       const categories = [
         "Fruits", "Vegetables", "Dairy", "Snacks", "Beverages",
         "Meat", "Seafood", "Grains", "Legumes", "Nuts & Seeds",

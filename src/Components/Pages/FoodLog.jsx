@@ -1,3 +1,5 @@
+ 
+/* eslint-disable no-unused-vars */
 // @ts-nocheck
 import React, { useState, useEffect } from "react";
 import axios from "axios";
@@ -8,13 +10,14 @@ const FoodLog = () => {
   const [foodPurchases, setFoodPurchases] = useState([]);
   const [foodItems, setFoodItems] = useState([]);
   const [showForm, setShowForm] = useState(false);
-  const [newFoodItem, setNewFoodItem] = useState({
+  const initialNewFoodItem = {
     name: "",
-    category: "",
+    category_id: null,
     price: "",
     quantity: "",
-    quantityType: "",
-  });
+    quantity_type_id: null,
+  }
+  const [newFoodItem, setNewFoodItem] = useState(initialNewFoodItem);
   const [quantityTypes, setQuantityTypes] = useState([]);
   const [foodCategories, setFoodCategories] = useState([]);
 
@@ -83,7 +86,6 @@ const FoodLog = () => {
         "http://localhost:5001/add-food-item",
         {
           ...newFoodItem,
-          quantity_type_id: newFoodItem.quantityType,
           user_id: localStorage.getItem("userId"),
         },
         {
@@ -91,20 +93,14 @@ const FoodLog = () => {
         }
       );
 
-      setNewFoodItem({
-        name: "",
-        category: "",
-        price: "",
-        quantity: "",
-        quantityType: "",
-      });
+      setNewFoodItem(initialNewFoodItem);
       fetchFoodItems();
+      setShowForm(false);
     } catch (error) {
       console.error("Error adding food item:", error);
     }
   };
   const handleAddToPurchase = async (foodItem) => {
-    
     try {
       const response = await axios.post(
         "http://localhost:5001/purchase",
@@ -112,40 +108,49 @@ const FoodLog = () => {
           user_id: localStorage.getItem("userId"),
           name: foodItem.name,
           category: foodItem.category,
-          category_id: foodItem.category_id,
+          category_id: foodItem.category_id,  // Send category_id here
           price: foodItem.price,
           quantity: foodItem.quantity,
-          quantity_type_id: foodItem.quantity_type_id,
-
+          quantity_type: foodItem.quantity_type,
+          purchase_date: new Date().toISOString(),
         },
         { withCredentials: true }
       );
       console.log(response.data);
-      fetchFoodPurchases();  // Refresh the list of purchases after adding the new purchase
+      fetchFoodPurchases(); // Refresh the list of purchases after adding the new purchase
+     
     } catch (error) {
       console.error("Error adding purchase:", error);
     }
   };
-
+console.log("newFood", newFoodItem)
   return (
     <div>
       <h1>Food Log</h1>
 
       {/* Display current food purchases */}
-      <h2>Today's Purchases</h2>
+      <h2>Purchases</h2>
       <ul>
         {foodPurchases.map((item) => (
-          <li key={item.id}>
-            {item.name} - {item.quantity} {item.quantity_type} - ${item.price} - {item.purchase_date}
-          </li>
+       <li key={item.id}>
+       {item.name} - {item.quantity} {item.quantity_type} - ${item.price} - {new Date(item.purchase_date).toLocaleString('en-US', {
+         year: 'numeric',
+         month: 'long',
+         day: 'numeric',
+         hour: '2-digit',
+         minute: '2-digit',
+         hour12: true
+       })}
+     </li>
         ))}
       </ul>
 <div style={{marginBottom:"20px"}}>
    {!showForm && <button onClick={() => setShowForm(true)}>Add New Food Type</button>}
 </div>
-<div>
+{/* {!showForm && <div>
    <button onClick={() => setShowForm(true)}>Log New Purchase</button>
-</div>
+</div>} */}
+
      
      
 
@@ -177,9 +182,12 @@ const FoodLog = () => {
               <label htmlFor="category">Food Category:</label>
               <select
                 id="category"
-                value={newFoodItem.category}
-                onChange={(e) => setNewFoodItem({ ...newFoodItem, category: e.target.value })}
+                value={newFoodItem.category_id || ""}
+                onChange={(e) => {
+                  console.log("e", e)
+                  return(setNewFoodItem({ ...newFoodItem, category_id: e.target.value }))}}
               >
+                <option value="" disabled>Select a category</option> {/* Default empty option */}
                 {foodCategories.map((type) => (
                   <option key={type.id} value={type.id}>
                     {type.name}
@@ -192,9 +200,10 @@ const FoodLog = () => {
               <label htmlFor="quantity">Quantity Type:</label>
               <select
                 id="quantity"
-                value={newFoodItem.quantityType}
-                onChange={(e) => setNewFoodItem({ ...newFoodItem, quantityType: e.target.value })}
+                value={newFoodItem.quantity_type_id || ""}
+                onChange={(e) => setNewFoodItem({ ...newFoodItem, quantity_type_id: e.target.value })}
               >
+                  <option value="" disabled>Select a Quantity</option> {/* Default empty option */}
                 {quantityTypes.map((type) => (
                   <option key={type.id} value={type.id}>
                     {type.name}
@@ -209,10 +218,13 @@ const FoodLog = () => {
           </button>
         </form>
       )}
-      {foodItems.map((item)=>{
+      <div style={{ display:"flex", flexDirection:"column", alignItems:"Center"}}>
+        {foodItems.map((item)=>{
         console.log("item", item)
         return(<AddPurchaseCard key={item.name} handleAddPurchase={handleAddToPurchase} item={item}/>)
       })}
+      </div>
+      
     </div>
   );
 };
