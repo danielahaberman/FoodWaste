@@ -9,6 +9,7 @@ import SidebarLayout from './SideBarLayout'; // Import your SidebarLayout compon
 import RegisterPage from './Components/Pages/RegisterPage'; // Import RegisterPage
 import React from 'react';
 import FoodLog from './Components/Pages/FoodLog';
+import QaPage from './Components/Pages/QaPAge';
 function App() {
   return (
     <div style={{ height:"100vh", width:"100vw", boxSizing:"border-box"}}>
@@ -18,11 +19,12 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/auth/login" element={<LoginPage />} />
           <Route path="/auth/register" element={<RegisterPage />} /> {/* RegisterPage outside SidebarLayout */}
-
+         
           {/* SidebarLayout wrapped routes */}
           <Route element={<SidebarLayout />}>
             <Route path="/users" element={<Users />} />
             <Route path="/home" element={<FoodLog/>} />
+            <Route path="/survey" element={<QaPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

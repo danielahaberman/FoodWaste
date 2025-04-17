@@ -31,7 +31,6 @@ const db = new sqlite3.Database("./database.sqlite", (err) => {
           name TEXT NOT NULL UNIQUE
         )
       `);
-
       db.run(`
         CREATE TABLE IF NOT EXISTS food_items (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -40,8 +39,8 @@ const db = new sqlite3.Database("./database.sqlite", (err) => {
           price REAL,
           quantity INTEGER,
           quantity_type_id INTEGER,
-          user_id TEXT NOT NULL DEFAULT '*', -- '*' means any user can see it
-          UNIQUE(name, user_id), -- Ensures uniqueness per user
+          user_id INTEGER DEFAULT NULL,  -- NULL means available to all users
+          UNIQUE(name, user_id),
           FOREIGN KEY(category_id) REFERENCES categories(id),
           FOREIGN KEY(quantity_type_id) REFERENCES quantity_types(id),
           FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -88,6 +87,45 @@ const db = new sqlite3.Database("./database.sqlite", (err) => {
       quantityTypes.forEach(type => {
         db.run("INSERT OR IGNORE INTO quantity_types (name) VALUES (?)", [type], (err) => {
           if (err) console.error(`Error inserting quantity type ${type}:`, err);
+        });
+      });
+      const defaultFoodItems = [
+        { name: "Apple", category: "Fruits", price: 0.5, quantity: 1, quantityType: "Piece" },
+        { name: "Milk", category: "Dairy", price: 2.5, quantity: 1, quantityType: "Liter" },
+        { name: "Bread", category: "Baked Goods", price: 1.5, quantity: 1, quantityType: "Piece" },
+        { name: "Chicken Breast", category: "Meat", price: 5.0, quantity: 1, quantityType: "Pound" },
+        { name: "Carrot", category: "Vegetables", price: 0.3, quantity: 1, quantityType: "Piece" }
+      ];
+      defaultFoodItems.forEach(item => {
+        db.get(`SELECT f.id FROM food_items f 
+                JOIN categories c ON f.category_id = c.id 
+                JOIN quantity_types qt ON f.quantity_type_id = qt.id
+                WHERE f.name = ? AND f.user_id = '*'`, [item.name], (err, row) => {
+          if (err) {
+            console.error(`Error checking for existing food item ${item.name}:`, err);
+            return;
+          }
+      
+          if (!row) {
+            db.get(`SELECT id FROM categories WHERE name = ?`, [item.category], (err, catRow) => {
+              if (err || !catRow) return console.error(`Category lookup failed for ${item.name}:`, err);
+      
+              db.get(`SELECT id FROM quantity_types WHERE name = ?`, [item.quantityType], (err, qtRow) => {
+                if (err || !qtRow) return console.error(`Quantity type lookup failed for ${item.name}:`, err);
+      
+                db.run(
+                  `INSERT INTO food_items 
+                    (name, category_id, price, quantity, quantity_type_id, user_id)
+                   VALUES (?, ?, ?, ?, ?, '*')`,
+                  [item.name, catRow.id, item.price, item.quantity, qtRow.id],
+                  (err) => {
+                    if (err) console.error(`Error inserting default food item ${item.name}:`, err);
+                    else console.log(`Inserted default global food item: ${item.name}`);
+                  }
+                );
+              });
+            });
+          }
         });
       });
     });

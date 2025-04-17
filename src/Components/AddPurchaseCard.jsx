@@ -2,7 +2,6 @@
 import React, { useState } from "react";
 import { Button } from "@mui/material";
 function AddPurchaseCard({ item, handleAddPurchase }) {
-  const [openCard, setOpenCard] = useState(false);
   const [quantity, setQuantity] = useState(1); // Default quantity
   const [cost, setCost] = useState(item.price); // Default cost from item
 
@@ -26,14 +25,13 @@ function AddPurchaseCard({ item, handleAddPurchase }) {
   
     console.log("Adding purchase:", purchaseData); // Debugging line
   
-    handleAddPurchase(purchaseData);
-    setOpenCard(false); // Close the card after adding the purchase
+    handleAddPurchase(purchaseData);// Close the card after adding the purchase
   };
 console.log("item", item)
   return (
     <div>
       {/* Display the food item name, and toggle to show more details */}
-      {!openCard && (
+      {/* {!openCard && (
         <div
           onClick={() => setOpenCard(true)}
           style={{
@@ -45,14 +43,10 @@ console.log("item", item)
         >
           {item.name}
         </div>
-      )}
+      )} */}
 
       {/* Show details when the card is open */}
-      {openCard && (
-        <div style={{ padding: "10px", border: "1px solid", width: "200px" }}>
-        <Button onClick={()=>{
-          setOpenCard(false)
-        }}>x</Button>
+      <div style={{ padding: "10px", border: "1px solid", width: "200px" }}>
           <div>
             <strong>Name:</strong> {item.name}
           </div>
@@ -88,7 +82,6 @@ console.log("item", item)
             Add to Purchase
           </button>
         </div>
-      )}
     </div>
   );
 }

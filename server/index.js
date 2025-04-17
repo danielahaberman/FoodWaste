@@ -31,11 +31,11 @@ app.get("/food-items", requireUserId, (req, res) => {
   const { user_id, search, category } = req.query;
 
   let query = `
-    SELECT f.id, f.name, f.category_id, c.name AS category, f.price, f.quantity, qt.name AS quantity_type
+    SELECT f.id, f.name, f.category_id, c.name AS category, f.price, f.quantity, qt.name AS quantity_type, f.user_id
     FROM food_items f
     LEFT JOIN quantity_types qt ON f.quantity_type_id = qt.id
     LEFT JOIN categories c ON f.category_id = c.id
-    WHERE f.user_id = ? OR f.user_id = '*' 
+    WHERE (f.user_id = ? OR f.user_id = '*')
   `;
 
   const params = [user_id];
@@ -44,16 +44,20 @@ app.get("/food-items", requireUserId, (req, res) => {
     query += ` AND f.name LIKE ?`;
     params.push(`%${search}%`);
   }
+
   if (category) {
     query += ` AND c.name = ?`;
     params.push(category);
   }
+
+  query += ` ORDER BY f.name ASC`; // Optional: nice to have consistent ordering
 
   db.all(query, params, (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(rows);
   });
 });
+
 
 
 
