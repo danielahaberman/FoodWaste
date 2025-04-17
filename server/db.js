@@ -63,7 +63,52 @@ const db = new sqlite3.Database("./database.sqlite", (err) => {
           FOREIGN KEY(category_id) REFERENCES categories(id)  -- Add foreign key reference to 'categories' table
         )
       `);
-
+      db.run(`
+        CREATE TABLE IF NOT EXISTS survey_questions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          question TEXT NOT NULL,
+          type TEXT NOT NULL CHECK(type IN ('text', 'multiple_choice', 'rating'))  -- Add types as needed
+        )
+      `);
+      db.run(`
+        CREATE TABLE IF NOT EXISTS survey_question_options (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          question_id INTEGER NOT NULL,
+          option_text TEXT NOT NULL,
+          FOREIGN KEY(question_id) REFERENCES survey_questions(id) ON DELETE CASCADE
+        )
+      `);
+      db.run(`
+        CREATE TABLE IF NOT EXISTS survey_responses (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          question_id INTEGER NOT NULL,
+          response TEXT,
+          response_date TEXT DEFAULT (datetime('now')),
+          FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+          FOREIGN KEY(question_id) REFERENCES survey_questions(id) ON DELETE CASCADE
+        )
+      `);
+      const mixedQuestions = [
+        { question: "How satisfied are you with the app?", type: "rating" },
+        { question: "Do you have any dietary restrictions?", type: "text" },
+        { question: "How do you usually pay for groceries?", type: "multiple_choice", options: ["Cash", "Credit Card", "Debit Card", "Mobile Payment", "Other"] }
+      ];
+      
+      mixedQuestions.forEach(q => {
+        db.run("INSERT INTO survey_questions (question, type) VALUES (?, ?)", [q.question, q.type], function (err) {
+          if (err) return console.error("Error inserting question:", err);
+      
+          const questionId = this.lastID;
+          if (q.type === "multiple_choice" && Array.isArray(q.options)) {
+            q.options.forEach(opt => {
+              db.run("INSERT INTO survey_question_options (question_id, option_text) VALUES (?, ?)", [questionId, opt], err => {
+                if (err) console.error("Error inserting option:", err);
+              });
+            });
+          }
+        });
+      });
       // Insert default categories
       const categories = [
         "Fruits", "Vegetables", "Dairy", "Snacks", "Beverages",
