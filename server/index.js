@@ -169,18 +169,23 @@ app.post("/add-food-item", requireUserId, (req, res) => {
   );
 });
 app.get("/survey-questions", (req, res) => {
-  const questionsQuery = `SELECT * FROM survey_questions`;
+  // Get the 'stage' from the query parameters, defaulting to 'default' if not provided
+  const stage = req.query.stage || 'default';
 
-  db.all(questionsQuery, [], (err, questions) => {
+  // Update the query to filter by stage
+  const questionsQuery = `SELECT * FROM survey_questions WHERE stage = ?`;
+
+  db.all(questionsQuery, [stage], (err, questions) => {
     if (err) return res.status(500).json({ error: err.message });
 
-    // If no multiple-choice questions, return directly
-    const mcQuestionIds = questions.filter(q => q.type === "multiple_choice").map(q => q.id);
+    const mcQuestionIds = questions
+      .filter(q => q.type === "multiple_choice")
+      .map(q => q.id);
+
     if (mcQuestionIds.length === 0) {
       return res.json(questions.map(q => ({ ...q, options: [] })));
     }
 
-    // Fetch options for all multiple choice questions
     const placeholders = mcQuestionIds.map(() => "?").join(", ");
     const optionsQuery = `
       SELECT * FROM survey_question_options
@@ -190,19 +195,18 @@ app.get("/survey-questions", (req, res) => {
     db.all(optionsQuery, mcQuestionIds, (err, options) => {
       if (err) return res.status(500).json({ error: err.message });
 
-      // Group options by question_id
       const optionMap = {};
       options.forEach(opt => {
-        if (!optionMap[opt.question_id]) {
-          optionMap[opt.question_id] = [];
-        }
-        optionMap[opt.question_id].push({ id: opt.id, text: opt.option_text });
+        if (!optionMap[opt.question_id]) optionMap[opt.question_id] = [];
+        optionMap[opt.question_id].push({
+          id: opt.id,
+          text: opt.option_text,
+        });
       });
 
-      // Attach options to each question
       const enrichedQuestions = questions.map(q => ({
         ...q,
-        options: optionMap[q.id] || []
+        options: optionMap[q.id] || [],
       }));
 
       res.json(enrichedQuestions);

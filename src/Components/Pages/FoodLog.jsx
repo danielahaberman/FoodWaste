@@ -15,6 +15,7 @@ import AddNewPurchase from "./AddNewPurchase";
 import DateNavigator from "../DateNavigator";
 import FoodPurchaseList from "../FoodPurchaseList";
 import AssignmentIcon from '@mui/icons-material/Assignment';
+import QaPage from "./QaPage";
 const FoodLog = () => {
   const [foodPurchases, setFoodPurchases] = useState([]);
   const [foodItems, setFoodItems] = useState([]);
@@ -121,22 +122,7 @@ const FoodLog = () => {
         </Paper>
       )}
       {showSurvey && (
-        <Paper
-          style={{
-            position: "absolute",
-            height: "100vh",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            zIndex: 10,
-          }}
-        >
-           <Button onClick={()=>{
-           setShowSurvey(false)
-          }}>back</Button>
-          survey page
-         
-        </Paper>
+   <QaPage setShowSurvey={setShowSurvey}/>
       )}
        {showConsumeWaste && (
         <Paper
