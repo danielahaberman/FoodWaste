@@ -15,6 +15,7 @@ import AddNewPurchase from "./AddNewPurchase";
 import DateNavigator from "../DateNavigator";
 import FoodPurchaseList from "../FoodPurchaseList";
 import AssignmentIcon from '@mui/icons-material/Assignment';
+import ConsumeWaste from "./ComsumeWaste";
 import QaPage from "./QaPage";
 const FoodLog = () => {
   const [foodPurchases, setFoodPurchases] = useState([]);
@@ -140,6 +141,7 @@ const FoodLog = () => {
             setShowConsumeWaste(false)
           }}>back</Button>
          consume/waste food page
+         <ConsumeWaste/>
         </Paper>
       )}
     </div>

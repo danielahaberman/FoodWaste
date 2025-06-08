@@ -143,6 +143,64 @@ app.get("/food-purchases", requireUserId, (req, res) => {
     res.json(rows); // Return all purchases for the user
   });
 });
+const moment = require('moment');
+
+
+app.get("/purchases/weekly-summary", requireUserId, (req, res) => {
+  const { user_id } = req.query;
+
+  const query = `
+    SELECT 
+      p.id,
+      p.name,
+      p.category,
+      p.quantity,
+      p.price,
+      p.purchase_date,
+      p.quantity_type
+    FROM purchases p
+    WHERE p.user_id = ?
+    ORDER BY p.purchase_date DESC
+  `;
+
+  db.all(query, [user_id], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+
+    const grouped = {};
+
+    rows.forEach(row => {
+      const weekStart = moment(row.purchase_date).startOf('week').format('MM/DD/YYYY');
+
+      if (!grouped[weekStart]) {
+        grouped[weekStart] = {
+          weekOf: weekStart,
+          purchases: [],
+        };
+      }
+
+      grouped[weekStart].purchases.push({
+        id: row.id,
+        name: row.name,
+        category: row.category,
+        quantity: row.quantity,
+        price: row.price,
+        purchase_date: row.purchase_date,
+        quantity_type: row.quantity_type,
+      });
+    });
+
+    // Sort by weekOf ascending (oldest first)
+    const sortedKeys = Object.keys(grouped).sort((a, b) => {
+      return moment(a, 'MM/DD/YYYY').toDate() - moment(b, 'MM/DD/YYYY').toDate();
+    });
+
+    const result = sortedKeys.map(key => grouped[key]);
+
+    res.json(result);
+  });
+});
+
+
 
 
 // Endpoint to add food items to the food_items table

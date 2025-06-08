@@ -120,6 +120,7 @@ const db = new sqlite3.Database("./database.sqlite", (err) => {
       
       // Insert both sets of questions into the survey_questions table
       [...initialQuestions, ...weeklyQuestions].forEach(q => {
+        // Check if question already exists for that stage
         db.get(
           "SELECT id FROM survey_questions WHERE question = ? AND stage = ?",
           [q.question, q.stage],
@@ -128,7 +129,9 @@ const db = new sqlite3.Database("./database.sqlite", (err) => {
               console.error("Error checking question existence:", err);
               return;
             }
+      
             if (!row) {
+              // Question does not exist — insert it
               db.run(
                 "INSERT INTO survey_questions (question, type, stage) VALUES (?, ?, ?)",
                 [q.question, q.type, q.stage],
@@ -136,6 +139,8 @@ const db = new sqlite3.Database("./database.sqlite", (err) => {
                   if (err) return console.error("Error inserting question:", err);
       
                   const questionId = this.lastID;
+      
+                  // Insert options only if multiple_choice and options array exists
                   if (q.type === "multiple_choice" && Array.isArray(q.options)) {
                     q.options.forEach(opt => {
                       db.run(
@@ -149,10 +154,14 @@ const db = new sqlite3.Database("./database.sqlite", (err) => {
                   }
                 }
               );
+            } else {
+              // Question already exists, so skip inserting question and options
+              // Optional: you could check here if options exist and match, but usually skip is fine
             }
           }
         );
       });
+      
       
       // Insert default categories
       const categories = [
