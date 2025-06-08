@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* eslint-disable no-unused-vars */
 
 import './App.css';
@@ -12,8 +13,9 @@ import FoodLog from './Components/Pages/FoodLog';
 import QaPage from './Components/Pages/QaPAge';
 function App() {
   return (
-    <div style={{ height:"100vh", width:"100vw", boxSizing:"border-box"}}>
-      <BrowserRouter>
+    <div style={{ height:"100vh", width:"100vw", boxSizing:"border-box",  }}>
+      <div style={{maxWidth:"600px", marginLeft:"auto", marginRight:"auto"}}>
+         <BrowserRouter>
         <Routes>
           {/* Pages that don't require SidebarLayout */}
           <Route path="/" element={<LandingPage />} />
@@ -28,6 +30,8 @@ function App() {
           </Route>
         </Routes>
       </BrowserRouter>
+      </div>
+     
     </div>
   );
 }

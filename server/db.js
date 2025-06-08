@@ -107,7 +107,7 @@ const db = new sqlite3.Database("./database.sqlite", (err) => {
         { question: "Do you rent or own?", type: "multiple_choice", options: ["Rent", "Own"], stage: "initial" },
         { question: "Do you live with roommates?", type: "multiple_choice", options: ["Yes", "No"], stage: "initial" },
         { question: "How many vacations did you take last year?", type: "number", stage: "initial" },
-        { question: "Which socioeconomic group best describes your standing?", type: "rating", options: ["Low", "Mid", "High"], stage: "initial" }
+        { question: "Which socioeconomic group best describes your standing?", type: "multiple_choice", options: ["Low", "Mid", "High"], stage: "initial" }
       ];
       
       const weeklyQuestions = [
@@ -120,23 +120,40 @@ const db = new sqlite3.Database("./database.sqlite", (err) => {
       
       // Insert both sets of questions into the survey_questions table
       [...initialQuestions, ...weeklyQuestions].forEach(q => {
-        db.run(
-          "INSERT INTO survey_questions (question, type, stage) VALUES (?, ?, ?)",
-          [q.question, q.type, q.stage],
-          function (err) {
-            if (err) return console.error("Error inserting question:", err);
+        db.get(
+          "SELECT id FROM survey_questions WHERE question = ? AND stage = ?",
+          [q.question, q.stage],
+          (err, row) => {
+            if (err) {
+              console.error("Error checking question existence:", err);
+              return;
+            }
+            if (!row) {
+              db.run(
+                "INSERT INTO survey_questions (question, type, stage) VALUES (?, ?, ?)",
+                [q.question, q.type, q.stage],
+                function (err) {
+                  if (err) return console.error("Error inserting question:", err);
       
-            const questionId = this.lastID;
-            if (q.type === "multiple_choice" && Array.isArray(q.options)) {
-              q.options.forEach(opt => {
-                db.run("INSERT INTO survey_question_options (question_id, option_text) VALUES (?, ?)", [questionId, opt], err => {
-                  if (err) console.error("Error inserting option:", err);
-                });
-              });
+                  const questionId = this.lastID;
+                  if (q.type === "multiple_choice" && Array.isArray(q.options)) {
+                    q.options.forEach(opt => {
+                      db.run(
+                        "INSERT INTO survey_question_options (question_id, option_text) VALUES (?, ?)",
+                        [questionId, opt],
+                        err => {
+                          if (err) console.error("Error inserting option:", err);
+                        }
+                      );
+                    });
+                  }
+                }
+              );
             }
           }
         );
       });
+      
       // Insert default categories
       const categories = [
         "Fruits", "Vegetables", "Dairy", "Snacks", "Beverages",

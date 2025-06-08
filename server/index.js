@@ -27,36 +27,36 @@ function requireUserId(req, res, next) {
 
 app.use("/auth", authRoutes);
 
-app.get("/food-items", requireUserId, (req, res) => {
-  const { user_id, search, category } = req.query;
+// app.get("/food-items", requireUserId, (req, res) => {
+//   const { user_id, search, category } = req.query;
 
-  let query = `
-    SELECT f.id, f.name, f.category_id, c.name AS category, f.price, f.quantity, qt.name AS quantity_type, f.user_id
-    FROM food_items f
-    LEFT JOIN quantity_types qt ON f.quantity_type_id = qt.id
-    LEFT JOIN categories c ON f.category_id = c.id
-    WHERE (f.user_id = ? OR f.user_id = '*')
-  `;
+//   let query = `
+//     SELECT f.id, f.name, f.category_id, c.name AS category, f.price, f.quantity, qt.name AS quantity_type, f.user_id
+//     FROM food_items f
+//     LEFT JOIN quantity_types qt ON f.quantity_type_id = qt.id
+//     LEFT JOIN categories c ON f.category_id = c.id
+//     WHERE (f.user_id = ? OR f.user_id = '*')
+//   `;
 
-  const params = [user_id];
+//   const params = [user_id];
 
-  if (search) {
-    query += ` AND f.name LIKE ?`;
-    params.push(`%${search}%`);
-  }
+//   if (search) {
+//     query += ` AND f.name LIKE ?`;
+//     params.push(`%${search}%`);
+//   }
 
-  if (category) {
-    query += ` AND c.name = ?`;
-    params.push(category);
-  }
+//   if (category) {
+//     query += ` AND c.name = ?`;
+//     params.push(category);
+//   }
 
-  query += ` ORDER BY f.name ASC`; // Optional: nice to have consistent ordering
+//   query += ` ORDER BY f.name ASC`; // Optional: nice to have consistent ordering
 
-  db.all(query, params, (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
-  });
-});
+//   db.all(query, params, (err, rows) => {
+//     if (err) return res.status(500).json({ error: err.message });
+//     res.json(rows);
+//   });
+// });
 
 
 
@@ -213,6 +213,96 @@ app.get("/survey-questions", (req, res) => {
     });
   });
 });
+app.post("/survey-response", (req, res) => {
+  console.log("Incoming survey response:", req.body);
+  const { userId, questionId, response } = req.body;
+
+  if (!userId || !questionId || typeof response !== "string") {
+    return res.status(400).json({ error: "Missing or invalid fields" });
+  }
+
+  const query = `
+    INSERT INTO survey_responses (user_id, question_id, response)
+    VALUES (?, ?, ?)
+  `;
+
+  db.run(query, [userId, questionId, response], function (err) {
+    if (err) {
+      console.error("Error saving response:", err);
+      return res.status(500).json({ error: "Failed to save response" });
+    }
+
+    res.status(200).json({ message: "Response saved", responseId: this.lastID });
+  });
+});
+app.get("/api/surveys/status/:userId", (req, res) => {
+  const userId = req.params.userId;
+
+  // Step 1: Get total counts of initial and weekly questions
+  const countsQuery = `
+    SELECT
+      SUM(CASE WHEN stage = 'initial' THEN 1 ELSE 0 END) AS initial_count,
+      SUM(CASE WHEN stage = 'weekly' THEN 1 ELSE 0 END) AS weekly_count
+    FROM survey_questions
+  `;
+
+  db.get(countsQuery, (err, counts) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Internal error" });
+    }
+
+    const { initial_count, weekly_count } = counts;
+
+    // Step 2: Check initial completion count
+    const initialAnsweredQuery = `
+      SELECT COUNT(DISTINCT question_id) AS answered_initial_count
+      FROM survey_responses
+      WHERE user_id = ? AND question_id IN (
+        SELECT id FROM survey_questions WHERE stage = 'initial'
+      )
+    `;
+
+    db.get(initialAnsweredQuery, [userId], (err, initialResult) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ error: "Internal error" });
+      }
+
+      const initialCompleted = initialResult.answered_initial_count === initial_count;
+
+      // Step 3: Find last completed weekly survey week
+      const lastWeeklyCompletionQuery = `
+        SELECT 
+          strftime('%Y-%W', response_date) AS year_week,
+          MAX(response_date) AS last_response_date,
+          COUNT(DISTINCT question_id) AS answered_count
+        FROM survey_responses
+        WHERE user_id = ? AND question_id IN (
+          SELECT id FROM survey_questions WHERE stage = 'weekly'
+        )
+        GROUP BY year_week
+        HAVING answered_count = ?
+        ORDER BY last_response_date DESC
+        LIMIT 1
+      `;
+
+      db.get(lastWeeklyCompletionQuery, [userId, weekly_count], (err, weeklyResult) => {
+        if (err) {
+          console.error(err);
+          return res.status(500).json({ error: "Internal error" });
+        }
+
+        res.json({
+          userId,
+          initialCompleted,
+          lastWeeklyCompletion: weeklyResult ? weeklyResult.last_response_date : null
+        });
+      });
+    });
+  });
+});
+
 
 app.delete("/food-items/:id", requireUserId, (req, res) => {
   const foodItemId = req.params.id;
@@ -227,6 +317,9 @@ app.delete("/food-items/:id", requireUserId, (req, res) => {
     }
     res.status(200).json({ message: "Food item deleted successfully" });
   });
+});
+app.use((req, res) => {
+  res.status(404).json({ error: "Endpoint not found" });
 });
 // Start the server
 const PORT = process.env.PORT || 5001;
