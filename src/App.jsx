@@ -10,7 +10,7 @@ import SidebarLayout from './SideBarLayout'; // Import your SidebarLayout compon
 import RegisterPage from './Components/Pages/RegisterPage'; // Import RegisterPage
 import React from 'react';
 import FoodLog from './Components/Pages/FoodLog';
-import QaPage from './Components/Pages/QaPAge';
+import QaPage from './Components/Pages/QaPage';
 function App() {
   return (
     <div style={{ height:"100vh", width:"100vw", boxSizing:"border-box",  }}>
