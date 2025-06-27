@@ -1,54 +1,65 @@
-/* eslint-disable no-undef */
 // @ts-nocheck
 // authRoutes.js
-const express = require("express");
-const bcrypt = require("bcrypt");
-const db = require("./db");
+import express from 'express';
+import bcrypt from 'bcrypt';
+import pool from './db.js'; // your pg Pool instance
+
 const router = express.Router();
 
 // Register route
-router.post("/register", (req, res) => {  // Removed /auth here
+router.post('/register', async (req, res) => {
   const { username, name, password } = req.body;
 
   if (!username || !name || !password) {
-    return res.status(400).json({ error: "Username, name, and password are required" });
+    return res.status(400).json({ error: 'Username, name, and password are required' });
   }
 
-  const saltRounds = 10;
-  bcrypt.hash(password, saltRounds, (err, hashedPassword) => {
-    if (err) return res.status(500).json({ error: "Error hashing password" });
+  try {
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    const query = `INSERT INTO users (username, name, password) VALUES (?, ?, ?)`;
+    const query = `
+      INSERT INTO users (username, name, password)
+      VALUES ($1, $2, $3)
+      RETURNING id, username, name
+    `;
 
-    db.run(query, [username, name, hashedPassword], function (err) {
-      if (err) return res.status(500).json({ error: "Error registering user" });
+    const { rows } = await pool.query(query, [username, name, hashedPassword]);
 
-      res.status(201).json({ id: this.lastID, username, name });
-    });
-  });
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    console.error('Error registering user:', err);
+    res.status(500).json({ error: 'Error registering user' });
+  }
 });
 
 // Login route
-router.post("/login", (req, res) => {  // Removed /auth here
+router.post('/login', async (req, res) => {
   const { username, password } = req.body;
 
   if (!username || !password) {
-    return res.status(400).json({ error: "Username and password are required" });
+    return res.status(400).json({ error: 'Username and password are required' });
   }
 
-  const query = `SELECT * FROM users WHERE username = ?`;
+  try {
+    const query = `SELECT * FROM users WHERE username = $1`;
+    const { rows } = await pool.query(query, [username]);
+    const user = rows[0];
 
-  db.get(query, [username], (err, user) => {
-    if (err) return res.status(500).json({ error: "Error logging in" });
-    if (!user) return res.status(404).json({ error: "User not found" });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
 
-    bcrypt.compare(password, user.password, (err, result) => {
-      if (err) return res.status(500).json({ error: "Error comparing passwords" });
-      if (!result) return res.status(401).json({ error: "Invalid credentials" });
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
 
-      res.json({ message: "Login successful", user_id: user.id });
-    });
-  });
+    res.json({ message: 'Login successful', user_id: user.id });
+  } catch (err) {
+    console.error('Error logging in:', err);
+    res.status(500).json({ error: 'Error logging in' });
+  }
 });
 
-module.exports = router;
+export default router;
