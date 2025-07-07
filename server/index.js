@@ -1,14 +1,15 @@
 // @ts-nocheck
 import express from "express";
 import cors from "cors";
+
 import pool from "./db.js"; // Your pg Pool instance
 import authRoutes from "./authRoutes.js"; // Import auth routes
 import moment from "moment";
 
 const app = express();
-
+app.use(express.json()); // <-- add this line
 app.use(cors({
-  origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
+  origin: process.env.CLIENT_ORIGIN || 'http://localhost:3000',
   credentials: true,
 }));
 
