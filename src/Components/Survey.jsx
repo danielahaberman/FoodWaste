@@ -15,32 +15,8 @@ import {
 const Survey = ({ questions }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [responses, setResponses] = useState({}); // object keyed by questionId
+const API_URL = process.env.REACT_APP_API_URL;
 
-  // const [initialCompleted, setInitialCompleted] = useState(false);
-  // const [lastWeeklyCompletion, setLastWeeklyCompletion] = useState(null);
-  // const [loadingStatus, setLoadingStatus] = useState(true);
-  // const [errorStatus, setErrorStatus] = useState(null);
-
-  // const userId = 1; // Replace with real user ID
-
-  // // Fetch user survey completion status on mount
-  // useEffect(() => {
-  //   const fetchSurveyStatus = async () => {
-  //     try {
-  //       setLoadingStatus(true);
-  //       const res = await axios.get(`http://localhost:5001/api/surveys/status/${userId}`);
-  //       setInitialCompleted(res.data.initialCompleted);
-  //       setLastWeeklyCompletion(res.data.lastWeeklyCompletion);
-  //       setErrorStatus(null);
-  //     } catch (err) {
-  //       console.error("Failed to load survey status:", err);
-  //       setErrorStatus("Failed to load survey status.");
-  //     } finally {
-  //       setLoadingStatus(false);
-  //     }
-  //   };
-  //   fetchSurveyStatus();
-  // }, [userId]);
 
   const currentQuestion = questions[currentIndex];
   const currentQuestionId = currentQuestion.id;
@@ -54,7 +30,7 @@ const Survey = ({ questions }) => {
 
   const submitResponse = async ({ questionId, response }) => {
     try {
-      await axios.post("http://localhost:5001/survey-response", {
+      await axios.post(`${API_URL}/survey-response`, {
         userId: localStorage.getItem("userId"),
         questionId,
         response,
