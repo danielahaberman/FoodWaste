@@ -1,20 +1,21 @@
- 
 // @ts-nocheck
-/* eslint-disable no-undef */
-const express = require("express");
-const cors = require("cors");
-const db = require("./db");  
+import express from "express";
+import cors from "cors";
+
+import pool from "./db.js"; // Your pg Pool instance
+import authRoutes from "./authRoutes.js"; // Import auth routes
+import moment from "moment";
+
 const app = express();
-const authRoutes = require("./authRoutes");  // Import the auth routes
-app.use(express.json());
+app.use(express.json()); // <-- add this line
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: process.env.CLIENT_ORIGIN || 'http://localhost:3000',
   credentials: true,
 }));
 
 // Middleware to verify user ID in request
 function requireUserId(req, res, next) {
-  const user_id = req.body.user_id || req.query.user_id; // Explicitly check both
+  const user_id = req.body.user_id || req.query.user_id;
 
   if (!user_id) {
     return res.status(403).json({ error: "User ID is required." });
@@ -24,80 +25,48 @@ function requireUserId(req, res, next) {
   next();
 }
 
-
 app.use("/auth", authRoutes);
 
-// app.get("/food-items", requireUserId, (req, res) => {
-//   const { user_id, search, category } = req.query;
-
-//   let query = `
-//     SELECT f.id, f.name, f.category_id, c.name AS category, f.price, f.quantity, qt.name AS quantity_type, f.user_id
-//     FROM food_items f
-//     LEFT JOIN quantity_types qt ON f.quantity_type_id = qt.id
-//     LEFT JOIN categories c ON f.category_id = c.id
-//     WHERE (f.user_id = ? OR f.user_id = '*')
-//   `;
-
-//   const params = [user_id];
-
-//   if (search) {
-//     query += ` AND f.name LIKE ?`;
-//     params.push(`%${search}%`);
-//   }
-
-//   if (category) {
-//     query += ` AND c.name = ?`;
-//     params.push(category);
-//   }
-
-//   query += ` ORDER BY f.name ASC`; // Optional: nice to have consistent ordering
-
-//   db.all(query, params, (err, rows) => {
-//     if (err) return res.status(500).json({ error: err.message });
-//     res.json(rows);
-//   });
-// });
-
-
-
-
-app.get("/quantity-types", (req, res) => {
-  const query = "SELECT * FROM quantity_types";
-
-  db.all(query, [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+// GET quantity-types
+app.get("/quantity-types", async (req, res) => {
+  try {
+    const { rows } = await pool.query("SELECT * FROM quantity_types");
     res.json(rows);
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-app.get("/food-categories", (req, res) => {
-  const query = "SELECT * FROM categories";
-
-  db.all(query, [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+// GET food-categories
+app.get("/food-categories", async (req, res) => {
+  try {
+    const { rows } = await pool.query("SELECT * FROM categories");
     res.json(rows);
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// Endpoint to handle purchases and update food_items
-app.post("/purchase", requireUserId, (req, res) => {
+// POST purchase
+app.post("/purchase", requireUserId, async (req, res) => {
   const { user_id, name, category, category_id, price, quantity, quantity_type, purchase_date } = req.body;
 
   const query = `
     INSERT INTO purchases (user_id, name, category, category_id, price, quantity, quantity_type, purchase_date)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    RETURNING id
   `;
-  
-  const params = [user_id, name, category, category_id, price, quantity, quantity_type, purchase_date];
 
-  db.run(query, params, function (err) {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    res.status(201).json({ message: "Purchase added successfully", id: this.lastID });
-  });
+  try {
+    const result = await pool.query(query, [user_id, name, category, category_id, price, quantity, quantity_type, purchase_date]);
+    res.status(201).json({ message: "Purchase added successfully", id: result.rows[0].id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
-app.get("/food-items", requireUserId, (req, res) => {
+
+// GET food-items
+app.get("/food-items", requireUserId, async (req, res) => {
   const { user_id, search, category } = req.query;
 
   let query = `
@@ -105,48 +74,52 @@ app.get("/food-items", requireUserId, (req, res) => {
     FROM food_items f
     LEFT JOIN quantity_types qt ON f.quantity_type_id = qt.id
     LEFT JOIN categories c ON f.category_id = c.id
-    WHERE f.user_id = ? OR f.user_id = '*' 
+    WHERE f.user_id = $1 OR f.user_id = '*'
   `;
 
   const params = [user_id];
+  let paramIndex = 2;
 
   if (search) {
-    query += ` AND f.name LIKE ?`;
+    query += ` AND f.name ILIKE $${paramIndex++}`;
     params.push(`%${search}%`);
   }
   if (category) {
-    query += ` AND c.name = ?`;
+    query += ` AND c.name = $${paramIndex++}`;
     params.push(category);
   }
 
-  db.all(query, params, (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+  query += ` ORDER BY f.name ASC`;
+
+  try {
+    const { rows } = await pool.query(query, params);
     res.json(rows);
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-
-app.get("/food-purchases", requireUserId, (req, res) => {
+// GET food-purchases
+app.get("/food-purchases", requireUserId, async (req, res) => {
   const { user_id } = req.query;
 
-  let query = `
+  const query = `
     SELECT p.id, p.name, p.category, p.quantity, p.price, p.purchase_date, p.quantity_type, c.name AS category_name
     FROM purchases p
     LEFT JOIN categories c ON p.category = c.name
-    WHERE p.user_id = ?
+    WHERE p.user_id = $1
   `;
 
-  const params = [user_id];
-
-  db.all(query, params, (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows); // Return all purchases for the user
-  });
+  try {
+    const { rows } = await pool.query(query, [user_id]);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
-const moment = require('moment');
 
-
-app.get("/purchases/weekly-summary", requireUserId, (req, res) => {
+// GET purchases weekly summary
+app.get("/purchases/weekly-summary", requireUserId, async (req, res) => {
   const { user_id } = req.query;
 
   const query = `
@@ -159,12 +132,12 @@ app.get("/purchases/weekly-summary", requireUserId, (req, res) => {
       p.purchase_date,
       p.quantity_type
     FROM purchases p
-    WHERE p.user_id = ?
+    WHERE p.user_id = $1
     ORDER BY p.purchase_date DESC
   `;
 
-  db.all(query, [user_id], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+  try {
+    const { rows } = await pool.query(query, [user_id]);
 
     const grouped = {};
 
@@ -189,7 +162,6 @@ app.get("/purchases/weekly-summary", requireUserId, (req, res) => {
       });
     });
 
-    // Sort by weekOf ascending (oldest first)
     const sortedKeys = Object.keys(grouped).sort((a, b) => {
       return moment(a, 'MM/DD/YYYY').toDate() - moment(b, 'MM/DD/YYYY').toDate();
     });
@@ -197,82 +169,79 @@ app.get("/purchases/weekly-summary", requireUserId, (req, res) => {
     const result = sortedKeys.map(key => grouped[key]);
 
     res.json(result);
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-
-
-
-// Endpoint to add food items to the food_items table
-app.post("/add-food-item", requireUserId, (req, res) => {
+// POST add-food-item
+app.post("/add-food-item", requireUserId, async (req, res) => {
   const { user_id, name, category_id, price, quantity, quantity_type_id } = req.body;
 
   if (!name || category_id == null || price == null || quantity == null || !quantity_type_id) {
     return res.status(400).json({ error: "All fields are required" });
   }
 
-  db.run(
-    `INSERT INTO food_items (name, category_id, price, quantity, quantity_type_id, user_id)
-     VALUES (?, ?, ?, ?, ?, ?)
-     ON CONFLICT(name, user_id) DO UPDATE SET quantity = food_items.quantity + ?`,
-    [name, category_id, price, quantity, quantity_type_id, user_id, quantity],
-    function (err) {
-      if (err) return res.status(500).json({ error: err.message });
+  // Upsert pattern in Postgres
+  const query = `
+    INSERT INTO food_items (name, category_id, price, quantity, quantity_type_id, user_id)
+    VALUES ($1, $2, $3, $4, $5, $6)
+    ON CONFLICT (name, user_id) DO UPDATE SET quantity = food_items.quantity + EXCLUDED.quantity
+    RETURNING id
+  `;
 
-      res.status(201).json({
-        message: "Food item added successfully",
-        foodItemId: this.lastID,
-      });
-    }
-  );
+  try {
+    const result = await pool.query(query, [name, category_id, price, quantity, quantity_type_id, user_id]);
+    res.status(201).json({
+      message: "Food item added successfully",
+      foodItemId: result.rows[0].id,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
-app.get("/survey-questions", (req, res) => {
-  // Get the 'stage' from the query parameters, defaulting to 'default' if not provided
+
+// GET survey-questions
+app.get("/survey-questions", async (req, res) => {
   const stage = req.query.stage || 'default';
 
-  // Update the query to filter by stage
-  const questionsQuery = `SELECT * FROM survey_questions WHERE stage = ?`;
+  try {
+    const questionsResult = await pool.query("SELECT * FROM survey_questions WHERE stage = $1", [stage]);
+    const questions = questionsResult.rows;
 
-  db.all(questionsQuery, [stage], (err, questions) => {
-    if (err) return res.status(500).json({ error: err.message });
-
-    const mcQuestionIds = questions
-      .filter(q => q.type === "multiple_choice")
-      .map(q => q.id);
+    const mcQuestionIds = questions.filter(q => q.type === "multiple_choice").map(q => q.id);
 
     if (mcQuestionIds.length === 0) {
       return res.json(questions.map(q => ({ ...q, options: [] })));
     }
 
-    const placeholders = mcQuestionIds.map(() => "?").join(", ");
-    const optionsQuery = `
-      SELECT * FROM survey_question_options
-      WHERE question_id IN (${placeholders})
-    `;
+    const placeholders = mcQuestionIds.map((_, i) => `$${i + 1}`).join(", ");
+    const optionsQuery = `SELECT * FROM survey_question_options WHERE question_id IN (${placeholders})`;
+    const optionsResult = await pool.query(optionsQuery, mcQuestionIds);
+    const options = optionsResult.rows;
 
-    db.all(optionsQuery, mcQuestionIds, (err, options) => {
-      if (err) return res.status(500).json({ error: err.message });
-
-      const optionMap = {};
-      options.forEach(opt => {
-        if (!optionMap[opt.question_id]) optionMap[opt.question_id] = [];
-        optionMap[opt.question_id].push({
-          id: opt.id,
-          text: opt.option_text,
-        });
+    const optionMap = {};
+    options.forEach(opt => {
+      if (!optionMap[opt.question_id]) optionMap[opt.question_id] = [];
+      optionMap[opt.question_id].push({
+        id: opt.id,
+        text: opt.option_text,
       });
-
-      const enrichedQuestions = questions.map(q => ({
-        ...q,
-        options: optionMap[q.id] || [],
-      }));
-
-      res.json(enrichedQuestions);
     });
-  });
+
+    const enrichedQuestions = questions.map(q => ({
+      ...q,
+      options: optionMap[q.id] || [],
+    }));
+
+    res.json(enrichedQuestions);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
-app.post("/survey-response", (req, res) => {
-  console.log("Incoming survey response:", req.body);
+
+// POST survey-response
+app.post("/survey-response", async (req, res) => {
   const { userId, questionId, response } = req.body;
 
   if (!userId || !questionId || typeof response !== "string") {
@@ -281,106 +250,94 @@ app.post("/survey-response", (req, res) => {
 
   const query = `
     INSERT INTO survey_responses (user_id, question_id, response)
-    VALUES (?, ?, ?)
+    VALUES ($1, $2, $3)
+    RETURNING id
   `;
 
-  db.run(query, [userId, questionId, response], function (err) {
-    if (err) {
-      console.error("Error saving response:", err);
-      return res.status(500).json({ error: "Failed to save response" });
-    }
-
-    res.status(200).json({ message: "Response saved", responseId: this.lastID });
-  });
+  try {
+    const result = await pool.query(query, [userId, questionId, response]);
+    res.status(200).json({ message: "Response saved", responseId: result.rows[0].id });
+  } catch (e) {
+    res.status(500).json({ error: e });
+  }
 });
-app.get("/api/surveys/status/:userId", (req, res) => {
+
+// GET survey status
+app.get("/api/surveys/status/:userId", async (req, res) => {
   const userId = req.params.userId;
 
-  // Step 1: Get total counts of initial and weekly questions
-  const countsQuery = `
-    SELECT
-      SUM(CASE WHEN stage = 'initial' THEN 1 ELSE 0 END) AS initial_count,
-      SUM(CASE WHEN stage = 'weekly' THEN 1 ELSE 0 END) AS weekly_count
-    FROM survey_questions
-  `;
+  try {
+    const countsQuery = `
+      SELECT
+        SUM(CASE WHEN stage = 'initial' THEN 1 ELSE 0 END) AS initial_count,
+        SUM(CASE WHEN stage = 'weekly' THEN 1 ELSE 0 END) AS weekly_count
+      FROM survey_questions
+    `;
+    const countsResult = await pool.query(countsQuery);
+    const { initial_count, weekly_count } = countsResult.rows[0];
 
-  db.get(countsQuery, (err, counts) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ error: "Internal error" });
-    }
-
-    const { initial_count, weekly_count } = counts;
-
-    // Step 2: Check initial completion count
     const initialAnsweredQuery = `
       SELECT COUNT(DISTINCT question_id) AS answered_initial_count
       FROM survey_responses
-      WHERE user_id = ? AND question_id IN (
+      WHERE user_id = $1 AND question_id IN (
         SELECT id FROM survey_questions WHERE stage = 'initial'
       )
     `;
+    const initialResult = await pool.query(initialAnsweredQuery, [userId]);
+    const initialCompleted = initialResult.rows[0].answered_initial_count == initial_count;
 
-    db.get(initialAnsweredQuery, [userId], (err, initialResult) => {
-      if (err) {
-        console.error(err);
-        return res.status(500).json({ error: "Internal error" });
-      }
+    const lastWeeklyCompletionQuery = `
+      SELECT 
+        to_char(response_date, 'IYYY-IW') AS year_week,
+        MAX(response_date) AS last_response_date,
+        COUNT(DISTINCT question_id) AS answered_count
+      FROM survey_responses
+      WHERE user_id = $1 AND question_id IN (
+        SELECT id FROM survey_questions WHERE stage = 'weekly'
+      )
+      GROUP BY year_week
+      HAVING COUNT(DISTINCT question_id) = $2
+      ORDER BY last_response_date DESC
+      LIMIT 1
+    `;
+    const weeklyResult = await pool.query(lastWeeklyCompletionQuery, [userId, weekly_count]);
 
-      const initialCompleted = initialResult.answered_initial_count === initial_count;
-
-      // Step 3: Find last completed weekly survey week
-      const lastWeeklyCompletionQuery = `
-        SELECT 
-          strftime('%Y-%W', response_date) AS year_week,
-          MAX(response_date) AS last_response_date,
-          COUNT(DISTINCT question_id) AS answered_count
-        FROM survey_responses
-        WHERE user_id = ? AND question_id IN (
-          SELECT id FROM survey_questions WHERE stage = 'weekly'
-        )
-        GROUP BY year_week
-        HAVING answered_count = ?
-        ORDER BY last_response_date DESC
-        LIMIT 1
-      `;
-
-      db.get(lastWeeklyCompletionQuery, [userId, weekly_count], (err, weeklyResult) => {
-        if (err) {
-          console.error(err);
-          return res.status(500).json({ error: "Internal error" });
-        }
-
-        res.json({
-          userId,
-          initialCompleted,
-          lastWeeklyCompletion: weeklyResult ? weeklyResult.last_response_date : null
-        });
-      });
+    res.json({
+      userId,
+      initialCompleted,
+      lastWeeklyCompletion: weeklyResult.rows.length > 0 ? weeklyResult.rows[0].last_response_date : null
     });
-  });
+
+  } catch (err) {
+    res.status(500).json({ error: err });
+  }
 });
 
-
-app.delete("/food-items/:id", requireUserId, (req, res) => {
+// DELETE food-item
+app.delete("/food-items/:id", requireUserId, async (req, res) => {
   const foodItemId = req.params.id;
   const userId = req.user_id;
 
-  const query = `DELETE FROM food_items WHERE id = ? AND user_id = ?`;
+  const query = `DELETE FROM food_items WHERE id = $1 AND user_id = $2`;
 
-  db.run(query, [foodItemId, userId], function (err) {
-    if (err) return res.status(500).json({ error: err.message });
-    if (this.changes === 0) {
+  try {
+    const result = await pool.query(query, [foodItemId, userId]);
+    if (result.rowCount === 0) {
       return res.status(404).json({ error: "Food item not found or not owned by user" });
     }
     res.status(200).json({ message: "Food item deleted successfully" });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
+
+// Catch-all for 404
 app.use((req, res) => {
   res.status(404).json({ error: "Endpoint not found" });
 });
-// Start the server
+
+// Start server
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });

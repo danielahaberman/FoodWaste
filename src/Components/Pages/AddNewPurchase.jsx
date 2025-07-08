@@ -25,12 +25,12 @@ function AddNewPurchase({
   };
 
   const [newFoodItem, setNewFoodItem] = useState(initialNewFoodItem);
-
+const API_URL = process.env.REACT_APP_API_URL;
   const handleSubmit = async (event) => {
     event.preventDefault();
     try {
       await axios.post(
-        "http://localhost:5001/add-food-item",
+       `${API_URL}//add-food-item` ,
         {
           ...newFoodItem,
           user_id: localStorage.getItem("userId"),
@@ -49,7 +49,7 @@ function AddNewPurchase({
   const fetchQuantityTypes = async () => {
     try {
       const params = { user_id: localStorage.getItem("userId") };
-      const response = await axios.get("http://localhost:5001/quantity-types", { params });
+      const response = await axios.get(`${API_URL}/quantity-types`, { params });
       setQuantityTypes(response.data);
     } catch (error) {
       console.error("Error fetching quantity types:", error);
@@ -59,7 +59,7 @@ function AddNewPurchase({
   const fetchFoodCategories = async () => {
     try {
       const params = { user_id: localStorage.getItem("userId") };
-      const response = await axios.get("http://localhost:5001/food-categories", { params });
+      const response = await axios.get(`${API_URL}/food-categories`, { params });
       setFoodCategories(response.data);
     } catch (error) {
       console.error("Error fetching food categories:", error);
@@ -71,7 +71,7 @@ function AddNewPurchase({
       const purchaseDate = selectedDate.toISOString();
 
       const response = await axios.post(
-        "http://localhost:5001/purchase",
+        `${API_URL}/purchase`,
         {
           user_id: localStorage.getItem("userId"),
           name: foodItem.name,

@@ -24,10 +24,11 @@ const FoodLog = () => {
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [showSurvey, setShowSurvey] = useState(false)
   const [showConsumeWaste, setShowConsumeWaste] = useState(false)
+  const API_URL = process.env.REACT_APP_API_URL;
   const fetchFoodItems = async () => {
     try {
       const params = { user_id: localStorage.getItem("userId") };
-      const response = await axios.get("http://localhost:5001/food-items", { params });
+      const response = await axios.get(`${API_URL}/food-items`, { params });
       setFoodItems(response.data);
     } catch (error) {
       console.error("Error fetching food items:", error);
@@ -37,7 +38,7 @@ const FoodLog = () => {
   const fetchFoodPurchases = async () => {
     try {
       const params = { user_id: localStorage.getItem("userId") };
-      const response = await axios.get("http://localhost:5001/food-purchases", { params });
+      const response = await axios.get(`${API_URL}/food-purchases`, { params });
       setFoodPurchases(response.data);
     } catch (error) {
       console.error("Error fetching food purchases:", error);
