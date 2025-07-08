@@ -6,13 +6,13 @@ function ConsumeWaste() {
   const [weeklySummary, setWeeklySummary] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
+const API_URL = process.env.REACT_APP_API_URL;
   const fetchWeeklyPurchaseSummary = async () => {
     setLoading(true);
     setError(null);
     try {
       const params = { user_id: localStorage.getItem("userId") };
-      const response = await axios.get("http://localhost:5001/purchases/weekly-summary", { params });
+      const response = await axios.get(`${API_URL}/purchases/weekly-summary`, { params });
       setWeeklySummary(response.data);
     } catch (err) {
       console.error("Error fetching weekly summary:", err);

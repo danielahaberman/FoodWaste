@@ -22,11 +22,16 @@ const [surveyQuestions, setSurveyQuestions] = useState(null)
   const [lastWeeklyCompletion, setLastWeeklyCompletion] = useState(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [errorStatus, setErrorStatus] = useState(null);
+const API_URL = process.env.REACT_APP_API_URL;
+
+fetch(`${API_URL}/food-items?user_id=123`)
+  .then(res => res.json())
+  .then(data => console.log(data));
 
 
 const fetchSurveyQuestions = async (stage) => {
     try {
-      const response = await axios.get("http://localhost:5001/survey-questions", {
+      const response = await axios.get(`${API_URL}/survey-questions`, {
         params: { stage },
       });
       setSurveyQuestions(response.data);
@@ -43,7 +48,7 @@ useEffect(() => {
   const fetchSurveyStatus = async () => {
     try {
       setLoadingStatus(true);
-      const res = await axios.get(`http://localhost:5001/api/surveys/status/${localStorage.getItem("userId")}`);
+      const res = await axios.get(`${API_URL}/api/surveys/status/${localStorage.getItem("userId")}`);
       setInitialCompleted(res.data.initialCompleted);
       console.log("here")
       if(!res.data.initialCompleted){
