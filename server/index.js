@@ -9,7 +9,7 @@ import moment from "moment";
 const app = express();
 app.use(express.json()); // <-- add this line
 app.use(cors({
-  origin: process.env.CLIENT_ORIGIN || 'http://localhost:3000',
+  origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
   credentials: true,
 }));
 console.log("using",process.env.CLIENT_ORIGIN)
