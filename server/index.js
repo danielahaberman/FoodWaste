@@ -12,7 +12,7 @@ app.use(cors({
   origin: process.env.CLIENT_ORIGIN || 'http://localhost:3000',
   credentials: true,
 }));
-
+console.log("using",process.env.CLIENT_ORIGIN)
 // Middleware to verify user ID in request
 function requireUserId(req, res, next) {
   const user_id = req.body.user_id || req.query.user_id;
