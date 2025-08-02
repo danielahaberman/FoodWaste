@@ -2,9 +2,22 @@
 // @ts-nocheck
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { Paper, Modal, Box, Button } from "@mui/material";
+import {
+  Modal,
+  Box,
+  Button,
+  Stack,
+  TextField,
+  Typography,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  IconButton,
+  Divider,
+} from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 import FoodItemSearchDropdown from "../SearchFoodItems";
-
 function AddNewPurchase({
   foodItems,
   fetchFoodItems,
@@ -30,10 +43,10 @@ const API_URL = import.meta.env.VITE_API_URL;
     event.preventDefault();
     try {
       await axios.post(
-       `${API_URL}//add-food-item` ,
+       `${API_URL}/add-food-item` ,
         {
           ...newFoodItem,
-          user_id: localStorage.getItem("userId"),
+          user_id: JSON.parse(localStorage.getItem("userId")),
         },
         { withCredentials: true }
       );
@@ -98,166 +111,145 @@ const API_URL = import.meta.env.VITE_API_URL;
     fetchQuantityTypes();
   }, []);
 
-  return (
-    <div>
-      <div style={{ marginBottom: "20px", marginTop: "20px" }}>
-        <div style={{width:"100px"}}>
-             <Button onClick={()=>{
-                setLoggingPurchase(false)
-             }}>Close</Button>
-        </div>
-       
-        <div>
-             {!showNewFoodForm && (
-          <Button
-            variant="contained"
-            onClick={() => setShowNewFoodForm(true)}
-          >
-            Add New Food Type
-          </Button>
-        )}
-        </div>
-       
-      </div>
+return (
+  <Box sx={{ p: 2, width: "100%", maxWidth: 640, mx: "auto", display: "flex", flexDirection: "column", gap: 2 }}>
+    {/* Header */}
+    <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+      <IconButton aria-label="close" size="small" onClick={() => setLoggingPurchase(false)}>
+        <CloseIcon fontSize="small" />
+      </IconButton>
+      <Typography variant="subtitle1" sx={{ flexGrow: 1, textAlign: "center" }}>
+        Add Purchase
+      </Typography>
+      {!showNewFoodForm && (
+        <Button variant="contained" size="small" onClick={() => setShowNewFoodForm(true)}>
+          New Food Type
+        </Button>
+      )}
+    </Stack>
 
-      <Modal
-        open={showNewFoodForm}
-        onClose={() => setShowNewFoodForm(false)}
-        aria-labelledby="add-new-food-form"
-        aria-describedby="form-to-add-new-food-item"
+    {/* Search / Add to purchase */}
+    <Box>
+      <FoodItemSearchDropdown
+        foodItems={foodItems}
+        open={true}
+        handleAddToPurchase={(purchase) => {
+          handleAddToPurchase(purchase);
+          setLoggingPurchase(false);
+        }}
+      />
+    </Box>
+
+    {/* New Food Modal */}
+    <Modal
+      open={showNewFoodForm}
+      onClose={() => setShowNewFoodForm(false)}
+      aria-labelledby="add-new-food-form"
+      aria-describedby="form-to-add-new-food-item"
+    >
+      <Box
+        component="form"
+        onSubmit={handleSubmit}
+        sx={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          width: "90%",
+          maxWidth: 500,
+          bgcolor: "background.paper",
+          borderRadius: 2,
+          boxShadow: 24,
+          p: 3,
+          display: "flex",
+          flexDirection: "column",
+          gap: 2,
+        }}
       >
-        <Box
-          sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: "90%",
-            maxWidth: "500px",
-            bgcolor: "background.paper",
-            borderRadius: 2,
-            boxShadow: 24,
-            p: 3,
-          }}
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Typography variant="h6">Add New Food Item</Typography>
+          <IconButton aria-label="close" size="small" onClick={() => setShowNewFoodForm(false)}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Stack>
+
+        <Divider />
+
+        <Stack spacing={2}>
+          <TextField
+            label="Food Name"
+            value={newFoodItem.name}
+            onChange={(e) => setNewFoodItem((f) => ({ ...f, name: e.target.value }))}
+            fullWidth
+            size="small"
+            required
+          />
+          <TextField
+            label="Price"
+            type="number"
+            inputProps={{ step: "0.01" }}
+            value={newFoodItem.price}
+            onChange={(e) => setNewFoodItem((f) => ({ ...f, price: e.target.value }))}
+            fullWidth
+            size="small"
+          />
+
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+            <FormControl fullWidth size="small">
+              <InputLabel id="category-label">Category</InputLabel>
+              <Select
+                labelId="category-label"
+                label="Category"
+                value={newFoodItem.category_id || ""}
+                onChange={(e) => setNewFoodItem((f) => ({ ...f, category_id: e.target.value }))}
+                required
+              >
+                <MenuItem value="" disabled>
+                  Select a category
+                </MenuItem>
+                {foodCategories.map((type) => (
+                  <MenuItem key={type.id} value={type.id}>
+                    {type.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth size="small">
+              <InputLabel id="quantity-type-label">Quantity Type</InputLabel>
+              <Select
+                labelId="quantity-type-label"
+                label="Quantity Type"
+                value={newFoodItem.quantity_type_id || ""}
+                onChange={(e) => setNewFoodItem((f) => ({ ...f, quantity_type_id: e.target.value }))}
+                required
+              >
+                <MenuItem value="" disabled>
+                  Select a quantity type
+                </MenuItem>
+                {quantityTypes.map((type) => (
+                  <MenuItem key={type.id} value={type.id}>
+                    {type.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Stack>
+        </Stack>
+
+        <Button
+          type="submit"
+          variant="contained"
+          fullWidth
+          sx={{ mt: 1, bgcolor: "#FFA500", color: "#fff", fontWeight: "bold" }}
         >
-          <form onSubmit={handleSubmit}>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "12px",
-              }}
-            >
-              <input
-                type="text"
-                placeholder="Food Name"
-                value={newFoodItem.name}
-                onChange={(e) =>
-                  setNewFoodItem({ ...newFoodItem, name: e.target.value })
-                }
-              />
-              <input
-                type="number"
-                placeholder="Price"
-                value={newFoodItem.price}
-                onChange={(e) =>
-                  setNewFoodItem({ ...newFoodItem, price: e.target.value })
-                }
-              />
-              {/* <input
-                type="number"
-                placeholder="Quantity"
-                value={newFoodItem.quantity}
-                onChange={(e) =>
-                  setNewFoodItem({ ...newFoodItem, quantity: e.target.value })
-                }
-              /> */}
-            </div>
+          Add+
+        </Button>
+      </Box>
+    </Modal>
+  </Box>
+);
 
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "16px",
-                marginTop: "16px",
-              }}
-            >
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                <label htmlFor="category">Food Category:</label>
-                <select
-                  id="category"
-                  value={newFoodItem.category_id || ""}
-                  onChange={(e) =>
-                    setNewFoodItem({
-                      ...newFoodItem,
-                      category_id: e.target.value,
-                    })
-                  }
-                >
-                  <option value="" disabled>
-                    Select a category
-                  </option>
-                  {foodCategories.map((type) => (
-                    <option key={type.id} value={type.id}>
-                      {type.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                <label htmlFor="quantity">Quantity Type:</label>
-                <select
-                  id="quantity"
-                  value={newFoodItem.quantity_type_id || ""}
-                  onChange={(e) =>
-                    setNewFoodItem({
-                      ...newFoodItem,
-                      quantity_type_id: e.target.value,
-                    })
-                  }
-                >
-                  <option value="" disabled>
-                    Select a quantity unit type
-                  </option>
-                  {quantityTypes.map((type) => (
-                    <option key={type.id} value={type.id}>
-                      {type.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <Button
-              type="submit"
-              variant="contained"
-              fullWidth
-              sx={{
-                mt: 2,
-                bgcolor: "#FFA500",
-                color: "#fff",
-                fontWeight: "bold",
-              }}
-            >
-              Add+
-            </Button>
-          </form>
-        </Box>
-      </Modal>
-
-      <div>
-        <FoodItemSearchDropdown
-          foodItems={foodItems}
-          open={true}
-          handleAddToPurchase={(purchase) => {
-            handleAddToPurchase(purchase);
-            setLoggingPurchase(false);
-          }}
-        />
-      </div>
-    </div>
-  );
 }
 
 export default AddNewPurchase;

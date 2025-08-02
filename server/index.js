@@ -67,14 +67,19 @@ app.post("/purchase", requireUserId, async (req, res) => {
 
 // GET food-items
 app.get("/food-items", requireUserId, async (req, res) => {
-  const { user_id, search, category } = req.query;
+  let user_id = parseInt(req.query.user_id, 10);
+  if (isNaN(user_id)) {
+    return res.status(400).json({ error: "Invalid user_id" });
+  }
+
+  const { search, category } = req.query;
 
   let query = `
     SELECT f.id, f.name, f.category_id, c.name AS category, f.price, f.quantity, qt.name AS quantity_type
     FROM food_items f
     LEFT JOIN quantity_types qt ON f.quantity_type_id = qt.id
     LEFT JOIN categories c ON f.category_id = c.id
-    WHERE f.user_id = $1 OR f.user_id = '*'
+    WHERE f.user_id = $1 OR f.user_id = -1
   `;
 
   const params = [user_id];
@@ -98,6 +103,7 @@ app.get("/food-items", requireUserId, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 // GET food-purchases
 app.get("/food-purchases", requireUserId, async (req, res) => {
@@ -176,27 +182,59 @@ app.get("/purchases/weekly-summary", requireUserId, async (req, res) => {
 
 // POST add-food-item
 app.post("/add-food-item", requireUserId, async (req, res) => {
-  const { user_id, name, category_id, price, quantity, quantity_type_id } = req.body;
+  let {
+    user_id,
+    name,
+    category_id,
+    price,
+    quantity,
+    quantity_type_id,
+  } = req.body;
 
-  if (!name || category_id == null || price == null || quantity == null || !quantity_type_id) {
-    return res.status(400).json({ error: "All fields are required" });
+  // Coerce / normalize
+  user_id = parseInt(user_id, 10);
+  category_id = parseInt(category_id, 10);
+  quantity_type_id = parseInt(quantity_type_id, 10);
+  price = parseFloat(price);
+  // quantity is optional; default to 0 if not provided or empty
+  let quantityVal = quantity === undefined || quantity === "" ? 0 : parseFloat(quantity);
+
+  if (
+    !name ||
+    Number.isNaN(user_id) ||
+    Number.isNaN(category_id) ||
+    Number.isNaN(quantity_type_id) ||
+    Number.isNaN(price) ||
+    Number.isNaN(quantityVal)
+  ) {
+    return res.status(400).json({
+      error: "Invalid or missing fields. Name, category_id, quantity_type_id, and price are required.",
+    });
   }
 
-  // Upsert pattern in Postgres
   const query = `
     INSERT INTO food_items (name, category_id, price, quantity, quantity_type_id, user_id)
     VALUES ($1, $2, $3, $4, $5, $6)
-    ON CONFLICT (name, user_id) DO UPDATE SET quantity = food_items.quantity + EXCLUDED.quantity
+    ON CONFLICT (name, user_id) DO UPDATE 
+      SET quantity = food_items.quantity + COALESCE(EXCLUDED.quantity, 0)
     RETURNING id
   `;
 
   try {
-    const result = await pool.query(query, [name, category_id, price, quantity, quantity_type_id, user_id]);
+    const result = await pool.query(query, [
+      name,
+      category_id,
+      price,
+      quantityVal,
+      quantity_type_id,
+      user_id,
+    ]);
     res.status(201).json({
       message: "Food item added successfully",
       foodItemId: result.rows[0].id,
     });
   } catch (err) {
+    console.error("Add food item error:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -335,6 +373,180 @@ app.delete("/food-items/:id", requireUserId, async (req, res) => {
 app.use((req, res) => {
   res.status(404).json({ error: "Endpoint not found" });
 });
+
+
+
+// Add this somewhere near the top or before seeding
+async function seedDefaultCategories() {
+  try {
+    const defaultCategories = ["Fruits", "Bakery", "Vegetables", "Dairy", "Meat"];
+
+    for (const category of defaultCategories) {
+      const { rows } = await pool.query(
+        "SELECT id FROM categories WHERE name = $1",
+        [category]
+      );
+      if (rows.length === 0) {
+        await pool.query(
+          "INSERT INTO categories (name) VALUES ($1)",
+          [category]
+        );
+        console.log(`Inserted default category: ${category}`);
+      }
+    }
+  } catch (err) {
+    console.error("Error seeding categories:", err);
+  }
+}
+async function seedSentinelUser() {
+  try {
+    // If -1 already exists, nothing to do.
+    const existing = await pool.query("SELECT id FROM users WHERE id = -1");
+    if (existing.rows.length > 0) {
+      return;
+    }
+
+    // Get column metadata for users table
+    const colRes = await pool.query(
+      `
+      SELECT column_name, is_nullable, column_default
+      FROM information_schema.columns
+      WHERE table_name = 'users'
+      `
+    );
+
+    // Determine which columns (besides id) are required: NOT NULL and no default
+    const requiredCols = colRes.rows
+      .filter(col => col.column_name !== "id" && col.is_nullable === "NO" && col.column_default === null)
+      .map(col => col.column_name);
+
+    // Build a values map with safe placeholders. You may need to adapt these based on your actual schema.
+    const columns = ["id"];
+    const params = [-1]; // sentinel id
+
+    for (const col of requiredCols) {
+      // Provide sensible dummy values; you can extend this mapping if your schema has other required fields.
+      let val;
+      if (col.toLowerCase().includes("user") || col.toLowerCase().includes("name")) {
+        val = "public"; // e.g., username
+      } else if (col.toLowerCase().includes("password")) {
+        // If you hash passwords normally, generate a dummy hash or empty string depending on your auth logic.
+        val = crypto.createHash("sha256").update("public").digest("hex");
+      } else if (col.toLowerCase().includes("email")) {
+        val = "public@example.com"; // in case email exists in some environments
+      } else {
+        // fallback generic
+        val = null;
+      }
+
+      // If fallback produced null for a required column, you have to decide a value; skip if can't supply.
+      if (val === null) {
+        console.warn(`Cannot seed sentinel user: no placeholder for required column "${col}"`);
+        continue;
+      }
+
+      columns.push(col);
+      params.push(val);
+    }
+
+    // Build query string
+    const colList = columns.map(c => `"${c}"`).join(", ");
+    const paramPlaceholders = params.map((_, i) => `$${i + 1}`).join(", ");
+
+    const insertQuery = `INSERT INTO users (${colList}) VALUES (${paramPlaceholders})`;
+
+    await pool.query(insertQuery, params);
+    console.log("Inserted sentinel user with id -1");
+  } catch (err) {
+    console.error("Error seeding sentinel user:", err);
+  }
+}
+async function seedDefaultQuantityTypes() {
+  try {
+    const defaultQuantityTypes = ["Each", "Loaf", "Pound", "Kilogram", "Liter"];
+
+    for (const qtyType of defaultQuantityTypes) {
+      const { rows } = await pool.query(
+        "SELECT id FROM quantity_types WHERE name = $1",
+        [qtyType]
+      );
+      if (rows.length === 0) {
+        await pool.query(
+          "INSERT INTO quantity_types (name) VALUES ($1)",
+          [qtyType]
+        );
+        console.log(`Inserted default quantity type: ${qtyType}`);
+      }
+    }
+  } catch (err) {
+    console.error("Error seeding quantity types:", err);
+  }
+}
+
+async function seedDefaultFoodItems() {
+  try {
+    // Lookup categories and quantity types to get their IDs
+    const categoryRes = await pool.query("SELECT id, name FROM categories");
+    const quantityTypeRes = await pool.query("SELECT id, name FROM quantity_types");
+
+    const categoryMap = {};
+    categoryRes.rows.forEach(c => {
+      categoryMap[c.name] = c.id;
+    });
+
+    const qtyTypeMap = {};
+    quantityTypeRes.rows.forEach(qt => {
+      qtyTypeMap[qt.name] = qt.id;
+    });
+
+    // Now you can define default food items using names and map to IDs
+    const defaultItems = [
+      { name: "Apple", category: "Fruits", price: 0.5, quantity: 100, quantity_type: "Each" },
+      { name: "Banana", category: "Fruits", price: 0.3, quantity: 100, quantity_type: "Each" },
+      { name: "Bread", category: "Bakery", price: 2.0, quantity: 50, quantity_type: "Loaf" },
+      // Add more as needed
+    ];
+
+    for (const item of defaultItems) {
+      // Get IDs from maps
+      const category_id = categoryMap[item.category];
+      const quantity_type_id = qtyTypeMap[item.quantity_type];
+
+      if (!category_id || !quantity_type_id) {
+        console.warn(`Skipping ${item.name} because category or quantity type not found.`);
+        continue;
+      }
+
+      // Check if this food item exists for user_id -1
+      const { rows } = await pool.query(
+        "SELECT id FROM food_items WHERE name = $1 AND user_id = -1",
+        [item.name]
+      );
+
+      if (rows.length === 0) {
+        await pool.query(
+          `INSERT INTO food_items (name, category_id, price, quantity, quantity_type_id, user_id)
+           VALUES ($1, $2, $3, $4, $5, -1)`,
+          [item.name, category_id, item.price, item.quantity, quantity_type_id]
+        );
+        console.log(`Inserted default food item: ${item.name}`);
+      }
+    }
+  } catch (err) {
+    console.error("Error seeding default food items:", err);
+  }
+}
+
+// Call all seeds in sequence before starting server
+async function seedAllDefaults() {
+    await seedSentinelUser();
+  await seedDefaultCategories();
+  await seedDefaultQuantityTypes();
+  await seedDefaultFoodItems();
+}
+
+seedAllDefaults();
+
 
 // Start server
 const PORT = process.env.PORT || 5001;
