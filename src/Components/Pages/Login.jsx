@@ -11,7 +11,7 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
-const API_URL = process.env.REACT_APP_API_URL;
+const API_URL = import.meta.env.VITE_API_URL;
   const handleLogin = async () => {
     try {
       const response = await axios.post(`${API_URL}/auth/login`, {

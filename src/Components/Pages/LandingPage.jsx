@@ -2,10 +2,10 @@
 import React from "react";
 import { Button } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-
+const API_URL = import.meta.env.VITE_API_URL;
 function LandingPage() {
   const navigate = useNavigate();
-
+console.log("API_URL:", API_URL);
   return (
     <div style={{
       display: "flex", 

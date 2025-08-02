@@ -24,7 +24,7 @@ const FoodLog = () => {
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [showSurvey, setShowSurvey] = useState(false)
   const [showConsumeWaste, setShowConsumeWaste] = useState(false)
-  const API_URL = process.env.REACT_APP_API_URL;
+  const API_URL = import.meta.env.VITE_API_URL;
   const fetchFoodItems = async () => {
     try {
       const params = { user_id: localStorage.getItem("userId") };

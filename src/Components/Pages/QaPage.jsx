@@ -22,7 +22,7 @@ const [surveyQuestions, setSurveyQuestions] = useState(null)
   const [lastWeeklyCompletion, setLastWeeklyCompletion] = useState(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [errorStatus, setErrorStatus] = useState(null);
-const API_URL = process.env.REACT_APP_API_URL;
+const API_URL = import.meta.env.VITE_API_URL;
 
 fetch(`${API_URL}/food-items?user_id=123`)
   .then(res => res.json())
