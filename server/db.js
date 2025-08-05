@@ -96,6 +96,6 @@ const initDB = async () => {
   }
 };
 
-initDB();
+// initDB();
 
 export default pool;

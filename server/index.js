@@ -5,7 +5,7 @@ import cors from "cors";
 import pool from "./db.js"; // Your pg Pool instance
 import authRoutes from "./authRoutes.js"; // Import auth routes
 import moment from "moment";
-
+import questions from "./SurveyQuestions.js";
 const app = express();
 app.use(express.json()); // <-- add this line
 app.use(cors({
@@ -398,6 +398,52 @@ async function seedDefaultCategories() {
     console.error("Error seeding categories:", err);
   }
 }
+async function seedDefaultSurveyQuestions() {
+  try {
+    const defaultQuestions = questions;
+
+    for (const question of defaultQuestions) {
+      // Check if question exists already
+      const existing = await pool.query(
+        "SELECT id FROM survey_questions WHERE question_text = $1 AND stage = $2",
+        [question.text, question.stage]
+      );
+
+      let questionId;
+      if (existing.rows.length === 0) {
+        const insertQ = await pool.query(
+          "INSERT INTO survey_questions (question_text, type, stage) VALUES ($1, $2, $3) RETURNING id",
+          [question.text, question.type, question.stage]
+        );
+        questionId = insertQ.rows[0].id;
+        console.log(`Inserted survey question: ${question.text}`);
+      } else {
+        questionId = existing.rows[0].id;
+      }
+
+      // Insert options if it's a multiple_choice question
+      if (question.type === "multiple_choice" && question.options.length > 0) {
+        for (const optionText of question.options) {
+          const optionExists = await pool.query(
+            "SELECT id FROM survey_question_options WHERE question_id = $1 AND option_text = $2",
+            [questionId, optionText]
+          );
+
+          if (optionExists.rows.length === 0) {
+            await pool.query(
+              "INSERT INTO survey_question_options (question_id, option_text) VALUES ($1, $2)",
+              [questionId, optionText]
+            );
+            console.log(`  Added option: ${optionText}`);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Error seeding survey questions:", err);
+  }
+}
+
 async function seedSentinelUser() {
   try {
     // If -1 already exists, nothing to do.
@@ -538,11 +584,84 @@ async function seedDefaultFoodItems() {
 }
 
 // Call all seeds in sequence before starting server
+async function createTablesIfNotExists() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(255) UNIQUE NOT NULL,
+        email VARCHAR(255),
+        password_hash VARCHAR(255),
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS categories (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) UNIQUE NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS quantity_types (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) UNIQUE NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS food_items (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name VARCHAR(255) NOT NULL,
+        category_id INT NOT NULL REFERENCES categories(id),
+        price NUMERIC(10,2) NOT NULL,
+        quantity NUMERIC(10,2) DEFAULT 0,
+        quantity_type_id INT NOT NULL REFERENCES quantity_types(id),
+        UNIQUE(name, user_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS purchases (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name VARCHAR(255) NOT NULL,
+        category VARCHAR(255),
+        category_id INT,
+        price NUMERIC(10,2),
+        quantity NUMERIC(10,2),
+        quantity_type VARCHAR(255),
+        purchase_date TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS survey_questions (
+        id SERIAL PRIMARY KEY,
+        question_text TEXT NOT NULL,
+        type VARCHAR(50),
+        stage VARCHAR(50)
+      );
+
+      CREATE TABLE IF NOT EXISTS survey_question_options (
+        id SERIAL PRIMARY KEY,
+        question_id INT NOT NULL REFERENCES survey_questions(id) ON DELETE CASCADE,
+        option_text TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS survey_responses (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        question_id INT NOT NULL REFERENCES survey_questions(id),
+        response TEXT,
+        response_date TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    console.log("Tables created or confirmed existing");
+  } catch (err) {
+    console.error("Error creating tables:", err);
+  }
+}
+
 async function seedAllDefaults() {
+   await createTablesIfNotExists();
     await seedSentinelUser();
   await seedDefaultCategories();
   await seedDefaultQuantityTypes();
   await seedDefaultFoodItems();
+  await seedDefaultSurveyQuestions()
 }
 
 seedAllDefaults();
