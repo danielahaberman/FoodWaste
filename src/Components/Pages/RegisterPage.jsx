@@ -21,7 +21,7 @@ const API_URL = import.meta.env.VITE_API_URL;
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ username, password, name }),
+        body: JSON.stringify({ username, password}),
       });
 
       const data = await response.json();
@@ -82,14 +82,7 @@ const API_URL = import.meta.env.VITE_API_URL;
             value={username}
             onChange={(e) => setUsername(e.target.value)}
           />
-           <TextField
-            type="name"
-            label="name"
-            variant="standard"
-            placeholder="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
+          
           <TextField
             type="password"
             label="Password"
@@ -102,7 +95,7 @@ const API_URL = import.meta.env.VITE_API_URL;
             }}
           />
           
-          <Button disabled={!username || !password || !name} variant="contained" color="primary" onClick={handleRegister}>
+          <Button disabled={!username || !password} variant="contained" color="primary" onClick={handleRegister}>
             Register
           </Button>
           <Button variant="standard" color="primary" onClick={()=>{

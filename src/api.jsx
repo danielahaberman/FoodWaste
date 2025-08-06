@@ -1,29 +1,26 @@
-const API_URL = import.meta.env.VITE_API_URL;
+// @ts-nocheck
+// src/api.js
+import axios from "axios";
 
-const api = {
-  getUsers: async () => {
-    try {
-      const response = await fetch(`${API_URL}/users`);
-      return await response.json();
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      return null;
-    }
-  },
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL,
+  withCredentials: true, // if you're using cookies
+});
 
-  addUser: async (name, email) => {
-    try {
-      const response = await fetch(`${API_URL}/users`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email }),
-      });
-      return await response.json();
-    } catch (error) {
-      console.error("Error adding user:", error);
-      return null;
+// Add interceptor to handle errors
+api.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response) {
+      const status = error.response.status;
+
+      if (status === 401 || status === 403) {
+        console.warn("Redirecting to login...");
+        window.location.href = "/";
+      }
     }
-  },
-};
+    return Promise.reject(error);
+  }
+);
 
 export default api;

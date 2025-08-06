@@ -2,6 +2,7 @@
 // @ts-nocheck
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import AddIcon from "@mui/icons-material/Add";
 import {
   Modal,
   Box,
@@ -28,6 +29,7 @@ function AddNewPurchase({
   const [quantityTypes, setQuantityTypes] = useState([]);
   const [foodCategories, setFoodCategories] = useState([]);
   const [showNewFoodForm, setShowNewFoodForm] = useState(false);
+  const [hideNew, setHideNew] = useState(false)
 
   const initialNewFoodItem = {
     name: "",
@@ -79,7 +81,9 @@ const API_URL = import.meta.env.VITE_API_URL;
     }
   };
 
+
   const handleAddToPurchase = async (foodItem) => {
+      console.log("fooditem", foodItem)
     try {
       const purchaseDate = selectedDate.toISOString();
 
@@ -112,7 +116,7 @@ const API_URL = import.meta.env.VITE_API_URL;
   }, []);
 
 return (
-  <Box sx={{ p: 2, width: "100%", maxWidth: 640, mx: "auto", display: "flex", flexDirection: "column", gap: 2 }}>
+  <Box sx={{  width: "100%", maxWidth: 600, mx: "auto", display: "flex", flexDirection: "column", gap: 2 , boxSizing:"border-box"}}>
     {/* Header */}
     <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
       <IconButton aria-label="close" size="small" onClick={() => setLoggingPurchase(false)}>
@@ -121,16 +125,23 @@ return (
       <Typography variant="subtitle1" sx={{ flexGrow: 1, textAlign: "center" }}>
         Add Purchase
       </Typography>
-      {!showNewFoodForm && (
-        <Button variant="contained" size="small" onClick={() => setShowNewFoodForm(true)}>
-          New Food Type
-        </Button>
+      {!showNewFoodForm && !hideNew &&(
+   <Button
+   style={{position:"absolute", top:"0px", zIndex:"9999999", right:"4px"}}
+  variant="contained"
+  size="small"
+  onClick={() => setShowNewFoodForm(true)}
+  startIcon={<AddIcon />}
+>
+  New
+</Button>
       )}
     </Stack>
 
     {/* Search / Add to purchase */}
     <Box>
       <FoodItemSearchDropdown
+      setHideNew={setHideNew}
         foodItems={foodItems}
         open={true}
         handleAddToPurchase={(purchase) => {

@@ -1,12 +1,25 @@
-// @ts-nocheck
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import {
+  Box,
+  Typography,
+  Paper,
+  List,
+  ListItem,
+  ListItemText,
+  IconButton,
+  CircularProgress,
+  AppBar,
+  Toolbar,
+} from "@mui/material";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
-function ConsumeWaste() {
+function ConsumeWaste({ handleBack }) {
   const [weeklySummary, setWeeklySummary] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-const API_URL = import.meta.env.VITE_API_URL;
+  const API_URL = import.meta.env.VITE_API_URL;
+
   const fetchWeeklyPurchaseSummary = async () => {
     setLoading(true);
     setError(null);
@@ -26,60 +39,88 @@ const API_URL = import.meta.env.VITE_API_URL;
     fetchWeeklyPurchaseSummary();
   }, []);
 
-  if (loading) return <p style={{ textAlign: "center", fontStyle: "italic" }}>Loading weekly purchase summary...</p>;
-  if (error) return <p style={{ color: "red", textAlign: "center" }}>{error}</p>;
+  if (loading)
+    return (
+      <Box textAlign="center" py={4}>
+        <CircularProgress />
+        <Typography variant="body2" mt={2} fontStyle="italic">
+          Loading weekly purchase summary...
+        </Typography>
+      </Box>
+    );
+
+  if (error)
+    return (
+      <Typography color="error" textAlign="center" py={4}>
+        {error}
+      </Typography>
+    );
 
   return (
-    <div style={{ maxWidth: 700, margin: "2rem auto", fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" }}>
+    <Box sx={{ maxWidth: 700, mx: "auto", mt: 2, mb: 6, px: 2 }}>
+      {/* Header Bar */}
+      <AppBar position="sticky" color="primary" sx={{ mb: 3 }}>
+        <Toolbar>
+          <IconButton edge="start" color="inherit" onClick={handleBack} aria-label="back">
+            <ArrowBackIcon />
+          </IconButton>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            Weekly Consumption Summary
+          </Typography>
+        </Toolbar>
+      </AppBar>
+
+      {/* Weekly Summary */}
       {weeklySummary.map((week) => (
-        <section
+        <Paper
           key={week.weekOf}
-          style={{
-            marginBottom: "2rem",
-            backgroundColor: "#f9f9f9",
-            padding: "1rem 1.5rem",
-            borderRadius: "8px",
-            boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
+          elevation={2}
+          sx={{
+            mb: 4,
+            p: 3,
+            borderRadius: 2,
+            backgroundColor: "background.paper",
           }}
         >
-          <h2
-            style={{
-              fontWeight: "700",
-              fontSize: "1.25rem",
-              marginBottom: "1rem",
-              borderBottom: "2px solid #4a90e2",
-              paddingBottom: "0.25rem",
-              color: "#333",
-            }}
+          <Typography
+            variant="h6"
+            fontWeight={700}
+            color="primary.main"
+            gutterBottom
+            sx={{ borderBottom: 2, borderColor: "primary.main", pb: 0.5 }}
           >
             {week.weekOf}
-          </h2>
-          <ul style={{ listStyleType: "none", paddingLeft: 0, margin: 0 }}>
+          </Typography>
+
+          <List disablePadding>
             {week.purchases.map((item) => (
-              <li
+              <ListItem
                 key={item.id}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  padding: "0.75rem 1rem",
-                  marginBottom: "0.5rem",
-                  backgroundColor: "#fff",
-                  borderRadius: "6px",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                  transition: "background-color 0.3s ease",
+                sx={{
+                  bgcolor: "background.default",
+                  mb: 1,
+                  borderRadius: 1,
+                  boxShadow: 1,
                   cursor: "pointer",
+                  "&:hover": {
+                    bgcolor: "action.hover",
+                  },
                 }}
-                onMouseEnter={e => (e.currentTarget.style.backgroundColor = "#e6f0ff")}
-                onMouseLeave={e => (e.currentTarget.style.backgroundColor = "#fff")}
               >
-                <div style={{ fontWeight: "600", color: "#222" }}>{item.name}</div>
-                <div style={{ color: "#666" }}>Amount: {item.quantity}</div>
-              </li>
+                <ListItemText
+                  primary={
+                    <Typography fontWeight={600} color="text.primary">
+                      {item.name}
+                    </Typography>
+                  }
+                  secondary={`Amount: ${item.quantity}`}
+                />
+              </ListItem>
             ))}
-          </ul>
-        </section>
+          </List>
+        </Paper>
       ))}
-    </div>
+    </Box>
   );
 }
 

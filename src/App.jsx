@@ -6,7 +6,7 @@ import React from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import LoginPage from './Components/Pages/Login';
 import LandingPage from './Components/Pages/LandingPage';
-import Users from './Components/Pages/Users';
+// import Users from './Components/Pages/Users';
 import SidebarLayout from './SideBarLayout'; // Import your SidebarLayout component
 import RegisterPage from './Components/Pages/RegisterPage'; // Import RegisterPage
 import FoodLog from './Components/Pages/FoodLog';
@@ -24,7 +24,7 @@ function App() {
          
           {/* SidebarLayout wrapped routes */}
           <Route element={<SidebarLayout />}>
-            <Route path="/users" element={<Users />} />
+            {/* <Route path="/users" element={<Users />} /> */}
             <Route path="/home" element={<FoodLog/>} />
             <Route path="/survey" element={<QaPage />} />
           </Route>

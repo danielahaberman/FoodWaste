@@ -15,11 +15,11 @@ import {
 const Survey = ({ questions }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [responses, setResponses] = useState({}); // object keyed by questionId
-const API_URL = process.env.REACT_APP_API_URL;
+const API_URL = import.meta.env.VITE_API_URL;
 
-
+const surveyTitle = questions[0].stage
   const currentQuestion = questions[currentIndex];
-  const currentQuestionId = currentQuestion.id;
+  const currentQuestionId = currentQuestion?.id;
   const currentResponse = responses[currentQuestionId];
 
   // For number inputs, just check if it's non-empty (handle 0 correctly)
@@ -42,7 +42,7 @@ const API_URL = process.env.REACT_APP_API_URL;
   };
 
   const handleNext = async () => {
-    const currentQuestionId = questions[currentIndex].id;
+    const currentQuestionId = questions[currentIndex]?.id;
     const response = responses[currentQuestionId];
 
     if (response !== undefined && response !== null) {
@@ -72,6 +72,7 @@ const API_URL = process.env.REACT_APP_API_URL;
   };
 
   const renderQuestion = (question) => {
+    console.log("questiom", question)
     const questionId = questions[currentIndex].id;
     const currentResponse = responses[questionId] ?? "";
 
@@ -80,7 +81,7 @@ const API_URL = process.env.REACT_APP_API_URL;
       case "rating":
         return (
           <Stack spacing={2}>
-            <Typography variant="h6">{question.question}</Typography>
+            <Typography variant="h6">{question.question_text}</Typography>
             {question.options.map((option, idx) => {
               const isSelected = currentResponse === option.text;
               return (
@@ -126,12 +127,12 @@ const API_URL = process.env.REACT_APP_API_URL;
       alignItems="center"
     >
       <Typography variant="h4" gutterBottom>
-        📝 Survey
+        📝 {surveyTitle} survey
       </Typography>
 
     
 
-      <Paper elevation={3} sx={{ padding: 4, width: "100%" }}>
+      <Paper elevation={3} sx={{ padding: 4, width: "100%", color:"black" }}>
         {renderQuestion(currentQuestion)}
 
         <Box

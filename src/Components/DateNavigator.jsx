@@ -4,54 +4,65 @@ import {
   IconButton,
   Typography,
   Popover,
-  Box
+  Box,
+  Paper
 } from "@mui/material";
-import { ArrowBackIos, ArrowForwardIos } from "@mui/icons-material";
+import {
+  ArrowBackIosNew as ArrowBackIos,
+  ArrowForwardIos
+} from "@mui/icons-material";
 import { StaticDatePicker } from "@mui/x-date-pickers/StaticDatePicker";
 import dayjs from "dayjs";
 
 const DateNavigator = ({ value, onChange }) => {
   const [anchorEl, setAnchorEl] = useState(null);
+  const open = Boolean(anchorEl);
 
   const isToday = dayjs(value).isSame(dayjs(), "day");
 
-  const handlePrev = () => {
-    onChange(dayjs(value).subtract(1, "day"));
-  };
-
-  const handleNext = () => {
-    onChange(dayjs(value).add(1, "day"));
-  };
-
-  const handleOpenCalendar = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleCloseCalendar = () => {
-    setAnchorEl(null);
-  };
-
-  const open = Boolean(anchorEl);
+  const handlePrev = () => onChange(dayjs(value).subtract(1, "day"));
+  const handleNext = () => onChange(dayjs(value).add(1, "day"));
+  const handleOpenCalendar = (e) => setAnchorEl(e.currentTarget);
+  const handleCloseCalendar = () => setAnchorEl(null);
 
   return (
     <Box display="flex" alignItems="center" gap={1}>
-      <IconButton onClick={handlePrev}>
+      <IconButton onClick={handlePrev} size="small" color="primary">
         <ArrowBackIos fontSize="small" />
       </IconButton>
 
-      <Typography
-        variant="body1"
-        onClick={handleOpenCalendar}
-        sx={{
-          cursor: "pointer",
-          userSelect: "none",
-          fontWeight: 500
-        }}
-      >
-        {isToday ? "Today" : dayjs(value).format("MMM D, YYYY")}
-      </Typography>
+     <Box
+  onClick={handleOpenCalendar}
+  sx={{
+    cursor: "pointer",
+    px: 2,
+    py: 1,
+    borderRadius: "999px",
+    backgroundColor: "background.paper",
+    border: "1px solid",
+    borderColor: "divider",
+    "&:hover": {
+      backgroundColor: "grey.100"
+    },
+    userSelect: "none",
+    transition: "background-color 0.2s ease",
+    width: "120px", // ✅ Fixed width
+    textAlign: "center", // ✅ Center text
+    overflow: "hidden", // Prevent layout shift
+    whiteSpace: "nowrap",
+  }}
+>
+  <Typography
+    variant="body2"
+    fontWeight={500}
+    color="text.primary"
+    noWrap
+  >
+    {isToday ? "Today" : dayjs(value).format("MMM D, YYYY")}
+  </Typography>
+</Box>
 
-      <IconButton onClick={handleNext}>
+      <IconButton onClick={handleNext} size="small" color="primary">
         <ArrowForwardIos fontSize="small" />
       </IconButton>
 
@@ -67,18 +78,23 @@ const DateNavigator = ({ value, onChange }) => {
           vertical: "top",
           horizontal: "center"
         }}
+        PaperProps={{
+          elevation: 4,
+          sx: {
+            mt: 1,
+            borderRadius: 2,
+            overflow: "hidden"
+          }
+        }}
       >
-        <Box p={2}>
-          <StaticDatePicker
-            displayStaticWrapperAs="desktop"
-            value={value}
-            onChange={(newValue) => {
-              onChange(newValue);
-              handleCloseCalendar();
-            }}
-            // renderInput={() => null} // This will hide the input field
-          />
-        </Box>
+        <StaticDatePicker
+          displayStaticWrapperAs="desktop"
+          value={value}
+          onChange={(newValue) => {
+            onChange(newValue);
+            handleCloseCalendar();
+          }}
+        />
       </Popover>
     </Box>
   );

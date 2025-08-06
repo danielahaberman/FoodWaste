@@ -6,6 +6,8 @@ import pool from "./db.js"; // Your pg Pool instance
 import authRoutes from "./authRoutes.js"; // Import auth routes
 import moment from "moment";
 import questions from "./SurveyQuestions.js";
+import foodItems from "./FoodItems.js";
+import query from "./TableQuery.js";
 const app = express();
 app.use(express.json()); // <-- add this line
 app.use(cors({
@@ -49,22 +51,44 @@ app.get("/food-categories", async (req, res) => {
 
 // POST purchase
 app.post("/purchase", requireUserId, async (req, res) => {
-  const { user_id, name, category, category_id, price, quantity, quantity_type, purchase_date } = req.body;
+const { user_id, name, category, category_id, price, quantity, quantity_type, purchase_date } = req.body;
 
-  const query = `
-    INSERT INTO purchases (user_id, name, category, category_id, price, quantity, quantity_type, purchase_date)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-    RETURNING id
-  `;
+// Convert purchase_date to local time and truncate to just date part
+const localDate = moment(purchase_date).local().startOf('day').toDate();
 
-  try {
-    const result = await pool.query(query, [user_id, name, category, category_id, price, quantity, quantity_type, purchase_date]);
+const query = `
+  INSERT INTO purchases (user_id, name, category, category_id, price, quantity, quantity_type, purchase_date)
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+  RETURNING id
+`;
+
+try {
+  const result = await pool.query(query, [user_id, name, category, category_id, price, quantity, quantity_type, localDate]);
     res.status(201).json({ message: "Purchase added successfully", id: result.rows[0].id });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+app.delete("/purchase/:id", requireUserId, async (req, res) => {
+  const purchaseId = req.params.id;
+  const userId = req.user_id;
 
+  try {
+    const result = await pool.query(
+      `DELETE FROM purchases WHERE id = $1 AND user_id = $2`,
+      [purchaseId, userId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Purchase not found or not owned by user" });
+    }
+
+    res.status(200).json({ message: "Purchase deleted successfully" });
+  } catch (err) {
+    console.error("Delete purchase error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
 // GET food-items
 app.get("/food-items", requireUserId, async (req, res) => {
   let user_id = parseInt(req.query.user_id, 10);
@@ -75,7 +99,7 @@ app.get("/food-items", requireUserId, async (req, res) => {
   const { search, category } = req.query;
 
   let query = `
-    SELECT f.id, f.name, f.category_id, c.name AS category, f.price, f.quantity, qt.name AS quantity_type
+    SELECT f.id, f.name, f.category_id, c.name AS category, f.price, f.quantity, qt.name AS quantity_type, f.emoji
     FROM food_items f
     LEFT JOIN quantity_types qt ON f.quantity_type_id = qt.id
     LEFT JOIN categories c ON f.category_id = c.id
@@ -94,6 +118,7 @@ app.get("/food-items", requireUserId, async (req, res) => {
     params.push(category);
   }
 
+  // Add ORDER BY only once, at the end, after all filters
   query += ` ORDER BY f.name ASC`;
 
   try {
@@ -105,14 +130,25 @@ app.get("/food-items", requireUserId, async (req, res) => {
 });
 
 
+
 // GET food-purchases
 app.get("/food-purchases", requireUserId, async (req, res) => {
   const { user_id } = req.query;
 
   const query = `
-    SELECT p.id, p.name, p.category, p.quantity, p.price, p.purchase_date, p.quantity_type, c.name AS category_name
+    SELECT 
+      p.id,
+      p.name,
+      p.category,
+      p.quantity,
+      p.price,
+      p.purchase_date,
+      p.quantity_type,
+      c.name AS category_name,
+      f.emoji
     FROM purchases p
     LEFT JOIN categories c ON p.category = c.name
+    LEFT JOIN food_items f ON p.name = f.name AND f.user_id = -1
     WHERE p.user_id = $1
   `;
 
@@ -123,6 +159,7 @@ app.get("/food-purchases", requireUserId, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 // GET purchases weekly summary
 app.get("/purchases/weekly-summary", requireUserId, async (req, res) => {
@@ -379,7 +416,16 @@ app.use((req, res) => {
 // Add this somewhere near the top or before seeding
 async function seedDefaultCategories() {
   try {
-    const defaultCategories = ["Fruits", "Bakery", "Vegetables", "Dairy", "Meat"];
+    // Add all categories referenced in your food items, including "Seafood" and "Grains"
+    const defaultCategories = [
+      "Fruits",
+      "Bakery",
+      "Vegetables",
+      "Dairy",
+      "Meat",
+      "Seafood",
+      "Grains"
+    ];
 
     for (const category of defaultCategories) {
       const { rows } = await pool.query(
@@ -398,6 +444,43 @@ async function seedDefaultCategories() {
     console.error("Error seeding categories:", err);
   }
 }
+
+async function seedDefaultQuantityTypes() {
+  try {
+    // Add all quantity types referenced in your food items
+    const defaultQuantityTypes = [
+      "Each",
+      "Loaf",
+      "Pound",
+      "Kilogram",
+      "Liter",
+      "Box",
+      "Bunch",
+      "Lb",   // Be sure this matches your DB terminology (you had both Pound and Lb)
+      "Cup",
+      "Dozen",
+      "Bag",
+      "Gallon"    ];
+
+    for (const qtyType of defaultQuantityTypes) {
+      const { rows } = await pool.query(
+        "SELECT id FROM quantity_types WHERE name = $1",
+        [qtyType]
+      );
+      if (rows.length === 0) {
+        await pool.query(
+          "INSERT INTO quantity_types (name) VALUES ($1)",
+          [qtyType]
+        );
+        console.log(`Inserted default quantity type: ${qtyType}`);
+      }
+    }
+  } catch (err) {
+    console.error("Error seeding quantity types:", err);
+  }
+}
+
+
 async function seedDefaultSurveyQuestions() {
   try {
     const defaultQuestions = questions;
@@ -507,27 +590,6 @@ async function seedSentinelUser() {
     console.error("Error seeding sentinel user:", err);
   }
 }
-async function seedDefaultQuantityTypes() {
-  try {
-    const defaultQuantityTypes = ["Each", "Loaf", "Pound", "Kilogram", "Liter"];
-
-    for (const qtyType of defaultQuantityTypes) {
-      const { rows } = await pool.query(
-        "SELECT id FROM quantity_types WHERE name = $1",
-        [qtyType]
-      );
-      if (rows.length === 0) {
-        await pool.query(
-          "INSERT INTO quantity_types (name) VALUES ($1)",
-          [qtyType]
-        );
-        console.log(`Inserted default quantity type: ${qtyType}`);
-      }
-    }
-  } catch (err) {
-    console.error("Error seeding quantity types:", err);
-  }
-}
 
 async function seedDefaultFoodItems() {
   try {
@@ -546,12 +608,9 @@ async function seedDefaultFoodItems() {
     });
 
     // Now you can define default food items using names and map to IDs
-    const defaultItems = [
-      { name: "Apple", category: "Fruits", price: 0.5, quantity: 100, quantity_type: "Each" },
-      { name: "Banana", category: "Fruits", price: 0.3, quantity: 100, quantity_type: "Each" },
-      { name: "Bread", category: "Bakery", price: 2.0, quantity: 50, quantity_type: "Loaf" },
-      // Add more as needed
-    ];
+const defaultItems = foodItems
+
+
 
     for (const item of defaultItems) {
       // Get IDs from maps
@@ -570,11 +629,11 @@ async function seedDefaultFoodItems() {
       );
 
       if (rows.length === 0) {
-        await pool.query(
-          `INSERT INTO food_items (name, category_id, price, quantity, quantity_type_id, user_id)
-           VALUES ($1, $2, $3, $4, $5, -1)`,
-          [item.name, category_id, item.price, item.quantity, quantity_type_id]
-        );
+ await pool.query(
+  `INSERT INTO food_items (name, category_id, price, quantity, quantity_type_id, emoji, user_id)
+   VALUES ($1, $2, $3, $4, $5, $6, -1)`,
+  [item.name, category_id, item.price, item.quantity, quantity_type_id, item.emoji || null]
+);
         console.log(`Inserted default food item: ${item.name}`);
       }
     }
@@ -586,80 +645,26 @@ async function seedDefaultFoodItems() {
 // Call all seeds in sequence before starting server
 async function createTablesIfNotExists() {
   try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(255) UNIQUE NOT NULL,
-        email VARCHAR(255),
-        password_hash VARCHAR(255),
-        created_at TIMESTAMP DEFAULT NOW()
-      );
-
-      CREATE TABLE IF NOT EXISTS categories (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(255) UNIQUE NOT NULL
-      );
-
-      CREATE TABLE IF NOT EXISTS quantity_types (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(255) UNIQUE NOT NULL
-      );
-
-      CREATE TABLE IF NOT EXISTS food_items (
-        id SERIAL PRIMARY KEY,
-        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        name VARCHAR(255) NOT NULL,
-        category_id INT NOT NULL REFERENCES categories(id),
-        price NUMERIC(10,2) NOT NULL,
-        quantity NUMERIC(10,2) DEFAULT 0,
-        quantity_type_id INT NOT NULL REFERENCES quantity_types(id),
-        UNIQUE(name, user_id)
-      );
-
-      CREATE TABLE IF NOT EXISTS purchases (
-        id SERIAL PRIMARY KEY,
-        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        name VARCHAR(255) NOT NULL,
-        category VARCHAR(255),
-        category_id INT,
-        price NUMERIC(10,2),
-        quantity NUMERIC(10,2),
-        quantity_type VARCHAR(255),
-        purchase_date TIMESTAMP
-      );
-
-      CREATE TABLE IF NOT EXISTS survey_questions (
-        id SERIAL PRIMARY KEY,
-        question_text TEXT NOT NULL,
-        type VARCHAR(50),
-        stage VARCHAR(50)
-      );
-
-      CREATE TABLE IF NOT EXISTS survey_question_options (
-        id SERIAL PRIMARY KEY,
-        question_id INT NOT NULL REFERENCES survey_questions(id) ON DELETE CASCADE,
-        option_text TEXT NOT NULL
-      );
-
-      CREATE TABLE IF NOT EXISTS survey_responses (
-        id SERIAL PRIMARY KEY,
-        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        question_id INT NOT NULL REFERENCES survey_questions(id),
-        response TEXT,
-        response_date TIMESTAMP DEFAULT NOW()
-      );
-    `);
+    await pool.query(query);
     console.log("Tables created or confirmed existing");
   } catch (err) {
     console.error("Error creating tables:", err);
   }
 }
-
+async function addEmojiColumnIfNeeded() {
+  try {
+    await pool.query(`ALTER TABLE food_items ADD COLUMN IF NOT EXISTS emoji VARCHAR(10);`);
+    console.log("Ensured emoji column exists");
+  } catch (err) {
+    console.error("Error adding emoji column:", err);
+  }
+}
 async function seedAllDefaults() {
-   await createTablesIfNotExists();
-    await seedSentinelUser();
+  await createTablesIfNotExists();
+  await seedSentinelUser();
   await seedDefaultCategories();
   await seedDefaultQuantityTypes();
+  await addEmojiColumnIfNeeded();
   await seedDefaultFoodItems();
   await seedDefaultSurveyQuestions()
 }

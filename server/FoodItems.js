@@ -1,0 +1,25 @@
+const foodItems = [
+  { name: "Apple", category: "Fruits", price: 0.5, quantity_type: "Each", emoji: "🍎" },
+  { name: "Banana", category: "Fruits", price: 0.3, quantity_type: "Each", emoji: "🍌" },
+  { name: "Orange", category: "Fruits", price: 0.6, quantity_type: "Each", emoji: "🍊" },
+  { name: "Strawberry", category: "Fruits", price: 3.5, quantity_type: "Box", emoji: "🍓" },
+  { name: "Broccoli", category: "Vegetables", price: 1.2, quantity_type: "Bunch", emoji: "🥦" },
+  { name: "Carrot", category: "Vegetables", price: 0.8, quantity_type: "Lb", emoji: "🥕" },
+  { name: "Spinach", category: "Vegetables", price: 2.0, quantity_type: "Bag", emoji: "🥬" },
+  { name: "Potato", category: "Vegetables", price: 0.4, quantity_type: "Lb", emoji: "🥔" },
+  { name: "Bread", category: "Bakery", price: 2.0, quantity_type: "Loaf", emoji: "🍞" },
+  { name: "Bagel", category: "Bakery", price: 1.5, quantity_type: "Each", emoji: "🥯" },
+  { name: "Croissant", category: "Bakery", price: 2.5, quantity_type: "Each", emoji: "🥐" },
+  { name: "Milk", category: "Dairy", price: 3.0, quantity_type: "Gallon", emoji: "🥛" },
+  { name: "Cheddar Cheese", category: "Dairy", price: 4.0, quantity_type: "Lb", emoji: "🧀" },
+  { name: "Yogurt", category: "Dairy", price: 1.0, quantity_type: "Cup", emoji: "🥣" },
+  { name: "Chicken Breast", category: "Meat", price: 5.5, quantity_type: "Lb", emoji: "🍗" },
+  { name: "Ground Beef", category: "Meat", price: 6.0, quantity_type: "Lb", emoji: "🥩" },
+  { name: "Salmon", category: "Seafood", price: 12.0, quantity_type: "Lb", emoji: "🐟" },
+  { name: "Shrimp", category: "Seafood", price: 10.0, quantity_type: "Lb", emoji: "🍤" },
+  { name: "Eggs", category: "Dairy", price: 2.5, quantity_type: "Dozen", emoji: "🥚" },
+  { name: "Rice", category: "Grains", price: 1.0, quantity_type: "Lb", emoji: "🍚" },
+  { name: "Pasta", category: "Grains", price: 1.2, quantity_type: "Box", emoji: "🍝" },
+];
+
+export default foodItems

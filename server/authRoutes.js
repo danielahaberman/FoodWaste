@@ -8,10 +8,10 @@ const router = express.Router();
 
 // Register route
 router.post('/register', async (req, res) => {
-  const { username, name, password } = req.body;
+  const { username, password } = req.body;
 
-  if (!username || !name || !password) {
-    return res.status(400).json({ error: 'Username, name, and password are required' });
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password are required' });
   }
 
   try {
@@ -19,12 +19,12 @@ router.post('/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     const query = `
-      INSERT INTO users (username, name, password)
-      VALUES ($1, $2, $3)
-      RETURNING id, username, name
+      INSERT INTO users (username, password_hash)
+      VALUES ($1, $2)
+      RETURNING id, username
     `;
 
-    const { rows } = await pool.query(query, [username, name, hashedPassword]);
+    const { rows } = await pool.query(query, [username, hashedPassword]);
 
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -51,7 +51,7 @@ router.post('/login', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
