@@ -25,8 +25,15 @@ dist-ssr
 *.sw?
 
 # Environment files
-.env
-.env.*
+# Commit .env for hosting (e.g., Railway). Keep local overrides ignored.
+!.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 !.env.example
-server/.env
-server/.env.*
+!server/.env
+server/.env.local
+server/.env.development.local
+server/.env.test.local
+server/.env.production.local
