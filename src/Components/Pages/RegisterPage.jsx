@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import PageLayout from "../PageLayout";
 import { TextField, Button } from "@mui/material";
 import { useNavigate } from "react-router-dom";
+import { authAPI } from "../../api";
 
 function RegisterPage() {
   const [username, setUsername] = useState("");
@@ -12,26 +13,13 @@ function RegisterPage() {
   const [error, setError] = useState("");
   const navigate = useNavigate()
   
-  
-const API_URL = import.meta.env.VITE_API_URL;
   const handleRegister = async () => {
     try {
-      const response = await fetch(`${API_URL}/auth/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ username, password}),
-      });
-
-      const data = await response.json();
-      if (response.ok) {
-        setError("");
-        console.log("User registered successfully:", data);
-        navigate("/auth/login")
-      } else {
-        setError(data.error);
-      }
+      const response = await authAPI.register({ username, password });
+      const data = response.data;
+      setError("");
+      console.log("User registered successfully:", data);
+      navigate("/auth/login")
     } catch (err) {
       setError("An error occurred");
     }

@@ -1,7 +1,7 @@
 // @ts-nocheck
 /* eslint-disable react/prop-types */
-import React, { useState, useEffect } from "react";
-import axios from "axios";
+import React, { useState } from "react";
+import { surveyAPI } from "../api";
 import {
   Box,
   Button,
@@ -15,12 +15,10 @@ import {
 const Survey = ({ questions }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [responses, setResponses] = useState({}); // object keyed by questionId
-const API_URL = import.meta.env.VITE_API_URL;
-
 const surveyTitle = questions[0].stage
-  const currentQuestion = questions[currentIndex];
-  const currentQuestionId = currentQuestion?.id;
-  const currentResponse = responses[currentQuestionId];
+        const currentQuestion = questions[currentIndex];
+        const currentQuestionId = currentQuestion?.id;
+        const currentResponse = responses[currentQuestionId];
 
   // For number inputs, just check if it's non-empty (handle 0 correctly)
   const isEmptyResponse =
@@ -30,7 +28,7 @@ const surveyTitle = questions[0].stage
 
   const submitResponse = async ({ questionId, response }) => {
     try {
-      await axios.post(`${API_URL}/survey-response`, {
+      await surveyAPI.submitSurveyResponse({
         userId: localStorage.getItem("userId"),
         questionId,
         response,

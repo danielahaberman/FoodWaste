@@ -40,6 +40,19 @@ const query = `
         purchase_date TIMESTAMP
       );
 
+      -- Logs of consumption or waste events against a purchase
+      CREATE TABLE IF NOT EXISTS consumption_logs (
+        id SERIAL PRIMARY KEY,
+        user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        purchase_id INT NOT NULL REFERENCES purchases(id) ON DELETE CASCADE,
+        action VARCHAR(16) NOT NULL, -- 'consumed' | 'wasted'
+        quantity NUMERIC(10,2) NOT NULL,
+        quantity_type VARCHAR(255),
+        percentage NUMERIC(5,2), -- optional percent of original purchase
+        cost_value NUMERIC(10,2), -- computed dollar value of this event
+        logged_at TIMESTAMP DEFAULT NOW()
+      );
+
       CREATE TABLE IF NOT EXISTS survey_questions (
         id SERIAL PRIMARY KEY,
         question_text TEXT NOT NULL,

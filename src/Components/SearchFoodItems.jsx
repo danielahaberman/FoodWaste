@@ -63,7 +63,7 @@ const FoodItemSearchDropdown = ({ foodItems, handleAddToPurchase, open, setHideN
               display="grid"
               gridTemplateColumns="repeat(auto-fill, minmax(200px, 1fr))"
               gap={2}
-              maxHeight="90vh"
+              maxHeight="100%"
               overflow="auto"
             >
               {filteredItems.map((item) => (
@@ -75,6 +75,7 @@ const FoodItemSearchDropdown = ({ foodItems, handleAddToPurchase, open, setHideN
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "flex-start",
+                    border: "1px solid #e0e0e0",
                     cursor: "pointer",
                     "&:hover": {
                       backgroundColor: "#f5f5f5",
@@ -83,7 +84,7 @@ const FoodItemSearchDropdown = ({ foodItems, handleAddToPurchase, open, setHideN
                   onClick={() => setSelectedItem(item)}
                 >
                   <Typography variant="subtitle1">
-                    {item.emoji ? `${item.emoji} ` : ""}
+                    {(item.emoji || '🍽️') + ' '}
                     {item.name}
                   </Typography>
                   {item.category && (

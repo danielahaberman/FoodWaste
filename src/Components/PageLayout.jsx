@@ -9,7 +9,7 @@ function PageLayout({children, backgroundColor = "white"}){
 
 
     return(<div style={{maxWidth:"600px", width: "100%",  marginLeft:"auto", marginRight:"auto", position:"relative",
-            height: "100vh", backgroundColor: backgroundColor}}>
+            height: "100dvh", backgroundColor: backgroundColor}}>
             {children}
             </div>)
 }

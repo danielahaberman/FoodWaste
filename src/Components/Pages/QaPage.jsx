@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import dayjs from "dayjs";
+import { surveyAPI } from "../../api";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import weekOfYear from "dayjs/plugin/weekOfYear";
@@ -25,14 +25,12 @@ function QaPage({ setShowSurvey }) {
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [errorStatus, setErrorStatus] = useState(null);
 
-  const API_URL = import.meta.env.VITE_API_URL;
-
   useEffect(() => {
     const fetchSurveyStatus = async () => {
       try {
         setLoadingStatus(true);
         const userId = localStorage.getItem("userId");
-        const res = await axios.get(`${API_URL}/api/surveys/status/${userId}`);
+        const res = await surveyAPI.getSurveyStatus(userId);
 
         setInitialCompleted(res.data.initialCompleted);
         setLastWeeklyCompletion(res.data.lastWeeklyCompletion);
@@ -45,9 +43,7 @@ function QaPage({ setShowSurvey }) {
 
         if (!res.data.initialCompleted || !completedThisWeek) {
           const stage = res.data.initialCompleted ? "weekly" : "initial";
-          const qRes = await axios.get(`${API_URL}/survey-questions`, {
-            params: { stage },
-          });
+          const qRes = await surveyAPI.getSurveyQuestions({ stage });
           setSurveyQuestions(qRes.data);
         } else {
           setSurveyQuestions([]); // empty to indicate no questions this week

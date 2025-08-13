@@ -11,6 +11,31 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 
+const categoryEmojiMap = {
+  Fruits: "🍎",
+  Vegetables: "🥦",
+  Bakery: "🍞",
+  Dairy: "🥛",
+  Meat: "🥩",
+  Seafood: "🐟",
+  Grains: "🌾",
+  "Canned Goods": "🥫",
+  Frozen: "🧊",
+  Beverages: "🥤",
+  Juice: "🧃",
+  Snacks: "🍿",
+  Condiments: "🧂",
+  Spices: "🧂",
+  Pantry: "📦",
+  Deli: "🥪",
+  "Prepared Foods": "🍱",
+  Breakfast: "🍳",
+  Sauces: "🍝",
+  Baking: "🧁",
+  "Oils & Vinegars": "🫒",
+  Household: "🏠",
+};
+
 const FoodPurchaseList = ({ purchases, deletePurchase }) => {
   const [activeId, setActiveId] = useState(null);
   const listRef = useRef(null);
@@ -30,8 +55,10 @@ const FoodPurchaseList = ({ purchases, deletePurchase }) => {
 
   return (
     <List ref={listRef} disablePadding>
-      {purchases.map(({ id, name, emoji, quantity, quantity_type, price, purchase_date }) => {
+      {purchases.map(({ id, name, emoji, quantity, quantity_type, price, purchase_date, category, category_name }) => {
         const isActive = activeId === id;
+        const cat = category || category_name;
+        const displayEmoji = emoji || (cat ? categoryEmojiMap[cat] : null) || "🍽️";
 
         return (
           <React.Fragment key={id}>
@@ -55,12 +82,10 @@ const FoodPurchaseList = ({ purchases, deletePurchase }) => {
                     color="text.primary"
                     sx={{ display: "flex", alignItems: "center", gap: 1 }}
                   >
-                    {/* Show emoji if exists */}
-                    {emoji && (
-                      <Box component="span" aria-label="emoji" role="img" sx={{ fontSize: "1.3em" }}>
-                        {emoji}
-                      </Box>
-                    )}
+                    {/* Emoji or category fallback */}
+                    <Box component="span" aria-label="emoji" role="img" sx={{ fontSize: "1.3em", display:'inline-flex', alignItems:'center' }}>
+                      {displayEmoji}
+                    </Box>
                     {name}
                   </Typography>
                 }

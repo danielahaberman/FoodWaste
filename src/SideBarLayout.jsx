@@ -11,7 +11,7 @@ const SidebarLayout = () => {
   sx={{
     display: "flex",
     flexDirection: "column",
-    minHeight: "100vh",
+    minHeight: "100dvh",
     backgroundColor: "#f5f5f5", // Light gray, looks like MUI
   }}
 >

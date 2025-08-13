@@ -2,10 +2,9 @@
 import React from "react";
 import { Button } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-const API_URL = import.meta.env.VITE_API_URL;
+
 function LandingPage() {
   const navigate = useNavigate();
-console.log("API_URL:", API_URL);
   return (
     <div style={{
       display: "flex", 
@@ -51,6 +50,22 @@ console.log("API_URL:", API_URL);
         >
           Register
         </Button>
+        <div style={{ display:'flex', justifyContent:'space-between', width:'100%' }}>
+          <Button
+            variant="text"
+            style={{ color: "#01796F", textDecoration: "underline" }}
+            onClick={() => navigate("/terms")}
+          >
+            Terms & Conditions
+          </Button>
+          <Button
+            variant="text"
+            style={{ color: "#6b7280" }}
+            onClick={() => navigate("/privacy")}
+          >
+            Privacy
+          </Button>
+        </div>
       </div>
     </div>
   );

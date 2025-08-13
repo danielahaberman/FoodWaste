@@ -3,25 +3,39 @@
 import React, { useState } from "react";
 import PageLayout from "../PageLayout";
 import { TextField, Button } from "@mui/material";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { setAuthenticated, getIntendedDestination, clearIntendedDestination } from "../../utils/authUtils";
+import { authAPI } from "../../api";
 
 function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
-const API_URL = import.meta.env.VITE_API_URL;
   const handleLogin = async () => {
     try {
-      const response = await axios.post(`${API_URL}/auth/login`, {
+      const response = await authAPI.login({
         username: email,
         password,
       });
       // Store the token in localStorage or state
       console.log("response", response);
-      localStorage.setItem("userId", response.data.user_id);
-      navigate("/home");
+      setAuthenticated(response.data.user_id);
+      
+      // Check if terms have been accepted
+      const termsAccepted = localStorage.getItem("termsAccepted") === "true";
+      if (!termsAccepted) {
+        navigate("/terms");
+      } else {
+        // Check if there's a stored intended destination
+        const intendedDestination = getIntendedDestination();
+        if (intendedDestination) {
+          clearIntendedDestination();
+          navigate(intendedDestination);
+        } else {
+          navigate("/home");
+        }
+      }
     } catch (err) {
       setError("Invalid credentials or server error");
     }
@@ -90,6 +104,18 @@ const API_URL = import.meta.env.VITE_API_URL;
           variant="contained"
         >
           Login
+        </Button>
+        <Button
+          onClick={() => navigate("/")}
+          variant="text"
+          style={{
+            marginTop: "8px",
+            width: "100%",
+            color: "#01796F",
+            textDecoration: "underline"
+          }}
+        >
+          Back to Landing
         </Button>
       </div>
     </PageLayout>

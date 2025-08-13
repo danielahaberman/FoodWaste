@@ -160,6 +160,449 @@ app.get("/food-purchases", requireUserId, async (req, res) => {
   }
 });
 
+// POST consumption or waste log
+app.post("/consumption-log", requireUserId, async (req, res) => {
+  const { user_id, purchase_id, action, quantity, percentage } = req.body;
+
+  if (!purchase_id || !action || (quantity === undefined && percentage === undefined)) {
+    return res.status(400).json({ error: "purchase_id, action, and quantity or percentage are required" });
+  }
+
+  // pull purchase to know original quantity and quantity_type
+  try {
+    const pRes = await pool.query("SELECT id, quantity, quantity_type, price, purchase_date FROM purchases WHERE id = $1 AND user_id = $2", [purchase_id, user_id]);
+    if (pRes.rows.length === 0) {
+      return res.status(404).json({ error: "Purchase not found" });
+    }
+    const purchase = pRes.rows[0];
+
+    // compute already logged totals to enforce 100%
+    const sumRes = await pool.query(
+      `SELECT COALESCE(SUM(quantity),0) AS total
+       FROM consumption_logs WHERE user_id = $1 AND purchase_id = $2`,
+      [user_id, purchase_id]
+    );
+    const already = parseFloat(sumRes.rows[0].total || 0);
+
+    let qty = quantity;
+    if (qty === undefined || qty === null) {
+      // derive from percentage of original purchase quantity
+      const pct = parseFloat(percentage);
+      const base = parseFloat(purchase.quantity) || 0;
+      qty = (isNaN(pct) || isNaN(base)) ? 0 : (base * pct) / 100.0;
+    }
+
+    const baseQty = parseFloat(purchase.quantity) || 0;
+    const remaining = baseQty - already;
+    if (qty > remaining + 1e-9) {
+      return res.status(400).json({ error: "Exceeds remaining quantity for this purchase", remaining });
+    }
+
+    // cost per unit from original purchase (price / quantity)
+    let cost_value = null;
+    const unitCost = (parseFloat(pRes.rows[0].price) && parseFloat(purchase.quantity)) ? (parseFloat(pRes.rows[0].price) / parseFloat(purchase.quantity)) : null;
+    if (unitCost !== null && !isNaN(unitCost)) {
+      cost_value = unitCost * parseFloat(qty || 0);
+    }
+
+    const insertQ = `
+      INSERT INTO consumption_logs (user_id, purchase_id, action, quantity, quantity_type, percentage, cost_value, logged_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING id, logged_at
+    `;
+    const ins = await pool.query(insertQ, [user_id, purchase_id, action, qty, purchase.quantity_type, percentage ?? null, cost_value, purchase.purchase_date || new Date()]);
+    res.status(201).json({ id: ins.rows[0].id, logged_at: ins.rows[0].logged_at });
+  } catch (err) {
+    console.error("consumption-log error", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET summary of consumption/waste totals per purchase
+app.get("/consumption-summary", requireUserId, async (req, res) => {
+  const { user_id, purchase_id } = req.query;
+  try {
+    const q = `
+      SELECT action, SUM(quantity) AS total, SUM(COALESCE(cost_value,0)) AS total_cost
+      FROM consumption_logs
+      WHERE user_id = $1 AND purchase_id = $2
+      GROUP BY action
+    `;
+    const r = await pool.query(q, [user_id, purchase_id]);
+    res.json(r.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET batch summary for many purchases
+app.get("/consumption-summary/batch", requireUserId, async (req, res) => {
+  const { user_id, purchase_ids } = req.query;
+  if (!purchase_ids) {
+    return res.status(400).json({ error: "purchase_ids is required" });
+  }
+  const ids = String(purchase_ids)
+    .split(",")
+    .map((s) => parseInt(s, 10))
+    .filter((n) => !isNaN(n));
+  if (ids.length === 0) {
+    return res.json([]);
+  }
+  try {
+    const q = `
+      SELECT purchase_id,
+        SUM(CASE WHEN action='consumed' THEN quantity ELSE 0 END) AS consumed_qty,
+        SUM(CASE WHEN action='consumed' THEN COALESCE(cost_value,0) ELSE 0 END) AS consumed_cost,
+        SUM(CASE WHEN action='wasted' THEN quantity ELSE 0 END) AS wasted_qty,
+        SUM(CASE WHEN action='wasted' THEN COALESCE(cost_value,0) ELSE 0 END) AS wasted_cost
+      FROM consumption_logs
+      WHERE user_id = $1 AND purchase_id = ANY($2)
+      GROUP BY purchase_id
+    `;
+    const r = await pool.query(q, [user_id, ids]);
+    res.json(r.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET overall summary across all time
+app.get("/consumption-summary/overall", requireUserId, async (req, res) => {
+  const { user_id } = req.query;
+  try {
+    const q = `
+      SELECT
+        SUM(CASE WHEN action='consumed' THEN quantity ELSE 0 END) AS consumed_qty,
+        SUM(CASE WHEN action='consumed' THEN COALESCE(cost_value,0) ELSE 0 END) AS consumed_cost,
+        SUM(CASE WHEN action='wasted' THEN quantity ELSE 0 END) AS wasted_qty,
+        SUM(CASE WHEN action='wasted' THEN COALESCE(cost_value,0) ELSE 0 END) AS wasted_cost
+      FROM consumption_logs
+      WHERE user_id = $1
+    `;
+    const r = await pool.query(q, [user_id]);
+    res.json(r.rows[0] || {});
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET weekly summary (based on purchases in the specified week)
+app.get("/consumption-summary/week", requireUserId, async (req, res) => {
+  const { user_id, week_start } = req.query;
+  try {
+    const start = week_start ? moment(week_start, ['MM/DD/YYYY', moment.ISO_8601]).startOf('week') : moment().startOf('week');
+    const end = start.clone().endOf('week');
+
+    // Pull purchases for the week
+    const purchasesRes = await pool.query(
+      `SELECT id, price, quantity, quantity_type FROM purchases WHERE user_id = $1 AND purchase_date BETWEEN $2 AND $3`,
+      [user_id, start.toDate(), end.toDate()]
+    );
+    const purchases = purchasesRes.rows;
+    if (purchases.length === 0) {
+      return res.json({
+        consumed_qty: 0,
+        consumed_cost: 0,
+        wasted_qty: 0,
+        wasted_cost: 0,
+        total_cost: 0,
+        total_qty: 0,
+        unmarked_cost: 0,
+      });
+    }
+    const ids = purchases.map(p => p.id);
+
+    // Sums of logs per purchase for this user for those purchases
+    const logsRes = await pool.query(
+      `SELECT purchase_id,
+              SUM(CASE WHEN action='consumed' THEN quantity ELSE 0 END) AS consumed_qty,
+              SUM(CASE WHEN action='consumed' THEN COALESCE(cost_value,0) ELSE 0 END) AS consumed_cost,
+              SUM(CASE WHEN action='wasted' THEN quantity ELSE 0 END) AS wasted_qty,
+              SUM(CASE WHEN action='wasted' THEN COALESCE(cost_value,0) ELSE 0 END) AS wasted_cost
+       FROM consumption_logs
+       WHERE user_id = $1 AND purchase_id = ANY($2)
+       GROUP BY purchase_id`,
+      [user_id, ids]
+    );
+    const logMap = {};
+    logsRes.rows.forEach(r => { logMap[r.purchase_id] = r; });
+
+    let consumed_qty = 0, wasted_qty = 0, consumed_cost = 0, wasted_cost = 0, total_cost = 0, total_qty = 0, unmarked_cost = 0;
+    for (const p of purchases) {
+      const price = parseFloat(p.price || 0) || 0;
+      const qty = parseFloat(p.quantity || 0) || 0;
+      const unitCost = qty > 0 && price ? price / qty : 0;
+      total_cost += price;
+      total_qty += qty;
+      const sums = logMap[p.id] || { consumed_qty: 0, consumed_cost: 0, wasted_qty: 0, wasted_cost: 0 };
+      const cQty = parseFloat(sums.consumed_qty || 0) || 0;
+      const wQty = parseFloat(sums.wasted_qty || 0) || 0;
+      const remainingQty = Math.max(0, qty - cQty - wQty);
+      // Aggregate totals
+      consumed_qty += cQty;
+      wasted_qty += wQty;
+      consumed_cost += parseFloat(sums.consumed_cost || 0) || 0;
+      wasted_cost += parseFloat(sums.wasted_cost || 0) || 0;
+      // Compute unmarked cost per purchase to ensure purchases with no logs are counted
+      unmarked_cost += unitCost * remainingQty;
+    }
+
+    res.json({
+      consumed_qty,
+      consumed_cost,
+      wasted_qty,
+      wasted_cost,
+      total_cost,
+      total_qty,
+      unmarked_cost,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET consumption trends (percentage wasted over time)
+app.get("/consumption-trends", requireUserId, async (req, res) => {
+  const { user_id, period = 'week', count } = req.query;
+  try {
+    if (period !== 'day' && period !== 'week') {
+      return res.status(400).json({ error: "period must be 'day' or 'week'" });
+    }
+    const buckets = parseInt(count || (period === 'day' ? 30 : 12), 10);
+    const trunc = period === 'day' ? 'day' : 'week';
+    const step = period === 'day' ? '1 day' : '1 week';
+    const end = period === 'day' ? moment().endOf('day').toDate() : moment().endOf('week').toDate();
+    const start = period === 'day' ? moment(end).startOf('day').subtract(buckets - 1, 'days').toDate() : moment(end).startOf('week').subtract(buckets - 1, 'weeks').toDate();
+
+    // Build a full bucket series and left join aggregated totals based on purchase_date
+    const q = `
+      WITH buckets AS (
+        SELECT generate_series(date_trunc('${trunc}', $2::timestamp), date_trunc('${trunc}', $3::timestamp), interval '${step}') AS bucket
+      ), per AS (
+        SELECT date_trunc('${trunc}', p.purchase_date) AS bucket,
+               SUM(CASE WHEN cl.action='consumed' THEN cl.quantity ELSE 0 END) AS consumed_qty,
+               SUM(CASE WHEN cl.action='wasted' THEN cl.quantity ELSE 0 END) AS wasted_qty
+        FROM consumption_logs cl
+        JOIN purchases p ON p.id = cl.purchase_id
+        WHERE cl.user_id = $1 AND p.purchase_date BETWEEN $2 AND $3
+        GROUP BY 1
+      )
+      SELECT b.bucket,
+             COALESCE(per.consumed_qty, 0) AS consumed_qty,
+             COALESCE(per.wasted_qty, 0) AS wasted_qty
+      FROM buckets b
+      LEFT JOIN per ON per.bucket = b.bucket
+      ORDER BY b.bucket ASC
+    `;
+    const r = await pool.query(q, [user_id, start, end]);
+    const rows = r.rows.map(row => {
+      const consumed = parseFloat(row.consumed_qty || 0);
+      const wasted = parseFloat(row.wasted_qty || 0);
+      const total = consumed + wasted;
+      const percent_wasted = total > 0 ? (wasted / total) * 100.0 : 0;
+      return {
+        bucket: row.bucket,
+        consumed_qty: consumed,
+        wasted_qty: wasted,
+        percent_wasted,
+      };
+    });
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET waste by category (optionally bounded by purchase_date range)
+app.get("/consumption-by-category", requireUserId, async (req, res) => {
+  const { user_id, from, to } = req.query;
+  try {
+    let whereDates = "";
+    const params = [user_id];
+    let idx = 2;
+    if (from && to) {
+      const start = moment(from, [moment.ISO_8601, 'MM/DD/YYYY']).startOf('day').toDate();
+      const end = moment(to, [moment.ISO_8601, 'MM/DD/YYYY']).endOf('day').toDate();
+      whereDates = ` AND p.purchase_date BETWEEN $${idx++} AND $${idx++}`;
+      params.push(start, end);
+    } else if (from) {
+      const start = moment(from, [moment.ISO_8601, 'MM/DD/YYYY']).startOf('day').toDate();
+      whereDates = ` AND p.purchase_date >= $${idx++}`;
+      params.push(start);
+    } else if (to) {
+      const end = moment(to, [moment.ISO_8601, 'MM/DD/YYYY']).endOf('day').toDate();
+      whereDates = ` AND p.purchase_date <= $${idx++}`;
+      params.push(end);
+    }
+
+    const q = `
+      WITH purch AS (
+        SELECT COALESCE(p.category, 'Uncategorized') AS category,
+               SUM(p.price) AS total_cost,
+               SUM(p.quantity) AS total_qty
+        FROM purchases p
+        WHERE p.user_id = $1${whereDates}
+        GROUP BY 1
+      ), wasted AS (
+        SELECT COALESCE(p.category, 'Uncategorized') AS category,
+               SUM(CASE WHEN cl.action='wasted' THEN cl.quantity ELSE 0 END) AS wasted_qty,
+               SUM(CASE WHEN cl.action='wasted' THEN COALESCE(cl.cost_value,0) ELSE 0 END) AS wasted_cost
+        FROM consumption_logs cl
+        JOIN purchases p ON p.id = cl.purchase_id
+        WHERE cl.user_id = $1${whereDates}
+        GROUP BY 1
+      )
+      SELECT COALESCE(purch.category, wasted.category) AS category,
+             COALESCE(purch.total_cost, 0) AS total_cost,
+             COALESCE(purch.total_qty, 0) AS total_qty,
+             COALESCE(wasted.wasted_cost, 0) AS wasted_cost,
+             COALESCE(wasted.wasted_qty, 0) AS wasted_qty
+      FROM purch
+      FULL OUTER JOIN wasted ON wasted.category = purch.category
+      ORDER BY wasted_cost DESC, total_cost DESC
+    `;
+    const r = await pool.query(q, params);
+    res.json(r.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// List logs for a purchase
+app.get("/consumption-logs", requireUserId, async (req, res) => {
+  const { user_id, purchase_id } = req.query;
+  if (!purchase_id) {
+    return res.status(400).json({ error: "purchase_id is required" });
+  }
+  try {
+    const q = `SELECT id, action, quantity, quantity_type, percentage, cost_value, logged_at
+               FROM consumption_logs
+               WHERE user_id = $1 AND purchase_id = $2
+               ORDER BY logged_at DESC`;
+    const r = await pool.query(q, [user_id, purchase_id]);
+    res.json(r.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update a log (quantity/action/percentage)
+app.patch("/consumption-log/:id", requireUserId, async (req, res) => {
+  const { id } = req.params;
+  const { user_id } = req;
+  const { action, quantity, percentage } = req.body;
+
+  try {
+    // fetch log + purchase to recompute cost
+    const logRes = await pool.query(
+      `SELECT cl.id, cl.purchase_id, p.price, p.quantity AS purchase_qty, p.quantity_type
+       FROM consumption_logs cl
+       JOIN purchases p ON p.id = cl.purchase_id
+       WHERE cl.id = $1 AND cl.user_id = $2`,
+      [id, user_id]
+    );
+    if (logRes.rows.length === 0) return res.status(404).json({ error: "Log not found" });
+    const row = logRes.rows[0];
+    let qty = quantity;
+    if ((qty === undefined || qty === null) && percentage !== undefined) {
+      const base = parseFloat(row.purchase_qty) || 0;
+      qty = (parseFloat(percentage) * base) / 100.0;
+    }
+    const unitCost = (parseFloat(row.price) && parseFloat(row.purchase_qty)) ? (parseFloat(row.price) / parseFloat(row.purchase_qty)) : null;
+    const cost_value = unitCost !== null && !isNaN(unitCost) && qty != null ? unitCost * parseFloat(qty) : null;
+
+    const fields = [];
+    const params = [];
+    let idx = 1;
+    if (action) { fields.push(`action = $${idx++}`); params.push(action); }
+    if (qty !== undefined) { fields.push(`quantity = $${idx++}`); params.push(qty); }
+    if (percentage !== undefined) { fields.push(`percentage = $${idx++}`); params.push(percentage); }
+    if (cost_value !== null) { fields.push(`cost_value = $${idx++}`); params.push(cost_value); }
+    if (fields.length === 0) return res.status(400).json({ error: "No fields to update" });
+    params.push(id, user_id);
+    // Enforce remaining <= 100%: sum other logs + new qty <= purchase_qty
+    if (qty !== undefined) {
+      const sumOthers = await pool.query(
+        `SELECT COALESCE(SUM(quantity),0) AS total FROM consumption_logs WHERE user_id = $1 AND purchase_id = $2 AND id <> $3`,
+        [user_id, row.purchase_id, id]
+      );
+      const already = parseFloat(sumOthers.rows[0].total || 0);
+      const baseQty = parseFloat(row.purchase_qty) || 0;
+      if (already + parseFloat(qty) > baseQty + 1e-9) {
+        return res.status(400).json({ error: "Exceeds remaining quantity for this purchase", remaining: Math.max(0, baseQty - already) });
+      }
+    }
+
+    const q = `UPDATE consumption_logs SET ${fields.join(", ")} WHERE id = $${idx++} AND user_id = $${idx} RETURNING *`;
+    const u = await pool.query(q, params);
+    res.json(u.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete a log
+app.delete("/consumption-log/:id", requireUserId, async (req, res) => {
+  const { id } = req.params;
+  const { user_id } = req;
+  try {
+    const d = await pool.query(`DELETE FROM consumption_logs WHERE id = $1 AND user_id = $2`, [id, user_id]);
+    if (d.rowCount === 0) return res.status(404).json({ error: "Log not found" });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Auto-mark remaining quantities as wasted for a given week
+app.post("/consumption-log/auto-waste-week", requireUserId, async (req, res) => {
+  const { user_id, week_start } = req.body; // ISO date or MM/DD/YYYY
+  try {
+    const start = week_start ? moment(week_start).startOf('week') : moment().subtract(1, 'week').startOf('week');
+    const end = start.clone().endOf('week');
+
+    // purchases in week
+    const pQ = `SELECT id, quantity, quantity_type, price FROM purchases WHERE user_id = $1 AND purchase_date BETWEEN $2 AND $3`;
+    const pR = await pool.query(pQ, [user_id, start.toDate(), end.toDate()]);
+    if (pR.rows.length === 0) return res.json({ inserted: 0 });
+    const ids = pR.rows.map(r => r.id);
+
+    // existing totals per purchase
+    const sumQ = `
+      SELECT purchase_id,
+        SUM(CASE WHEN action='consumed' THEN quantity ELSE 0 END) AS consumed_qty,
+        SUM(CASE WHEN action='wasted' THEN quantity ELSE 0 END) AS wasted_qty
+      FROM consumption_logs
+      WHERE user_id = $1 AND purchase_id = ANY($2)
+      GROUP BY purchase_id
+    `;
+    const sumR = await pool.query(sumQ, [user_id, ids]);
+    const map = {};
+    sumR.rows.forEach(r => { map[r.purchase_id] = r; });
+
+    let inserted = 0;
+    for (const p of pR.rows) {
+      const totals = map[p.id] || { consumed_qty: 0, wasted_qty: 0 };
+      const base = parseFloat(p.quantity) || 0;
+      const remaining = base - parseFloat(totals.consumed_qty || 0) - parseFloat(totals.wasted_qty || 0);
+      if (remaining > 0.0001) {
+        const unitCost = (parseFloat(p.price) && base) ? (parseFloat(p.price) / base) : null;
+        const cost_value = unitCost !== null ? unitCost * remaining : null;
+        await pool.query(
+          `INSERT INTO consumption_logs (user_id, purchase_id, action, quantity, quantity_type, percentage, cost_value, logged_at)
+           VALUES ($1, $2, 'wasted', $3, $4, NULL, $5, $6)`,
+          [user_id, p.id, remaining, p.quantity_type, cost_value, p.purchase_date]
+        );
+        inserted++;
+      }
+    }
+    res.json({ inserted });
+  } catch (err) {
+    console.error("auto-waste-week error", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 // GET purchases weekly summary
 app.get("/purchases/weekly-summary", requireUserId, async (req, res) => {
@@ -173,8 +616,10 @@ app.get("/purchases/weekly-summary", requireUserId, async (req, res) => {
       p.quantity,
       p.price,
       p.purchase_date,
-      p.quantity_type
+      p.quantity_type,
+      f.emoji
     FROM purchases p
+    LEFT JOIN food_items f ON p.name = f.name AND f.user_id = -1
     WHERE p.user_id = $1
     ORDER BY p.purchase_date DESC
   `;
@@ -202,6 +647,7 @@ app.get("/purchases/weekly-summary", requireUserId, async (req, res) => {
         price: row.price,
         purchase_date: row.purchase_date,
         quantity_type: row.quantity_type,
+        emoji: row.emoji,
       });
     });
 
@@ -416,15 +862,30 @@ app.use((req, res) => {
 // Add this somewhere near the top or before seeding
 async function seedDefaultCategories() {
   try {
-    // Add all categories referenced in your food items, including "Seafood" and "Grains"
+    // Expanded set of major grocery categories
     const defaultCategories = [
       "Fruits",
-      "Bakery",
       "Vegetables",
+      "Bakery",
       "Dairy",
       "Meat",
       "Seafood",
-      "Grains"
+      "Grains",
+      "Canned Goods",
+      "Frozen",
+      "Beverages",
+      "Juice",
+      "Snacks",
+      "Condiments",
+      "Spices",
+      "Pantry",
+      "Deli",
+      "Prepared Foods",
+      "Breakfast",
+      "Sauces",
+      "Baking",
+      "Oils & Vinegars",
+      "Household"
     ];
 
     for (const category of defaultCategories) {
