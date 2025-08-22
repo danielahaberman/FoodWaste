@@ -1,6 +1,5 @@
 import React from 'react';
 import { Box, Button, Typography, Paper, Stack } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
 import HomeIcon from '@mui/icons-material/Home';
 
@@ -34,8 +33,6 @@ class ErrorBoundary extends React.Component {
 }
 
 function ErrorFallback() {
-  const navigate = useNavigate();
-  
   // Fun food-related error messages
   const errorMessages = [
     "Oops! Looks like the kitchen caught fire! 🔥",
@@ -54,9 +51,8 @@ function ErrorFallback() {
 
   const handleGoHome = () => {
     // Clear any stored error state and navigate home
-    navigate('/');
-    // Optionally reload the page to clear any stuck state
-    window.location.reload();
+    // Use window.location instead of navigate to avoid Router context issues
+    window.location.href = '/';
   };
 
   return (

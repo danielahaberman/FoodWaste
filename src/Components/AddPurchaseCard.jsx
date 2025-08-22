@@ -53,10 +53,11 @@ function AddPurchaseCard({ item, handleAddPurchase, setSelectedItem }) {
       variant="outlined"
       sx={{
         width: "100%",
-        maxWidth: 420,
+        maxWidth: "100vw",
         boxShadow: 2,
         borderRadius: 2,
-        p: 2,
+        boxSizing: "border-box",
+        // p: 2,
         mx: "auto",
       }}
     >

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Button, Checkbox, FormControlLabel, Typography, Box, Paper } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import PageLayout from "../PageLayout";
-import { getCurrentUserId, logout, getIntendedDestination } from "../../utils/authUtils";
+import { getCurrentUserId, logout, getIntendedDestination, clearIntendedDestination } from "../../utils/authUtils";
 
 function TermsAndConditions() {
   const [accepted, setAccepted] = useState(localStorage.getItem("termsAccepted") === "true");
@@ -31,13 +31,16 @@ function TermsAndConditions() {
   const handleAccept = () => {
     if (accepted) {
       localStorage.setItem("termsAccepted", "true");
+      // Prefer intended destination if present
+      const intendedDestination = getIntendedDestination();
+      if (intendedDestination) {
+        clearIntendedDestination();
+        navigate(intendedDestination);
+        return;
+      }
       // If user is logged in, go to home, otherwise go to landing
       const userId = localStorage.getItem("userId");
-      if (userId) {
-        navigate("/home");
-      } else {
-        navigate("/");
-      }
+      navigate(userId ? "/home" : "/");
     }
   };
 

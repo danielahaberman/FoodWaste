@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { foodPurchaseAPI, consumptionAPI } from "../../api";
+import moment from "moment";
 import {
   Box,
   Typography,
@@ -353,7 +354,7 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
             <ArrowBackIcon />
           </IconButton>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            {activeWeekOf ? `Week of ${activeWeekOf}` : 'Weekly Consumption Summary'}
+            {activeWeekOf ? `Week of ${activeWeekOf}` : 'Weekly Summary'}
           </Typography>
           {!activeWeekOf && (
             <Button color="inherit" onClick={() => setOverallOpen(true)}>Trends</Button>
@@ -367,7 +368,38 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
 
       {!activeWeekOf && (
         <Box sx={{ backgroundColor: 'grey.50', borderRadius: 2, p: 1, mb: 2 }}>
-      {weeklySummary.map((week) => (
+                {weeklySummary.map((week) => {
+            // Calculate completion status for this week
+            const ids = week.purchases.map(p => p.id);
+            let totalItems = 0;
+            let completedItems = 0;
+            let totalQuantity = 0;
+            let completedQuantity = 0;
+            
+            ids.forEach(id => {
+              const s = summaryMap[id] || {};
+              const purchase = week.purchases.find(p => p.id === id);
+              if (purchase) {
+                const baseQty = parseFloat(purchase.quantity) || 0;
+                const consumedQty = parseFloat(s.consumed_qty || 0);
+                const wastedQty = parseFloat(s.wasted_qty || 0);
+                const totalLogged = consumedQty + wastedQty;
+                
+                totalItems++;
+                totalQuantity += baseQty;
+                completedQuantity += totalLogged;
+                
+                if (totalLogged >= baseQty - 0.0001) { // Account for floating point precision
+                  completedItems++;
+                }
+              }
+            });
+            
+            const isCompleted = totalItems > 0 && completedItems === totalItems;
+            const isPastWeek = moment(week.weekOf, 'MM/DD/YYYY').isBefore(moment().startOf('week'));
+            const showCompletion = isCompleted && isPastWeek;
+            
+            return (
         <Paper
           key={week.weekOf}
           elevation={2}
@@ -375,21 +407,44 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
             mb: 2,
             p: 2,
             borderRadius: 2,
-            backgroundColor: "background.paper",
+            // backgroundColor: showCompletion ? "success.light" : "background.paper",
             cursor: 'pointer',
+            border: showCompletion ? 2 : 1,
+            borderColor: showCompletion ? "success.main" : "divider",
+            position: 'relative',
           }}
           onClick={() => openWeekDetails(week.weekOf)}
         >
           <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-          <Typography
-            variant="h6"
-            fontWeight={700}
-            color="var(--color-primary)"
-            gutterBottom
-            sx={{ borderBottom: 2, borderColor: "primary.main", pb: 0.5 }}
-          >
-            {week.weekOf}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography
+              variant="h6"
+              fontWeight={700}
+              color="var(--color-primary)"
+              gutterBottom
+              sx={{ borderBottom: 2, borderColor: "primary.main", pb: 0.5 }}
+            >
+              {week.weekOf}
+            </Typography>
+            {showCompletion && (
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 0.5,
+                backgroundColor: 'success.main',
+                color: 'white',
+                px: 1,
+                py: 0.25,
+                borderRadius: 1,
+                fontSize: '0.75rem',
+                fontWeight: 'bold',
+                whiteSpace:"nowrap",
+                position:"absolute", top:"-10px"
+              }}>
+                ✓ Complete
+              </Box>
+            )}
+          </Box>
             <Stack direction="row" spacing={0.5}>
               <Button size="small" variant="text" onClick={(e)=>{ e.stopPropagation(); if(onGoToDate) onGoToDate(week.weekOf); }}>
                 Go to week
@@ -434,7 +489,8 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
             })()}
           </Typography>
         </Paper>
-          ))}
+        );
+        })}
         </Box>
       )}
 
