@@ -26,7 +26,10 @@ import {
   ToggleButton,
   Menu,
   MenuItem,
+  Tabs,
+  Tab,
 } from "@mui/material";
+import SwipeableViews from 'react-swipeable-views';
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import RestaurantIcon from "@mui/icons-material/Restaurant";
@@ -95,7 +98,8 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
   const [overallChart, setOverallChart] = useState(null);
   const [overallTotals, setOverallTotals] = useState(null); // { consumed, wasted }
   const [overallOpen, setOverallOpen] = useState(false);
-  const [trendPeriod, setTrendPeriod] = useState('week'); // 'day' | 'week'
+  const [trendPeriod, setTrendPeriod] = useState('day'); // 'day' | 'week'
+  const [tabIndex, setTabIndex] = useState(0); // 0: overall pie, 1: trend, 2: by category
   const [activeWeekOf, setActiveWeekOf] = useState(null);
   const [byCategory, setByCategory] = useState([]);
   const [menuAnchor, setMenuAnchor] = useState(null);
@@ -303,6 +307,14 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
     await ensureWeekChart(weekOf, true);
   };
 
+  const markWeekAsConsumed = async (weekOf) => {
+    await consumptionAPI.autoConsumeWeek({ user_id: userId, week_start: weekOf });
+    await fetchWeeklyPurchaseSummary();
+    const m = await fetchBatchSummaries();
+    setSummaryMap(m);
+    await ensureWeekChart(weekOf, true);
+  };
+
   if (loading)
     return (
       <Box textAlign="center" py={4}>
@@ -335,7 +347,7 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
       
        }}>
       {/* Header Bar with Trends */}
-      <AppBar position="sticky" color="primary" sx={{ mb: 2 }}>
+      <AppBar position="sticky" color="primary" sx={{ mb: 2, bgcolor: 'var(--color-primary)' }}>
         <Toolbar>
           <IconButton edge="start" color="inherit" onClick={() => activeWeekOf ? setActiveWeekOf(null) : handleBack()} aria-label="back">
             <ArrowBackIcon />
@@ -372,7 +384,7 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
           <Typography
             variant="h6"
             fontWeight={700}
-            color="primary.main"
+            color="var(--color-primary)"
             gutterBottom
             sx={{ borderBottom: 2, borderColor: "primary.main", pb: 0.5 }}
           >
@@ -388,6 +400,7 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
             </Stack>
           </Stack>
           <Menu anchorEl={menuAnchor} open={openMenu} onClose={handleMenuClose} onClick={(e)=>e.stopPropagation()}>
+            <MenuItem onClick={() => { handleMenuClose(); markWeekAsConsumed(week.weekOf); }}>Mark remaining as consumed</MenuItem>
             <MenuItem onClick={() => { handleMenuClose(); markWeekAsWasted(week.weekOf); }}>Mark remaining as wasted</MenuItem>
           </Menu>
           {/* Summary line with icons */}
@@ -641,143 +654,166 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
 					</IconButton>
 				</Toolbar>
 			</AppBar>
-			<DialogContent>
-          <Stack spacing={2}>
-            {overallChart && (
-              <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <Box sx={{ maxWidth: 240, width: '100%' }}>
-                  <Typography variant="subtitle2" sx={{ textAlign: "center", mb: 1 }}>All-time: $ Consumed vs $ Wasted</Typography>
-                  <Pie data={overallChart} options={{ responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } } }} />
-                </Box>
-                {overallTotals && (
-                  <Stack spacing={0.25} sx={{ mt: 1, alignItems: 'center' }}>
-                    <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <Box sx={{ width: 10, height: 10, bgcolor: '#4caf50', borderRadius: '50%' }} /> Consumed: {formatMoney(overallTotals.consumed)}
-                    </Typography>
-                    <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <Box sx={{ width: 10, height: 10, bgcolor: '#ef5350', borderRadius: '50%' }} /> Wasted: {formatMoney(overallTotals.wasted)}
-                    </Typography>
-                  </Stack>
-                )}
-              </Box>
-            )}
-            <ToggleButtonGroup
-              value={trendPeriod}
-              exclusive
-              onChange={(_, v) => v && setTrendPeriod(v)}
-              color="primary"
-              size="small"
-              sx={{ alignSelf: 'center' }}
-            >
-              <ToggleButton value="day">By Day</ToggleButton>
-              <ToggleButton value="week">By Week</ToggleButton>
-            </ToggleButtonGroup>
-            {trendData && (
-              <Box sx={{ maxWidth: 700, mx: "auto" }}>
-                <Typography variant="subtitle2" sx={{ textAlign: "center", mb: 1 }}>Trend: % Wasted ({trendPeriod})</Typography>
-                <Line data={trendData} options={{ scales: { y: { min: 0, max: 100, ticks: { callback: (v) => v + '%' } } } }} />
-              </Box>
-            )}
+			<Box sx={{ display:'flex', flexDirection:'column', height:'100vh' }}>
+				<Tabs value={tabIndex} onChange={(_, v)=>setTabIndex(v)} variant="fullWidth">
+					<Tab label="Overall" />
+					<Tab label="Trend" />
+					<Tab label="Category" />
+				</Tabs>
+				<Box sx={{ flex:1, overflow:'hidden' }}>
+					<SwipeableViews index={tabIndex} onChangeIndex={setTabIndex} style={{ height:'100%' }} containerStyle={{ height:'100%' }}>
+						{/* Overall Pie */}
+						<Box sx={{ height:'100%', overflow:'auto', p:2 }}>
+							<Stack spacing={2}>
+								{overallChart && (
+									<Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+										<Box sx={{ maxWidth: 240, width: '100%' }}>
+											<Typography variant="subtitle2" sx={{ textAlign: "center", mb: 1 }}>All-time: $ Consumed vs $ Wasted</Typography>
+											<Pie data={overallChart} options={{ responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } } }} />
+										</Box>
+										{overallTotals && (
+											<Stack spacing={0.25} sx={{ mt: 1, alignItems: 'center' }}>
+												<Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+													<Box sx={{ width: 10, height: 10, bgcolor: '#4caf50', borderRadius: '50%' }} /> Consumed: {formatMoney(overallTotals.consumed)}
+												</Typography>
+												<Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+													<Box sx={{ width: 10, height: 10, bgcolor: '#ef5350', borderRadius: '50%' }} /> Wasted: {formatMoney(overallTotals.wasted)}
+												</Typography>
+											</Stack>
+										)}
+									</Box>
+								)}
+							</Stack>
+						</Box>
 
-            {/* Waste by Category (last 30 days) */}
-            {byCategory.length > 0 && (
-              <Box sx={{ maxWidth: 700, mx: "auto" }}>
-                <Typography variant="subtitle2" sx={{ textAlign: "center", mb: 1 }}>Waste by Category (last 30 days)</Typography>
-                <List dense>
-                  {byCategory.map((row) => (
-                    <ListItem key={row.category} sx={{ py: 0.5 }}>
-                      <ListItemText
-                        primary={
-                          <Box sx={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:1 }}>
-                            <Typography variant="body2">{row.category}</Typography>
-                            <Typography variant="body2" sx={{ fontWeight: 600 }}>{formatMoney(row.wasted_cost || 0)}</Typography>
-                          </Box>
-                        }
-                        secondary={
-                          <Box sx={{ mt: 0.5, height: 6, backgroundColor:'grey.200', borderRadius: 3 }}>
-                            {(() => {
-                              const max = Math.max(...byCategory.map(c => parseFloat(c.wasted_cost || 0)));
-                              const pct = max > 0 ? (parseFloat(row.wasted_cost || 0) / max) * 100 : 0;
-                              return <Box sx={{ width: `${pct}%`, height: '100%', backgroundColor: '#ef5350', borderRadius: 3 }} />;
-                            })()}
-                          </Box>
-                        }
+						{/* Trend Line */}
+						<Box sx={{ height:'100%', overflow:'auto', p:2 }}>
+							<Stack spacing={2}>
+								<ToggleButtonGroup
+									value={trendPeriod}
+									exclusive
+									onChange={(_, v) => v && setTrendPeriod(v)}
+									color="primary"
+									size="small"
+									sx={{ alignSelf: 'center' }}
+								>
+									<ToggleButton value="day">By Day</ToggleButton>
+									<ToggleButton value="week">By Week</ToggleButton>
+								</ToggleButtonGroup>
+								{trendData && (
+									<Box sx={{ maxWidth: 700, mx: "auto" }}>
+										<Typography variant="subtitle2" sx={{ textAlign: "center", mb: 1 }}>Trend: % Wasted ({trendPeriod})</Typography>
+										<Line data={trendData} options={{ scales: { y: { min: 0, max: 100, ticks: { callback: (v) => v + '%' } } } }} />
+									</Box>
+								)}
+							</Stack>
+						</Box>
+
+                        {/* By Category */}
+                        <Box sx={{ height:'100%', overflow:'auto', p:2 }}>
+                            <Stack spacing={2}>
+                                {(() => {
+                                  const filtered = (byCategory || []).filter(r => parseFloat(r.wasted_cost || 0) > 0);
+                                  if (filtered.length === 0) {
+                                    return (
+                                      <Typography variant="body2" sx={{ textAlign:'center', color:'text.secondary' }}>
+                                        No category waste data yet.
+                                      </Typography>
+                                    );
+                                  }
+                                  const maxWaste = Math.max(...filtered.map(c => parseFloat(c.wasted_cost || 0)));
+                                  return (
+                                    <>
+                                      <Box sx={{ maxWidth: 700, mx: "auto" }}>
+                                        <Typography variant="subtitle2" sx={{ textAlign: "center", mb: 1 }}>Waste by Category (All time)</Typography>
+                                        <List dense>
+                                          {filtered.map((row) => (
+                                            <ListItem key={row.category} sx={{ py: 0.5 }}>
+                                              <ListItemText
+                                                primary={
+                                                  <Box sx={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:1 }}>
+                                                    <Typography variant="body2">{row.category}</Typography>
+                                                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{formatMoney(row.wasted_cost || 0)}</Typography>
+                                                  </Box>
+                                                }
+                                                secondary={
+                                                  <Box sx={{ mt: 0.5, height: 6, backgroundColor:'grey.200', borderRadius: 3 }}>
+                                                    <Box sx={{ width: `${maxWaste > 0 ? (parseFloat(row.wasted_cost || 0) / maxWaste) * 100 : 0}%`, height: '100%', backgroundColor: '#ef5350', borderRadius: 3 }} />
+                                                  </Box>
+                                                }
                 />
               </ListItem>
             ))}
           </List>
+                                      </Box>
+                                      {/* Suggestions based on top wasted categories (all time) */}
+                                      <Box sx={{ maxWidth: 700, mx: 'auto' }}>
+                                        <Typography variant="subtitle2" sx={{ mb: 1, textAlign:'center' }}>Suggestions to reduce waste</Typography>
+                                        {(() => {
+                                          const tips = [];
+                                          const ranked = [...filtered]
+                                            .sort((a,b) => (parseFloat(b.wasted_cost||0) - parseFloat(a.wasted_cost||0)))
+                                            .slice(0, 2);
+                                          const topSet = new Set(ranked.map(r => String(r.category || 'Uncategorized')));
+                                          const addTip = (cat, text) => { if (topSet.has(cat)) tips.push({ cat, text }); };
 
-                {/* Suggestions based on user's data and known categories */}
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="subtitle2" sx={{ mb: 1, textAlign:'center' }}>Suggestions to reduce waste</Typography>
-                  {(() => {
-                    const tips = [];
-                    const ranked = [...byCategory]
-                      .filter(r => parseFloat(r.wasted_cost || 0) > 0)
-                      .sort((a,b) => (parseFloat(b.wasted_cost||0) - parseFloat(a.wasted_cost||0)))
-                      .slice(0, 2);
-                    const topSet = new Set(ranked.map(r => String(r.category || 'Uncategorized')));
-                    const addTip = (cat, text) => { if (topSet.has(cat)) tips.push({ cat, text }); };
+                                          ranked.forEach(row => {
+                                            const cat = String(row.category || 'Uncategorized');
+                                            const totalCost = parseFloat(row.total_cost || 0);
+                                            const wastedCost = parseFloat(row.wasted_cost || 0);
+                                            const wastedPct = totalCost > 0 ? (wastedCost / totalCost) * 100 : 0;
+                                            if (wastedPct >= 25) {
+                                              addTip(cat, `~${wastedPct.toFixed(0)}% of your ${cat.toLowerCase()} spend is wasted. Buy smaller portions, plan servings precisely, or split bulk packs.`);
+                                            } else if (wastedCost >= 10) {
+                                              addTip(cat, `You’ve wasted about ${formatMoney(wastedCost)} on ${cat.toLowerCase()}. Front‑load recipes to use these within 2–3 days.`);
+                                            } else {
+                                              addTip(cat, `Some ${cat.toLowerCase()} are still going unused. Try a “use‑it‑first” bin in the fridge for soon‑to‑expire items.`);
+                                            }
+                                          });
 
-                    ranked.forEach(row => {
-                      const cat = String(row.category || 'Uncategorized');
-                      const totalCost = parseFloat(row.total_cost || 0);
-                      const wastedCost = parseFloat(row.wasted_cost || 0);
-                      const wastedPct = totalCost > 0 ? (wastedCost / totalCost) * 100 : 0;
-                      if (wastedPct >= 25) {
-                        addTip(cat, `~${wastedPct.toFixed(0)}% of your ${cat.toLowerCase()} spend is wasted. Buy smaller portions, plan servings precisely, or split bulk packs.`);
-                      } else if (wastedCost >= 10) {
-                        addTip(cat, `You’ve wasted about ${formatMoney(wastedCost)} on ${cat.toLowerCase()} in the last 30 days. Front‑load recipes to use these within 2–3 days.`);
-                      } else {
-                        addTip(cat, `Some ${cat.toLowerCase()} are still going unused. Try a “use‑it‑first” bin in the fridge for soon‑to‑expire items.`);
-                      }
-                    });
+                                          const catTips = {
+                                            Bakery: 'Slice and freeze bread; toast from frozen. Keep in breathable bags to slow mold.',
+                                            Vegetables: 'Store leafy greens with paper towels in airtight containers; roast extra veg mid‑week.',
+                                            Fruits: 'Separate ethylene producers (bananas, apples) from berries; freeze ripe fruit for smoothies.',
+                                            Dairy: 'Buy smaller milk/yogurt sizes; use near‑expiring dairy in sauces or bakes.',
+                                            Meat: 'Portion and freeze on purchase day; defrost only what you will cook.',
+                                            Seafood: 'Plan seafood for the day of purchase; freeze extras immediately.',
+                                            Grains: 'Cook grains in batches and freeze portions; repurpose leftovers into bowls or salads.',
+                                          };
+                                          ranked.forEach(row => {
+                                            const cat = String(row.category || 'Uncategorized');
+                                            if (catTips[cat]) addTip(cat, catTips[cat]);
+                                          });
 
-                    const catTips = {
-                      Bakery: 'Slice and freeze bread; toast from frozen. Keep in breathable bags to slow mold.',
-                      Vegetables: 'Store leafy greens with paper towels in airtight containers; roast extra veg mid‑week.',
-                      Fruits: 'Separate ethylene producers (bananas, apples) from berries; freeze ripe fruit for smoothies.',
-                      Dairy: 'Buy smaller milk/yogurt sizes; use near‑expiring dairy in sauces or bakes.',
-                      Meat: 'Portion and freeze on purchase day; defrost only what you will cook.',
-                      Seafood: 'Plan seafood for the day of purchase; freeze extras immediately.',
-                      Grains: 'Cook grains in batches and freeze portions; repurpose leftovers into bowls or salads.',
-                    };
-                    ranked.forEach(row => {
-                      const cat = String(row.category || 'Uncategorized');
-                      if (catTips[cat]) addTip(cat, catTips[cat]);
-                    });
-
-                    if (tips.length === 0) {
-                      return (
-                        <Typography variant="body2" sx={{ color:'text.secondary', textAlign:'center' }}>
-                          No suggestions yet. Log more items to personalize tips.
-                        </Typography>
-                      );
-                    }
-                    return (
-                      <List dense>
-                        {tips.map((t, i) => (
-                          <ListItem key={`${t.cat}-${i}`} sx={{ py: 0.5 }}>
-                            <ListItemText
-                              primary={<Typography variant="body2"><strong>{t.cat}:</strong> {t.text}</Typography>}
-                            />
-                          </ListItem>
-                        ))}
-                      </List>
-                    );
-                  })()}
-                </Box>
-              </Box>
-            )}
-
-            {byCategory.length === 0 && (
-              <Typography variant="body2" sx={{ textAlign:'center', color:'text.secondary' }}>
-                No category waste data yet.
-              </Typography>
-            )}
-          </Stack>
-			</DialogContent>
-      </Dialog>
+                                          if (tips.length === 0) {
+                                            return (
+                                              <Typography variant="body2" sx={{ color:'text.secondary', textAlign:'center' }}>
+                                                No suggestions yet. Log more items to personalize tips.
+                                              </Typography>
+                                            );
+                                          }
+                                          return (
+                                            <List dense>
+                                              {tips.map((t, i) => (
+                                                <ListItem key={`${t.cat}-${i}`} sx={{ py: 0.5 }}>
+                                                  <ListItemText
+                                                    primary={<Typography variant="body2"><strong>{t.cat}:</strong> {t.text}</Typography>}
+                                                  />
+                                                </ListItem>
+                                              ))}
+                                            </List>
+                                          );
+                                        })()}
+                                      </Box>
+                                    </>
+                                  );
+                                })()}
+                            </Stack>
+                        </Box>
+					</SwipeableViews>
+				</Box>
+			</Box>
+		</Dialog>
     </Box>
   );
 }

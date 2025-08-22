@@ -49,7 +49,7 @@ function TermsAndConditions() {
   };
 
   return (
-    <PageLayout backgroundColor="#f7fafc">
+    <PageLayout backgroundColor="var(--color-muted)">
       <Box
         sx={{
           display: "flex",
@@ -66,7 +66,7 @@ function TermsAndConditions() {
             maxWidth: "640px",
             width: "100%",
             padding: "24px",
-            backgroundColor: "#ffffff",
+            backgroundColor: "var(--color-surface)",
             borderRadius: "12px",
           }}
         >
@@ -76,7 +76,7 @@ function TermsAndConditions() {
             sx={{
               textAlign: "center",
               fontWeight: "bold",
-              color: "#111827",
+              color: "var(--color-text)",
               marginBottom: "16px",
             }}
           >
@@ -87,7 +87,7 @@ function TermsAndConditions() {
             sx={{
               maxHeight: "400px",
               overflowY: "auto",
-              backgroundColor: "#ffffff",
+              backgroundColor: "var(--color-surface)",
               padding: "16px",
               borderRadius: "8px",
               marginBottom: "16px",
@@ -145,9 +145,9 @@ function TermsAndConditions() {
                 checked={accepted}
                 onChange={(e) => setAccepted(e.target.checked)}
                 sx={{
-                  color: "#059669",
+                  color: "var(--color-success)",
                   "&.Mui-checked": {
-                    color: "#059669",
+                    color: "var(--color-success)",
                   },
                 }}
               />
@@ -168,14 +168,14 @@ function TermsAndConditions() {
                   onClick={handleAccept}
                   disabled={!accepted}
                   sx={{
-                    backgroundColor: "#059669",
-                    color: "#ffffff",
+                    backgroundColor: "var(--color-success)",
+                    color: "var(--color-primary-contrast)",
                     "&:disabled": {
                       backgroundColor: "#e5e7eb",
                       color: "#9ca3af",
                     },
                     "&:hover": {
-                      backgroundColor: "#047857",
+                      backgroundColor: "#2e7d32",
                     },
                   }}
                 >
@@ -186,7 +186,7 @@ function TermsAndConditions() {
                   onClick={handleDecline}
                   sx={{
                     borderColor: "#6b7280",
-                    color: "#374151",
+                    color: "var(--color-text)",
                     "&:hover": {
                       borderColor: "#374151",
                       backgroundColor: "#f3f4f6",
@@ -201,10 +201,10 @@ function TermsAndConditions() {
                 variant="contained"
                 onClick={handleBackToApp}
                 sx={{
-                  backgroundColor: "#059669",
-                  color: "#ffffff",
+                  backgroundColor: "var(--color-primary)",
+                  color: "var(--color-primary-contrast)",
                   "&:hover": {
-                    backgroundColor: "#047857",
+                    backgroundColor: "#1565c0",
                   },
                 }}
               >

@@ -32,10 +32,10 @@ function BottomBar({ setShowConsumeWaste, setLoggingPurchase, setShowSurvey }) {
         boxSizing: "border-box",
         position: "fixed",
         bottom: 0,
-        left: 0,
-        right: 0,
+        left: "50%",
+        transform: "translateX(-50%)",
         maxWidth: "600px",
-        mx: "auto",
+        width: "100%",
         px: 1.5,
         pt: 0.5,
         pb: `calc(8px + env(safe-area-inset-bottom))`,
@@ -44,9 +44,9 @@ function BottomBar({ setShowConsumeWaste, setLoggingPurchase, setShowSurvey }) {
         alignItems: "center",
         height: 68,
         backdropFilter: "blur(10px)",
-        backgroundColor: "rgba(255, 255, 255, 0.85)",
+        backgroundColor: "rgba(255, 255, 255, 0.9)",
         borderTop: 1,
-        borderColor: "divider",
+        borderColor: "#e0e0e0",
         boxShadow: "0 -6px 18px rgba(0,0,0,0.08)",
         zIndex: 5,
       }}
@@ -62,7 +62,6 @@ function BottomBar({ setShowConsumeWaste, setLoggingPurchase, setShowSurvey }) {
         onClick={() => setShowConsumeWaste(true)}
         color="primary.main"
       />
-
 
       <NavItem
         icon={<AssignmentIcon />}

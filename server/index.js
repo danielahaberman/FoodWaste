@@ -1,4 +1,16 @@
 // @ts-nocheck
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env files in order of precedence (development local overrides first)
+dotenv.config({ path: path.join(__dirname, '.env.development.local') });
+dotenv.config({ path: path.join(__dirname, '.env.local') });
+dotenv.config({ path: path.join(__dirname, '.env') });
+
 import express from "express";
 import cors from "cors";
 
@@ -74,6 +86,13 @@ app.delete("/purchase/:id", requireUserId, async (req, res) => {
   const userId = req.user_id;
 
   try {
+    // First remove any consumption/waste logs tied to this purchase for this user
+    await pool.query(
+      `DELETE FROM consumption_logs WHERE purchase_id = $1 AND user_id = $2`,
+      [purchaseId, userId]
+    );
+
+    // Then delete the purchase itself
     const result = await pool.query(
       `DELETE FROM purchases WHERE id = $1 AND user_id = $2`,
       [purchaseId, userId]
@@ -599,6 +618,55 @@ app.post("/consumption-log/auto-waste-week", requireUserId, async (req, res) => 
     res.json({ inserted });
   } catch (err) {
     console.error("auto-waste-week error", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Auto-mark remaining quantities as consumed for a given week
+app.post("/consumption-log/auto-consume-week", requireUserId, async (req, res) => {
+  const { user_id, week_start } = req.body; // ISO date or MM/DD/YYYY
+  try {
+    const start = week_start ? moment(week_start).startOf('week') : moment().subtract(1, 'week').startOf('week');
+    const end = start.clone().endOf('week');
+
+    // purchases in week
+    const pQ = `SELECT id, quantity, quantity_type, price FROM purchases WHERE user_id = $1 AND purchase_date BETWEEN $2 AND $3`;
+    const pR = await pool.query(pQ, [user_id, start.toDate(), end.toDate()]);
+    if (pR.rows.length === 0) return res.json({ inserted: 0 });
+    const ids = pR.rows.map(r => r.id);
+
+    // existing totals per purchase
+    const sumQ = `
+      SELECT purchase_id,
+        SUM(CASE WHEN action='consumed' THEN quantity ELSE 0 END) AS consumed_qty,
+        SUM(CASE WHEN action='wasted' THEN quantity ELSE 0 END) AS wasted_qty
+      FROM consumption_logs
+      WHERE user_id = $1 AND purchase_id = ANY($2)
+      GROUP BY purchase_id
+    `;
+    const sumR = await pool.query(sumQ, [user_id, ids]);
+    const map = {};
+    sumR.rows.forEach(r => { map[r.purchase_id] = r; });
+
+    let inserted = 0;
+    for (const p of pR.rows) {
+      const totals = map[p.id] || { consumed_qty: 0, wasted_qty: 0 };
+      const base = parseFloat(p.quantity) || 0;
+      const remaining = base - parseFloat(totals.consumed_qty || 0) - parseFloat(totals.wasted_qty || 0);
+      if (remaining > 0.0001) {
+        const unitCost = (parseFloat(p.price) && base) ? (parseFloat(p.price) / base) : null;
+        const cost_value = unitCost !== null ? unitCost * remaining : null;
+        await pool.query(
+          `INSERT INTO consumption_logs (user_id, purchase_id, action, quantity, quantity_type, percentage, cost_value, logged_at)
+           VALUES ($1, $2, 'consumed', $3, $4, NULL, $5, $6)`,
+          [user_id, p.id, remaining, p.quantity_type, cost_value, start.toDate()]
+        );
+        inserted++;
+      }
+    }
+    res.json({ inserted });
+  } catch (err) {
+    console.error("auto-consume-week error", err);
     res.status(500).json({ error: err.message });
   }
 });

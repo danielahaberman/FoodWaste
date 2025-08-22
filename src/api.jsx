@@ -58,6 +58,7 @@ export const consumptionAPI = {
   getSummary: (params) => api.get("/consumption-summary", { params }),
   getBatchSummary: (params) => api.get("/consumption-summary/batch", { params }),
   autoWasteWeek: (data) => api.post("/consumption-log/auto-waste-week", data),
+  autoConsumeWeek: (data) => api.post("/consumption-log/auto-consume-week", data),
   getOverall: (params) => api.get("/consumption-summary/overall", { params }),
   getWeek: (params) => api.get("/consumption-summary/week", { params }),
   getTrends: (params) => api.get("/consumption-trends", { params }),

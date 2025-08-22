@@ -1,6 +1,15 @@
 
 import dotenv from 'dotenv';
-dotenv.config();
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env files in order of precedence (development local overrides first)
+dotenv.config({ path: path.join(__dirname, '.env.development.local') });
+dotenv.config({ path: path.join(__dirname, '.env.local') });
+dotenv.config({ path: path.join(__dirname, '.env') });
 
 
 import pg from 'pg';

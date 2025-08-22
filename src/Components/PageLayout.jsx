@@ -1,17 +1,21 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-
-
-
 function PageLayout({children, backgroundColor = "white"}){
-
-
-
-    return(<div style={{maxWidth:"600px", width: "100%",  marginLeft:"auto", marginRight:"auto", position:"relative",
-            height: "100dvh", backgroundColor: backgroundColor}}>
+    return(
+        <div style={{
+            width: "100%", 
+            height: "100vh",
+            maxWidth: "600px",
+            margin: "0 auto",
+            position: "relative",
+            backgroundColor: backgroundColor,
+            overflow: "hidden",
+            boxSizing: "border-box"
+        }}>
             {children}
-            </div>)
+        </div>
+    )
 }
 
 export default PageLayout

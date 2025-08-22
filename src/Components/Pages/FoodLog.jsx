@@ -61,7 +61,7 @@ const deletePurchase = async (purchaseId) => {
 };
 
  
-
+ 
   useEffect(() => {
     fetchFoodPurchases();
   }, []);
@@ -71,17 +71,17 @@ const deletePurchase = async (purchaseId) => {
   );
 
   return (
-    <div>
+    <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <LocalizationProvider dateAdapter={AdapterDayjs}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
           <DateNavigator value={selectedDate} onChange={setSelectedDate} />
           <Button variant="contained" size="small" onClick={() => setLoggingPurchase(true)}>
             Add
           </Button>
-        </div>
+        </Box>
       </LocalizationProvider>
 
-      <div style={{ maxHeight: "80vh", overflow: "auto" }}>
+      <Box sx={{ flex: 1, overflow: "auto", pb: '88px' }}>
         {filteredPurchases.length > 0 ? (
           <FoodPurchaseList deletePurchase={deletePurchase} purchases={filteredPurchases} />
         ) : (
@@ -90,13 +90,10 @@ const deletePurchase = async (purchaseId) => {
             <Box component="span" sx={{ fontStyle: "italic" }}>No foods logged for this day yet.</Box>
           </Box>
         )}
-      </div>
+      </Box>
 
-      {/* Bottom bar with Add button */}
-     
-        <BottomBar setLoggingPurchase={setLoggingPurchase} setShowConsumeWaste={setShowConsumeWaste} setShowSurvey={setShowSurvey}/>
+      <BottomBar setLoggingPurchase={setLoggingPurchase} setShowConsumeWaste={setShowConsumeWaste} setShowSurvey={setShowSurvey}/>
 
-      {/* Modal-style Add Purchase UI */}
       {loggingPurchase && (
         <Paper
           style={{
@@ -133,7 +130,7 @@ const deletePurchase = async (purchaseId) => {
            }}
          />
        )}
-    </div>
+    </Box>
   );
 };
 
