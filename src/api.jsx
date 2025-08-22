@@ -27,6 +27,8 @@ api.interceptors.response.use(
 export const authAPI = {
   login: (credentials) => api.post("/auth/login", credentials),
   register: (userData) => api.post("/auth/register", userData),
+  acceptTerms: (userId) => api.post("/auth/accept-terms", { user_id: userId }),
+  getTermsStatus: (userId) => api.get(`/auth/terms-status/${userId}`),
 };
 
 // Food purchase endpoints
@@ -66,6 +68,21 @@ export const consumptionAPI = {
   getLogs: (params) => api.get("/consumption-logs", { params }),
   editLog: (id, data, params) => api.patch(`/consumption-log/${id}`, data, { params }),
   deleteLog: (id, params) => api.delete(`/consumption-log/${id}`, { params }),
+};
+
+// Admin Analytics endpoints
+export const adminAPI = {
+  getOverview: () => api.get("/admin/analytics/overview"),
+  getDemographics: () => api.get("/admin/analytics/demographics"),
+  getSurveyResponses: (stage) => api.get(`/admin/analytics/survey-responses${stage ? `?stage=${stage}` : ''}`),
+  getWastePatterns: () => api.get("/admin/analytics/waste-patterns"),
+  getPurchaseTrends: () => api.get("/admin/analytics/purchase-trends"),
+  
+  // Export endpoints
+  exportRawData: () => api.get("/admin/export/raw-data"),
+  exportSurveyResponses: (stage) => api.get(`/admin/export/survey-responses${stage ? `?stage=${stage}` : ''}`),
+  exportUserDemographics: () => api.get("/admin/export/user-demographics"),
+  exportWastePatterns: () => api.get("/admin/export/waste-patterns")
 };
 
 export default api;

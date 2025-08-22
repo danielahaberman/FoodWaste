@@ -23,18 +23,24 @@ function LoginPage() {
       setAuthenticated(response.data.user_id);
       
       // Check if terms have been accepted
-      const termsAccepted = localStorage.getItem("termsAccepted") === "true";
-      if (!termsAccepted) {
-        navigate("/terms");
-      } else {
-        // Check if there's a stored intended destination
-        const intendedDestination = getIntendedDestination();
-        if (intendedDestination) {
-          clearIntendedDestination();
-          navigate(intendedDestination);
+      try {
+        const termsResponse = await authAPI.getTermsStatus(response.data.user_id);
+        if (!termsResponse.data.termsAccepted) {
+          navigate("/terms");
         } else {
-          navigate("/home");
+          // Check if there's a stored intended destination
+          const intendedDestination = getIntendedDestination();
+          if (intendedDestination) {
+            clearIntendedDestination();
+            navigate(intendedDestination);
+          } else {
+            navigate("/home");
+          }
         }
+      } catch (error) {
+        console.error("Error checking terms status:", error);
+        // If we can't check terms status, proceed to home
+        navigate("/home");
       }
     } catch (err) {
       setError("Invalid credentials or server error");

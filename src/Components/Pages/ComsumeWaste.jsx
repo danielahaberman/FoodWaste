@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { foodPurchaseAPI, consumptionAPI } from "../../api";
-import moment from "moment";
+import moment from "moment-timezone";
 import {
   Box,
   Typography,
@@ -117,9 +117,9 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
 
   const formatNum = (n) => {
     const v = parseFloat(n || 0);
-    if (Number.isNaN(v)) return "0";
+    if (Number.isNaN(v)) return "0.00";
     const rounded = Math.round(v * 100) / 100;
-    return Math.abs(rounded - Math.round(rounded)) < 1e-9 ? String(Math.round(rounded)) : rounded.toFixed(2);
+    return rounded.toFixed(2);
   };
 
   const formatMoney = (n) => `$${formatNum(n)}`;
@@ -396,7 +396,7 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
             });
             
             const isCompleted = totalItems > 0 && completedItems === totalItems;
-            const isPastWeek = moment(week.weekOf, 'MM/DD/YYYY').isBefore(moment().startOf('week'));
+            const isPastWeek = moment.tz(week.weekOf, 'MM/DD/YYYY', 'America/New_York').isBefore(moment.tz('America/New_York').startOf('week'));
             const showCompletion = isCompleted && isPastWeek;
             
             return (

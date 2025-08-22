@@ -33,18 +33,18 @@ class ErrorBoundary extends React.Component {
 }
 
 function ErrorFallback() {
-  // Fun food-related error messages
+  // Fun food tracking app error messages
   const errorMessages = [
-    "Oops! Looks like the kitchen caught fire! 🔥",
-    "Something went wrong in the recipe! 🍳",
-    "The food delivery got lost! 🚚",
-    "The chef dropped the ingredients! 🥘",
-    "The oven malfunctioned! 🍕",
-    "The grocery list got mixed up! 🛒",
-    "The food processor had a meltdown! 🥄",
-    "The recipe book fell apart! 📖",
-    "The kitchen timer went haywire! ⏰",
-    "The food scale tipped over! ⚖️"
+    "There was a food fight in the server farm! 🍎",
+    "The grocery scanner went on vacation! 🛒",
+    "The food database had a midnight snack! 🍕",
+    "The calorie counter got tired of counting! 🔢",
+    "The meal planner took a lunch break! 📅",
+    "The nutrition tracker went to the gym! 💪",
+    "The food waste monitor fell asleep! 😴",
+    "The shopping list got lost in the produce aisle! 🥬",
+    "The recipe finder went foraging! 🍄",
+    "The meal prep scheduler overslept! ⏰"
   ];
 
   const randomMessage = errorMessages[Math.floor(Math.random() * errorMessages.length)];
@@ -85,7 +85,7 @@ function ErrorFallback() {
           />
           
           <Typography variant="h4" component="h1" color="error" gutterBottom>
-            Kitchen Disaster! 🚨
+            App Glitch! 🚨
           </Typography>
           
           <Typography variant="h6" color="text.secondary" gutterBottom>
@@ -93,7 +93,7 @@ function ErrorFallback() {
           </Typography>
           
           <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-            Don't worry, our chefs are working on fixing this recipe!
+            Don't worry, I'm working on fixing this issue!
           </Typography>
           
           <Button
@@ -110,7 +110,7 @@ function ErrorFallback() {
               py: 1.5
             }}
           >
-            Back to Kitchen
+            Back to Home
           </Button>
           
           <Typography variant="caption" color="text.secondary" sx={{ mt: 2 }}>

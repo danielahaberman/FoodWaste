@@ -15,6 +15,7 @@ import TermsAndConditions from './Components/Pages/TermsAndConditions';
 import TermsGuard from './Components/TermsGuard';
 import AuthGuard from './Components/AuthGuard';
 import ErrorBoundary from './Components/ErrorBoundary';
+import AdminDashboard from './Components/Pages/AdminDashboard';
 function App() {
   return (
     <ErrorBoundary>
@@ -34,6 +35,9 @@ function App() {
                 <Route path="/home" element={<FoodLog/>} />
                 <Route path="/survey" element={<QaPage />} />
               </Route>
+              
+              {/* Admin routes (no sidebar) */}
+              <Route path="/admin" element={<AdminDashboard />} />
             </Routes>
           </AuthGuard>
         </TermsGuard>

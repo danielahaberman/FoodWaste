@@ -14,13 +14,24 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 import express from "express";
 import cors from "cors";
 
+// Set timezone to US East Coast for all date operations
+process.env.TZ = 'America/New_York';
+
 import pool from "./db.js"; // Your pg Pool instance
 import authRoutes from "./authRoutes.js"; // Import auth routes
-import moment from "moment";
+import moment from "moment-timezone";
 import questions from "./SurveyQuestions.js";
 import foodItems from "./FoodItems.js";
 import query from "./TableQuery.js";
-const app = express();
+
+// Initialize database and start server
+async function startServer() {
+  try {
+    // Wait for database initialization to complete
+    console.log("Waiting for database initialization...");
+    await new Promise(resolve => setTimeout(resolve, 2000)); // Give migrations time to complete
+    
+    const app = express();
 app.use(express.json()); // <-- add this line
 app.use(cors({
   origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
@@ -40,6 +51,48 @@ function requireUserId(req, res, next) {
 }
 
 app.use("/auth", authRoutes);
+
+// Terms acceptance endpoints
+app.post("/auth/accept-terms", requireUserId, async (req, res) => {
+  const { user_id } = req.body;
+  const termsVersion = "1.0"; // You can make this dynamic based on your terms versioning
+  
+  try {
+    await pool.query(
+      "UPDATE users SET terms_accepted_at = CURRENT_TIMESTAMP, terms_accepted_version = $1 WHERE id = $2",
+      [termsVersion, user_id]
+    );
+    res.json({ message: "Terms accepted successfully" });
+  } catch (err) {
+    console.error("Error accepting terms:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/auth/terms-status/:userId", async (req, res) => {
+  const { userId } = req.params;
+  
+  try {
+    const result = await pool.query(
+      "SELECT terms_accepted_at, terms_accepted_version FROM users WHERE id = $1",
+      [userId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    
+    const user = result.rows[0];
+    res.json({
+      termsAccepted: !!user.terms_accepted_at,
+      acceptedAt: user.terms_accepted_at,
+      version: user.terms_accepted_version
+    });
+  } catch (err) {
+    console.error("Error checking terms status:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // GET quantity-types
 app.get("/quantity-types", async (req, res) => {
@@ -65,8 +118,8 @@ app.get("/food-categories", async (req, res) => {
 app.post("/purchase", requireUserId, async (req, res) => {
 const { user_id, name, category, category_id, price, quantity, quantity_type, purchase_date } = req.body;
 
-// Convert purchase_date to local time and truncate to just date part
-const localDate = moment(purchase_date).local().startOf('day').toDate();
+// Convert purchase_date to US East Coast timezone and truncate to just date part
+const localDate = moment.tz(purchase_date, 'America/New_York').startOf('day').toDate();
 
 const query = `
   INSERT INTO purchases (user_id, name, category, category_id, price, quantity, quantity_type, purchase_date)
@@ -309,7 +362,7 @@ app.get("/consumption-summary/overall", requireUserId, async (req, res) => {
 app.get("/consumption-summary/week", requireUserId, async (req, res) => {
   const { user_id, week_start } = req.query;
   try {
-    const start = week_start ? moment(week_start, ['MM/DD/YYYY', moment.ISO_8601]).startOf('week') : moment().startOf('week');
+    const start = week_start ? moment.tz(week_start, 'America/New_York').startOf('week') : moment.tz('America/New_York').startOf('week');
     const end = start.clone().endOf('week');
 
     // Pull purchases for the week
@@ -390,8 +443,8 @@ app.get("/consumption-trends", requireUserId, async (req, res) => {
     const buckets = parseInt(count || (period === 'day' ? 30 : 12), 10);
     const trunc = period === 'day' ? 'day' : 'week';
     const step = period === 'day' ? '1 day' : '1 week';
-    const end = period === 'day' ? moment().endOf('day').toDate() : moment().endOf('week').toDate();
-    const start = period === 'day' ? moment(end).startOf('day').subtract(buckets - 1, 'days').toDate() : moment(end).startOf('week').subtract(buckets - 1, 'weeks').toDate();
+    const end = period === 'day' ? moment.tz('America/New_York').endOf('day').toDate() : moment.tz('America/New_York').endOf('week').toDate();
+    const start = period === 'day' ? moment.tz(end, 'America/New_York').startOf('day').subtract(buckets - 1, 'days').toDate() : moment.tz(end, 'America/New_York').startOf('week').subtract(buckets - 1, 'weeks').toDate();
 
     // Build a full bucket series and left join aggregated totals based on purchase_date
     const q = `
@@ -440,16 +493,16 @@ app.get("/consumption-by-category", requireUserId, async (req, res) => {
     const params = [user_id];
     let idx = 2;
     if (from && to) {
-      const start = moment(from, [moment.ISO_8601, 'MM/DD/YYYY']).startOf('day').toDate();
-      const end = moment(to, [moment.ISO_8601, 'MM/DD/YYYY']).endOf('day').toDate();
+      const start = moment.tz(from, 'America/New_York').startOf('day').toDate();
+      const end = moment.tz(to, 'America/New_York').endOf('day').toDate();
       whereDates = ` AND p.purchase_date BETWEEN $${idx++} AND $${idx++}`;
       params.push(start, end);
     } else if (from) {
-      const start = moment(from, [moment.ISO_8601, 'MM/DD/YYYY']).startOf('day').toDate();
+      const start = moment.tz(from, 'America/New_York').startOf('day').toDate();
       whereDates = ` AND p.purchase_date >= $${idx++}`;
       params.push(start);
     } else if (to) {
-      const end = moment(to, [moment.ISO_8601, 'MM/DD/YYYY']).endOf('day').toDate();
+      const end = moment.tz(to, 'America/New_York').endOf('day').toDate();
       whereDates = ` AND p.purchase_date <= $${idx++}`;
       params.push(end);
     }
@@ -577,7 +630,7 @@ app.delete("/consumption-log/:id", requireUserId, async (req, res) => {
 app.post("/consumption-log/auto-waste-week", requireUserId, async (req, res) => {
   const { user_id, week_start } = req.body; // ISO date or MM/DD/YYYY
   try {
-    const start = week_start ? moment(week_start).startOf('week') : moment().subtract(1, 'week').startOf('week');
+    const start = week_start ? moment.tz(week_start, 'America/New_York').startOf('week') : moment.tz('America/New_York').subtract(1, 'week').startOf('week');
     const end = start.clone().endOf('week');
 
     // purchases in week
@@ -626,7 +679,7 @@ app.post("/consumption-log/auto-waste-week", requireUserId, async (req, res) => 
 app.post("/consumption-log/auto-consume-week", requireUserId, async (req, res) => {
   const { user_id, week_start } = req.body; // ISO date or MM/DD/YYYY
   try {
-    const start = week_start ? moment(week_start).startOf('week') : moment().subtract(1, 'week').startOf('week');
+    const start = week_start ? moment.tz(week_start, 'America/New_York').startOf('week') : moment.tz('America/New_York').subtract(1, 'week').startOf('week');
     const end = start.clone().endOf('week');
 
     // purchases in week
@@ -698,7 +751,7 @@ app.get("/purchases/weekly-summary", requireUserId, async (req, res) => {
     const grouped = {};
 
     rows.forEach(row => {
-      const weekStart = moment(row.purchase_date).startOf('week').format('MM/DD/YYYY');
+      const weekStart = moment.tz(row.purchase_date, 'America/New_York').startOf('week').format('MM/DD/YYYY');
 
       if (!grouped[weekStart]) {
         grouped[weekStart] = {
@@ -720,7 +773,7 @@ app.get("/purchases/weekly-summary", requireUserId, async (req, res) => {
     });
 
     const sortedKeys = Object.keys(grouped).sort((a, b) => {
-      return moment(a, 'MM/DD/YYYY').toDate() - moment(b, 'MM/DD/YYYY').toDate();
+      return moment.tz(a, 'MM/DD/YYYY', 'America/New_York').toDate() - moment.tz(b, 'MM/DD/YYYY', 'America/New_York').toDate();
     });
 
     const result = sortedKeys.map(key => grouped[key]);
@@ -845,6 +898,38 @@ app.post("/survey-response", async (req, res) => {
 
   try {
     const result = await pool.query(query, [userId, questionId, response]);
+    
+    // Check if this completes a survey stage and update user's completion status
+    const checkCompletionQuery = `
+      SELECT 
+        sq.stage,
+        COUNT(DISTINCT sq.id) as total_questions,
+        COUNT(DISTINCT sr.question_id) as answered_questions
+      FROM survey_questions sq
+      LEFT JOIN survey_responses sr ON sq.id = sr.question_id AND sr.user_id = $1
+      WHERE sq.stage IN ('initial', 'final')
+      GROUP BY sq.stage
+    `;
+    
+    const completionResult = await pool.query(checkCompletionQuery, [userId]);
+    
+    for (const row of completionResult.rows) {
+      if (row.total_questions === row.answered_questions) {
+        // User completed this survey stage
+        if (row.stage === 'initial') {
+          await pool.query(
+            "UPDATE users SET initial_survey_completed_at = CURRENT_TIMESTAMP WHERE id = $1",
+            [userId]
+          );
+        } else if (row.stage === 'final') {
+          await pool.query(
+            "UPDATE users SET final_survey_completed_at = CURRENT_TIMESTAMP WHERE id = $1",
+            [userId]
+          );
+        }
+      }
+    }
+    
     res.status(200).json({ message: "Response saved", responseId: result.rows[0].id });
   } catch (e) {
     res.status(500).json({ error: e });
@@ -916,6 +1001,439 @@ app.delete("/food-items/:id", requireUserId, async (req, res) => {
     }
     res.status(200).json({ message: "Food item deleted successfully" });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin Analytics Endpoints
+
+// GET admin analytics overview
+app.get("/admin/analytics/overview", async (req, res) => {
+  try {
+    // Get total users
+    const totalUsersResult = await pool.query("SELECT COUNT(*) as total FROM users WHERE id > 0");
+    const totalUsers = totalUsersResult.rows[0].total;
+
+    // Get users who completed initial survey
+    const initialSurveyResult = await pool.query("SELECT COUNT(*) as completed FROM users WHERE initial_survey_completed_at IS NOT NULL AND id > 0");
+    const initialSurveyCompleted = initialSurveyResult.rows[0].completed;
+
+    // Get users who completed final survey
+    const finalSurveyResult = await pool.query("SELECT COUNT(*) as completed FROM users WHERE final_survey_completed_at IS NOT NULL AND id > 0");
+    const finalSurveyCompleted = finalSurveyResult.rows[0].completed;
+
+    // Get total purchases
+    const purchasesResult = await pool.query("SELECT COUNT(*) as total FROM purchases WHERE user_id > 0");
+    const totalPurchases = purchasesResult.rows[0].total;
+
+    // Get total survey responses
+    const responsesResult = await pool.query("SELECT COUNT(*) as total FROM survey_responses WHERE user_id > 0");
+    const totalResponses = responsesResult.rows[0].total;
+
+    res.json({
+      totalUsers: parseInt(totalUsers),
+      initialSurveyCompleted: parseInt(initialSurveyCompleted),
+      finalSurveyCompleted: parseInt(finalSurveyCompleted),
+      totalPurchases: parseInt(totalPurchases),
+      totalResponses: parseInt(totalResponses),
+      initialSurveyCompletionRate: totalUsers > 0 ? Math.round((initialSurveyCompleted / totalUsers) * 100) : 0,
+      finalSurveyCompletionRate: totalUsers > 0 ? Math.round((finalSurveyCompleted / totalUsers) * 100) : 0
+    });
+  } catch (err) {
+    console.error("Error getting analytics overview:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET user demographics
+app.get("/admin/analytics/demographics", async (req, res) => {
+  try {
+    // Get gender distribution
+    const genderQuery = `
+      SELECT sr.response, COUNT(*) as count
+      FROM survey_responses sr
+      JOIN survey_questions sq ON sr.question_id = sq.id
+      WHERE sq.question_text = 'What is your gender?' AND sr.user_id > 0
+      GROUP BY sr.response
+    `;
+    const genderResult = await pool.query(genderQuery);
+
+    // Get age distribution
+    const ageQuery = `
+      SELECT sr.response, COUNT(*) as count
+      FROM survey_responses sr
+      JOIN survey_questions sq ON sr.question_id = sq.id
+      WHERE sq.question_text = 'How old are you?' AND sr.user_id > 0
+      GROUP BY sr.response
+    `;
+    const ageResult = await pool.query(ageQuery);
+
+    // Get income distribution
+    const incomeQuery = `
+      SELECT sr.response, COUNT(*) as count
+      FROM survey_responses sr
+      JOIN survey_questions sq ON sr.question_id = sq.id
+      WHERE sq.question_text = 'What is your yearly income?' AND sr.user_id > 0
+      GROUP BY sr.response
+    `;
+    const incomeResult = await pool.query(incomeQuery);
+
+    res.json({
+      gender: genderResult.rows,
+      age: ageResult.rows,
+      income: incomeResult.rows
+    });
+  } catch (err) {
+    console.error("Error getting demographics:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET survey responses analytics
+app.get("/admin/analytics/survey-responses", async (req, res) => {
+  try {
+    const { stage } = req.query;
+    let query = `
+      SELECT sq.question_text, sr.response, COUNT(*) as count
+      FROM survey_responses sr
+      JOIN survey_questions sq ON sr.question_id = sq.id
+      WHERE sr.user_id > 0
+    `;
+    
+    if (stage) {
+      query += ` AND sq.stage = $1`;
+      query += ` GROUP BY sq.question_text, sr.response ORDER BY sq.question_text, count DESC`;
+      const result = await pool.query(query, [stage]);
+      res.json(result.rows);
+    } else {
+      query += ` GROUP BY sq.question_text, sr.response ORDER BY sq.question_text, count DESC`;
+      const result = await pool.query(query);
+      res.json(result.rows);
+    }
+  } catch (err) {
+    console.error("Error getting survey responses:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Debug endpoint to check consumption_logs data
+app.get("/admin/debug/consumption-logs", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        COUNT(*) as total_logs,
+        COUNT(CASE WHEN action = 'wasted' THEN 1 END) as wasted_count,
+        COUNT(CASE WHEN action = 'consumed' THEN 1 END) as consumed_count,
+        SUM(CASE WHEN action = 'wasted' THEN cost_value ELSE 0 END) as total_waste_cost,
+        SUM(CASE WHEN action = 'consumed' THEN cost_value ELSE 0 END) as total_consumed_cost
+      FROM consumption_logs 
+      WHERE user_id > 0
+    `);
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("Error checking consumption logs:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET waste patterns
+app.get("/admin/analytics/waste-patterns", async (req, res) => {
+  try {
+    // Get overall waste vs consumption totals
+    const overallQuery = `
+      SELECT 
+        cl.action,
+        COUNT(*) as count,
+        SUM(cl.cost_value) as total_cost,
+        AVG(cl.cost_value) as avg_cost
+      FROM consumption_logs cl
+      WHERE cl.user_id > 0
+      GROUP BY cl.action
+      ORDER BY total_cost DESC
+    `;
+    const overallResult = await pool.query(overallQuery);
+
+    // Get waste by category for all users
+    const categoryQuery = `
+      SELECT 
+        p.category,
+        COUNT(*) as count,
+        SUM(cl.cost_value) as total_cost,
+        AVG(cl.cost_value) as avg_cost,
+        ROUND((SUM(cl.cost_value) / NULLIF((SELECT SUM(cost_value) FROM consumption_logs WHERE user_id > 0 AND action = 'wasted'), 0)) * 100, 2) as waste_percentage
+      FROM consumption_logs cl
+      JOIN purchases p ON cl.purchase_id = p.id
+      WHERE cl.user_id > 0 AND cl.action = 'wasted' AND p.category IS NOT NULL
+      GROUP BY p.category
+      ORDER BY total_cost DESC
+    `;
+    const categoryResult = await pool.query(categoryQuery);
+
+    // Get waste trends over time (weekly)
+    const trendQuery = `
+      SELECT 
+        DATE_TRUNC('week', cl.logged_at) as week_start,
+        COUNT(*) as count,
+        SUM(cl.cost_value) as total_cost,
+        AVG(cl.cost_value) as avg_cost
+      FROM consumption_logs cl
+      WHERE cl.user_id > 0 AND cl.action = 'wasted'
+      GROUP BY DATE_TRUNC('week', cl.logged_at)
+      ORDER BY week_start DESC
+      LIMIT 12
+    `;
+    const trendResult = await pool.query(trendQuery);
+
+    // Get detailed breakdown by category and week
+    const detailedQuery = `
+      SELECT 
+        cl.action,
+        p.category,
+        COUNT(*) as count,
+        SUM(cl.cost_value) as total_cost,
+        AVG(cl.cost_value) as avg_cost,
+        DATE_TRUNC('week', cl.logged_at) as week_start
+      FROM consumption_logs cl
+      JOIN purchases p ON cl.purchase_id = p.id
+      WHERE cl.user_id > 0
+      GROUP BY cl.action, p.category, DATE_TRUNC('week', cl.logged_at)
+      ORDER BY week_start DESC, total_cost DESC
+    `;
+    const detailedResult = await pool.query(detailedQuery);
+
+    res.json({
+      overall: overallResult.rows,
+      byCategory: categoryResult.rows,
+      trends: trendResult.rows,
+      detailed: detailedResult.rows
+    });
+  } catch (err) {
+    console.error("Error getting waste patterns:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET purchase trends
+app.get("/admin/analytics/purchase-trends", async (req, res) => {
+  try {
+    // Get purchases by week
+    const weeklyQuery = `
+      SELECT 
+        DATE_TRUNC('week', purchase_date) as week_start,
+        COUNT(*) as purchase_count,
+        SUM(price) as total_spent
+      FROM purchases 
+      WHERE user_id > 0
+      GROUP BY DATE_TRUNC('week', purchase_date)
+      ORDER BY week_start DESC
+      LIMIT 12
+    `;
+    const weeklyResult = await pool.query(weeklyQuery);
+
+    // Get top categories
+    const categoryQuery = `
+      SELECT category, COUNT(*) as purchase_count, SUM(price) as total_spent
+      FROM purchases 
+      WHERE user_id > 0 AND category IS NOT NULL
+      GROUP BY category
+      ORDER BY total_spent DESC
+      LIMIT 10
+    `;
+    const categoryResult = await pool.query(categoryQuery);
+
+    res.json({
+      weekly: weeklyResult.rows,
+      categories: categoryResult.rows
+    });
+  } catch (err) {
+    console.error("Error getting purchase trends:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// CSV Export Endpoints
+
+// Helper function to convert data to CSV
+function convertToCSV(data, headers) {
+  const csvHeaders = headers.join(',');
+  const csvRows = data.map(row => 
+    headers.map(header => {
+      const value = row[header] || '';
+      // Escape commas and quotes in CSV
+      if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+        return `"${value.replace(/"/g, '""')}"`;
+      }
+      return value;
+    }).join(',')
+  );
+  return [csvHeaders, ...csvRows].join('\n');
+}
+
+// GET export raw data
+app.get("/admin/export/raw-data", async (req, res) => {
+  try {
+    // Get all user data with survey responses
+    const query = `
+      SELECT 
+        u.id as user_id,
+        u.username,
+        u.name,
+        u.terms_accepted_at,
+        u.initial_survey_completed_at,
+        u.last_weekly_survey_date,
+        u.final_survey_triggered,
+        u.final_survey_completed_at,
+        sq.question_text,
+        sr.response,
+        sr.response_date
+      FROM users u
+      LEFT JOIN survey_responses sr ON u.id = sr.user_id
+      LEFT JOIN survey_questions sq ON sr.question_id = sq.id
+      WHERE u.id > 0
+      ORDER BY u.id, sr.response_date
+    `;
+    const result = await pool.query(query);
+
+    const headers = ['user_id', 'username', 'name', 'terms_accepted_at', 'initial_survey_completed_at', 'last_weekly_survey_date', 'final_survey_triggered', 'final_survey_completed_at', 'question_text', 'response', 'response_date'];
+    const csv = convertToCSV(result.rows, headers);
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="raw_data.csv"');
+    res.send(csv);
+  } catch (err) {
+    console.error("Error exporting raw data:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET export survey responses
+app.get("/admin/export/survey-responses", async (req, res) => {
+  try {
+    const { stage } = req.query;
+    let query = `
+      SELECT 
+        u.id as user_id,
+        u.username,
+        sq.stage,
+        sq.question_text,
+        sr.response,
+        sr.response_date
+      FROM survey_responses sr
+      JOIN survey_questions sq ON sr.question_id = sq.id
+      JOIN users u ON sr.user_id = u.id
+      WHERE sr.user_id > 0
+    `;
+    
+    if (stage) {
+      query += ` AND sq.stage = $1`;
+      query += ` ORDER BY u.id, sr.response_date`;
+      const result = await pool.query(query, [stage]);
+      
+      const headers = ['user_id', 'username', 'stage', 'question_text', 'response', 'response_date'];
+      const csv = convertToCSV(result.rows, headers);
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="survey_responses_${stage}.csv"`);
+      res.send(csv);
+    } else {
+      query += ` ORDER BY u.id, sr.response_date`;
+      const result = await pool.query(query);
+      
+      const headers = ['user_id', 'username', 'stage', 'question_text', 'response', 'response_date'];
+      const csv = convertToCSV(result.rows, headers);
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="survey_responses_all.csv"');
+      res.send(csv);
+    }
+  } catch (err) {
+    console.error("Error exporting survey responses:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET export user demographics
+app.get("/admin/export/user-demographics", async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        u.id as user_id,
+        u.username,
+        u.name,
+        u.terms_accepted_at,
+        u.initial_survey_completed_at,
+        u.last_weekly_survey_date,
+        u.final_survey_triggered,
+        u.final_survey_completed_at,
+        gender.response as gender,
+        age.response as age,
+        income.response as income,
+        children.response as children,
+        household.response as household_size,
+        housing.response as housing_status
+      FROM users u
+      LEFT JOIN survey_responses gender ON u.id = gender.user_id 
+        AND gender.question_id = (SELECT id FROM survey_questions WHERE question_text = 'What is your gender?' LIMIT 1)
+      LEFT JOIN survey_responses age ON u.id = age.user_id 
+        AND age.question_id = (SELECT id FROM survey_questions WHERE question_text = 'How old are you?' LIMIT 1)
+      LEFT JOIN survey_responses income ON u.id = income.user_id 
+        AND income.question_id = (SELECT id FROM survey_questions WHERE question_text = 'What is your yearly income?' LIMIT 1)
+      LEFT JOIN survey_responses children ON u.id = children.user_id 
+        AND children.question_id = (SELECT id FROM survey_questions WHERE question_text = 'Do you have children?' LIMIT 1)
+      LEFT JOIN survey_responses household ON u.id = household.user_id 
+        AND household.question_id = (SELECT id FROM survey_questions WHERE question_text = 'How many people live in your household?' LIMIT 1)
+      LEFT JOIN survey_responses housing ON u.id = housing.user_id 
+        AND housing.question_id = (SELECT id FROM survey_questions WHERE question_text = 'Do you rent or own?' LIMIT 1)
+      WHERE u.id > 0
+      ORDER BY u.id
+    `;
+    const result = await pool.query(query);
+
+    const headers = ['user_id', 'username', 'name', 'terms_accepted_at', 'initial_survey_completed_at', 'last_weekly_survey_date', 'final_survey_triggered', 'final_survey_completed_at', 'gender', 'age', 'income', 'children', 'household_size', 'housing_status'];
+    const csv = convertToCSV(result.rows, headers);
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="user_demographics.csv"');
+    res.send(csv);
+  } catch (err) {
+    console.error("Error exporting user demographics:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET export waste patterns
+app.get("/admin/export/waste-patterns", async (req, res) => {
+  try {
+    const { timeframe } = req.query;
+    const query = `
+      SELECT 
+        u.id as user_id,
+        u.username,
+        sq.question_text,
+        sr.response,
+        sr.response_date,
+        DATE_TRUNC('week', sr.response_date) as week_start
+      FROM survey_responses sr
+      JOIN survey_questions sq ON sr.question_id = sq.id
+      JOIN users u ON sr.user_id = u.id
+      WHERE sr.user_id > 0 AND sq.stage = 'weekly'
+      AND sq.question_text IN (
+        'How many meals that you didn''t finish did you throw out?',
+        'Do you think you wasted less food compared to last week?',
+        'Are you becoming more aware of your amount of food waste/consumption habits?'
+      )
+      ORDER BY u.id, sr.response_date
+    `;
+    const result = await pool.query(query);
+
+    const headers = ['user_id', 'username', 'question_text', 'response', 'response_date', 'week_start'];
+    const csv = convertToCSV(result.rows, headers);
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="waste_patterns.csv"');
+    res.send(csv);
+  } catch (err) {
+    console.error("Error exporting waste patterns:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -1012,6 +1530,7 @@ async function seedDefaultQuantityTypes() {
 
 async function seedDefaultSurveyQuestions() {
   try {
+    console.log("Seeding survey questions...");
     const defaultQuestions = questions;
 
     for (const question of defaultQuestions) {
@@ -1051,6 +1570,7 @@ async function seedDefaultSurveyQuestions() {
         }
       }
     }
+    console.log("Survey questions seeding completed!");
   } catch (err) {
     console.error("Error seeding survey questions:", err);
   }
@@ -1171,6 +1691,8 @@ const defaultItems = foodItems
   }
 }
 
+
+
 // Call all seeds in sequence before starting server
 async function createTablesIfNotExists() {
   try {
@@ -1198,11 +1720,18 @@ async function seedAllDefaults() {
   await seedDefaultSurveyQuestions()
 }
 
-seedAllDefaults();
+    await seedAllDefaults();
+    
+    // Start server
+    const PORT = process.env.PORT || 5001;
+    app.listen(PORT, () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  } catch (err) {
+    console.error("Failed to start server:", err);
+    process.exit(1);
+  }
+}
 
-
-// Start server
-const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+// Start the server
+startServer();

@@ -81,15 +81,15 @@ const surveyTitle = questions[0].stage
           <Stack spacing={2}>
             <Typography variant="h6">{question.question_text}</Typography>
             {question.options.map((option, idx) => {
-              const isSelected = currentResponse === option.text;
+              const isSelected = currentResponse === option;
               return (
                 <Button
                   key={idx}
                   variant={isSelected ? "contained" : "outlined"}
                   color={isSelected ? "primary" : "inherit"}
-                  onClick={() => handleResponse(option.text)}
+                  onClick={() => handleResponse(option)}
                 >
-                  {option.text}
+                  {option}
                 </Button>
               );
             })}
@@ -99,14 +99,14 @@ const surveyTitle = questions[0].stage
       case "text":
         return (
           <Stack spacing={2}>
-            <Typography variant="h6">{question.question}</Typography>
+            <Typography variant="h6">{question.question_text}</Typography>
             <TextField
               type={question.type}
               fullWidth
               variant="outlined"
               value={currentResponse || ""}
               onChange={(e) => handleResponse(e.target.value)}
-              placeholder={`Enter ${question.type}`}
+              placeholder={question.placeholder || `Enter ${question.type}`}
             />
           </Stack>
         );

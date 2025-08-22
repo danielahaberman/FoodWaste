@@ -79,7 +79,8 @@ function AddNewPurchase({
   const handleAddToPurchase = async (foodItem) => {
     console.log("fooditem", foodItem);
     try {
-      const purchaseDate = selectedDate.toISOString();
+      // Convert to US East Coast timezone and format as YYYY-MM-DD
+    const purchaseDate = selectedDate.format('YYYY-MM-DD');
 
       const response = await foodPurchaseAPI.addPurchase({
           user_id: localStorage.getItem("userId"),

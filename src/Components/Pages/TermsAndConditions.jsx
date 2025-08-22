@@ -3,12 +3,13 @@ import { Button, Checkbox, FormControlLabel, Typography, Box, Paper } from "@mui
 import { useNavigate } from "react-router-dom";
 import PageLayout from "../PageLayout";
 import { getCurrentUserId, logout, getIntendedDestination, clearIntendedDestination } from "../../utils/authUtils";
+import { authAPI } from "../../api";
 
-function TermsAndConditions() {
-  const [accepted, setAccepted] = useState(localStorage.getItem("termsAccepted") === "true");
+function TermsAndConditions({ onTermsAccepted }) {
+  const [accepted, setAccepted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const userId = getCurrentUserId();
-  const termsAlreadyAccepted = localStorage.getItem("termsAccepted") === "true";
 
   const handleBackToApp = () => {
     const intendedDestination = getIntendedDestination();
@@ -28,9 +29,18 @@ function TermsAndConditions() {
     }
   };
 
-  const handleAccept = () => {
-    if (accepted) {
-      localStorage.setItem("termsAccepted", "true");
+  const handleAccept = async () => {
+    if (!accepted || isSubmitting) return;
+    
+    setIsSubmitting(true);
+    try {
+      await authAPI.acceptTerms(userId);
+      
+      // Call the callback to update the guard
+      if (onTermsAccepted) {
+        onTermsAccepted();
+      }
+      
       // Prefer intended destination if present
       const intendedDestination = getIntendedDestination();
       if (intendedDestination) {
@@ -39,15 +49,18 @@ function TermsAndConditions() {
         return;
       }
       // If user is logged in, go to home, otherwise go to landing
-      const userId = localStorage.getItem("userId");
       navigate(userId ? "/home" : "/");
+    } catch (error) {
+      console.error("Error accepting terms:", error);
+      alert("Failed to accept terms. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleDecline = () => {
     // Clear any existing user data and redirect to landing
     logout();
-    localStorage.removeItem("termsAccepted");
     navigate("/");
   };
 
@@ -164,56 +177,39 @@ function TermsAndConditions() {
           />
 
           <Box sx={{ display: "flex", gap: "16px", justifyContent: "center" }}>
-            {!termsAlreadyAccepted ? (
-              <>
-                <Button
-                  variant="contained"
-                  onClick={handleAccept}
-                  disabled={!accepted}
-                  sx={{
-                    backgroundColor: "var(--color-success)",
-                    color: "var(--color-primary-contrast)",
-                    "&:disabled": {
-                      backgroundColor: "#e5e7eb",
-                      color: "#9ca3af",
-                    },
-                    "&:hover": {
-                      backgroundColor: "#2e7d32",
-                    },
-                  }}
-                >
-                  Accept & Continue
-                </Button>
-                <Button
-                  variant="outlined"
-                  onClick={handleDecline}
-                  sx={{
-                    borderColor: "#6b7280",
-                    color: "var(--color-text)",
-                    "&:hover": {
-                      borderColor: "#374151",
-                      backgroundColor: "#f3f4f6",
-                    },
-                  }}
-                >
-                  Decline
-                </Button>
-              </>
-            ) : (
-              <Button
-                variant="contained"
-                onClick={handleBackToApp}
-                sx={{
-                  backgroundColor: "var(--color-primary)",
-                  color: "var(--color-primary-contrast)",
-                  "&:hover": {
-                    backgroundColor: "#1565c0",
-                  },
-                }}
-              >
-                Back to App
-              </Button>
-            )}
+            <Button
+              variant="contained"
+              onClick={handleAccept}
+              disabled={!accepted || isSubmitting}
+              sx={{
+                backgroundColor: "var(--color-success)",
+                color: "var(--color-primary-contrast)",
+                "&:disabled": {
+                  backgroundColor: "#e5e7eb",
+                  color: "#9ca3af",
+                },
+                "&:hover": {
+                  backgroundColor: "#2e7d32",
+                },
+              }}
+            >
+              {isSubmitting ? "Accepting..." : "Accept & Continue"}
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={handleDecline}
+              disabled={isSubmitting}
+              sx={{
+                borderColor: "#6b7280",
+                color: "var(--color-text)",
+                "&:hover": {
+                  borderColor: "#374151",
+                  backgroundColor: "#f3f4f6",
+                },
+              }}
+            >
+              Decline
+            </Button>
           </Box>
         </Paper>
       </Box>
