@@ -17,9 +17,9 @@ function LandingPage() {
       margin: "auto", 
       textAlign: "center", 
       padding: "24px", 
-      backgroundColor: "#FF9F43"
+      backgroundColor: "#f5f5f5"
     }}>
-      <div style={{ fontSize: "32px", fontWeight: "bold", color: "#F2F3F4", marginBottom: "24px" }}>
+      <div style={{ fontSize: "32px", fontWeight: "bold", color: "#1976d2", marginBottom: "24px" }}>
         Manage Your Food Waste
       </div>
       <div style={{
@@ -29,23 +29,23 @@ function LandingPage() {
         padding: "24px", 
         borderRadius: "12px", 
         boxShadow: "0px 4px 10px rgba(0,0,0,0.1)", 
-        backgroundColor: "#FFB37A", 
+        backgroundColor: "white", 
         width: "100%", 
         maxWidth: "400px"
       }}>
-        <div style={{ fontSize: "18px", color: "#000000" }}>
+        <div style={{ fontSize: "18px", color: "#333333" }}>
           Keep track of the food you buy and minimize waste with our easy-to-use tool.
         </div>
         <Button
           variant="contained"
-          style={{ backgroundColor: "#01796F", color: "#F2F3F4" }}
+          style={{ backgroundColor: "#1976d2", color: "white" }}
           onClick={() => navigate("/auth/login")}
         >
           Login
         </Button>
         <Button
           variant="contained"
-          style={{ backgroundColor: "#50C878", color: "#000000" }}
+          style={{ backgroundColor: "#2e7d32", color: "white" }}
           onClick={() => navigate("/auth/register")}
         >
           Register
@@ -53,7 +53,7 @@ function LandingPage() {
         <div style={{ display:'flex', justifyContent:'space-between', width:'100%' }}>
           <Button
             variant="text"
-            style={{ color: "#01796F", textDecoration: "underline" }}
+            style={{ color: "#1976d2" }}
             onClick={() => navigate("/terms")}
           >
             Terms & Conditions

@@ -75,6 +75,7 @@ export const adminAPI = {
   getOverview: () => api.get("/admin/analytics/overview"),
   getDemographics: () => api.get("/admin/analytics/demographics"),
   getSurveyResponses: (stage) => api.get(`/admin/analytics/survey-responses${stage ? `?stage=${stage}` : ''}`),
+  getQuestionResponses: (questionId, stage) => api.get(`/admin/analytics/question-responses${questionId ? `?questionId=${questionId}` : ''}${stage ? `&stage=${stage}` : ''}`),
   getWastePatterns: () => api.get("/admin/analytics/waste-patterns"),
   getPurchaseTrends: () => api.get("/admin/analytics/purchase-trends"),
   

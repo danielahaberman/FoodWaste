@@ -21,7 +21,14 @@ const DateNavigator = ({ value, onChange }) => {
   const isToday = dayjs(value).isSame(dayjs(), "day");
 
   const handlePrev = () => onChange(dayjs(value).subtract(1, "day"));
-  const handleNext = () => onChange(dayjs(value).add(1, "day"));
+  const handleNext = () => {
+    const nextDate = dayjs(value).add(1, "day");
+    // Don't allow selecting future dates
+    if (nextDate.isAfter(dayjs(), "day")) {
+      return;
+    }
+    onChange(nextDate);
+  };
   const handleOpenCalendar = (e) => setAnchorEl(e.currentTarget);
   const handleCloseCalendar = () => setAnchorEl(null);
 
@@ -62,7 +69,12 @@ const DateNavigator = ({ value, onChange }) => {
   </Typography>
 </Box>
 
-      <IconButton onClick={handleNext} size="small" color="primary">
+      <IconButton 
+        onClick={handleNext} 
+        size="small" 
+        color="primary"
+        disabled={dayjs(value).isSame(dayjs(), "day")}
+      >
         <ArrowForwardIos fontSize="small" />
       </IconButton>
 
@@ -91,9 +103,14 @@ const DateNavigator = ({ value, onChange }) => {
           displayStaticWrapperAs="desktop"
           value={value}
           onChange={(newValue) => {
+            // Don't allow selecting future dates
+            if (dayjs(newValue).isAfter(dayjs(), "day")) {
+              return;
+            }
             onChange(newValue);
             handleCloseCalendar();
           }}
+          maxDate={dayjs()}
         />
       </Popover>
     </Box>

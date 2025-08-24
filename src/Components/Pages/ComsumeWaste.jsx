@@ -205,6 +205,15 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
       const wasted = parseFloat(d.wasted_cost || 0);
       let unmarked = parseFloat(d.unmarked_cost);
       if (!isFinite(unmarked)) unmarked = 0;
+      
+      // Debug logging to see what the API is returning
+      console.log('Week chart data for', weekOf, ':', {
+        rawData: d,
+        consumed,
+        wasted,
+        unmarked,
+        total: consumed + wasted + unmarked
+      });
 
       // Fallback: compute Unmarked $ from purchases list + summaries if backend doesn't provide it
       if (unmarked <= 0) {
@@ -344,7 +353,8 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
       position:"absolute",
       top:"0px",
       height:"100vh",
-      boxSizing:"border-box", left:"0px", width:"100vw"
+      boxSizing:"border-box", left:"0px", width:"100vw",
+      maxWidth:"580px"
       
        }}>
       {/* Header Bar with Trends */}
@@ -407,11 +417,14 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
             mb: 2,
             p: 2,
             borderRadius: 2,
+            width:"100vw",
+            maxWidth:"580px",
             // backgroundColor: showCompletion ? "success.light" : "background.paper",
             cursor: 'pointer',
             border: showCompletion ? 2 : 1,
             borderColor: showCompletion ? "success.main" : "divider",
             position: 'relative',
+            boxSizing:"border-box"
           }}
           onClick={() => openWeekDetails(week.weekOf)}
         >
@@ -501,31 +514,80 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
           <div  sx={{  borderRadius: 2 }}>
             <Legend />
             {weekCharts[activeWeekOf] && (() => {
-              const d = weekCharts[activeWeekOf]?.datasets?.[0]?.data || [];
-              const total = Array.isArray(d) ? d.reduce((a, b) => a + (parseFloat(b) || 0), 0) : 0;
-              if (total > 0.0001) {
+              // Calculate pie chart data directly from summaryMap to ensure consistency
+              let consumedCost = 0, wastedCost = 0, unmarkedCost = 0;
+              
+              week.purchases.forEach(purchase => {
+                const summary = summaryMap[purchase.id] || {};
+                consumedCost += parseFloat(summary.consumed_cost || 0);
+                wastedCost += parseFloat(summary.wasted_cost || 0);
+                
+                // Calculate unmarked cost
+                const baseQty = parseFloat(purchase.quantity || 0);
+                const price = parseFloat(purchase.price || 0);
+                const unitCost = baseQty > 0 && price ? price / baseQty : 0;
+                const consumedQty = parseFloat(summary.consumed_qty || 0);
+                const wastedQty = parseFloat(summary.wasted_qty || 0);
+                const remainingQty = Math.max(0, baseQty - consumedQty - wastedQty);
+                unmarkedCost += unitCost * remainingQty;
+              });
+              
+              const total = consumedCost + wastedCost + unmarkedCost;
+              
+              // Debug logging for pie chart data
+              console.log('Calculated pie chart data for week', activeWeekOf, ':', {
+                consumedCost,
+                wastedCost,
+                unmarkedCost,
+                total,
+                weekChartsData: weekCharts[activeWeekOf],
+                weekChartTotals: weekChartTotals[activeWeekOf]
+              });
+              
+              // Check if there are any food items with consumption or waste data
+              const hasConsumptionData = week.purchases.some(purchase => {
+                const summary = summaryMap[purchase.id] || {};
+                const consumedQty = parseFloat(summary.consumed_qty || 0);
+                const wastedQty = parseFloat(summary.wasted_qty || 0);
+                return consumedQty > 0 || wastedQty > 0;
+              });
+              
+              // Debug logging for individual items
+              console.log('Individual items data for week', activeWeekOf, ':', week.purchases.map(purchase => {
+                const summary = summaryMap[purchase.id] || {};
+                return {
+                  name: purchase.name,
+                  consumedQty: parseFloat(summary.consumed_qty || 0),
+                  wastedQty: parseFloat(summary.wasted_qty || 0),
+                  consumedCost: parseFloat(summary.consumed_cost || 0),
+                  wastedCost: parseFloat(summary.wasted_cost || 0)
+                };
+              }));
+              
+              if (total > 0.0001 || hasConsumptionData) {
                 return (
                   <Box sx={{ maxWidth: 180, mx: "auto", mb: 2, color:"black" }}>
                     <Typography variant="subtitle2" sx={{ textAlign: "center", mb: 1 }}>This week: $ Consumed vs $ Wasted</Typography>
-                    <Pie data={weekCharts[activeWeekOf]} options={{ responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } } }} />
-                    {(() => {
-                      const totals = weekChartTotals[activeWeekOf] || { consumed: d[0] || 0, wasted: d[1] || 0, unmarked: d[2] || 0 };
-                      return (
-                        <Stack spacing={0.25} sx={{ mt: 1 }}>
-                          <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Box sx={{ width: 10, height: 10, bgcolor: '#4caf50', borderRadius: '50%' }} /> Consumed: {formatMoney(totals.consumed)}
-                          </Typography>
-                          <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Box sx={{ width: 10, height: 10, bgcolor: '#ef5350', borderRadius: '50%' }} /> Wasted: {formatMoney(totals.wasted)}
-                          </Typography>
-                          {totals.unmarked > 0.0001 && (
-                            <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                              <Box sx={{ width: 10, height: 10, bgcolor: '#42a5f5', borderRadius: '50%' }} /> Unmarked: {formatMoney(totals.unmarked)}
-                            </Typography>
-                          )}
-                        </Stack>
-                      );
-                    })()}
+                    <Pie data={{
+                      labels: ["Consumed $", "Wasted $", "Unmarked $"],
+                      datasets: [{
+                        data: [consumedCost, wastedCost, unmarkedCost],
+                        backgroundColor: ["#4caf50", "#ef5350", "#42a5f5"]
+                      }]
+                    }} options={{ responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } } }} />
+                    <Stack spacing={0.25} sx={{ mt: 1 }}>
+                      <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Box sx={{ width: 10, height: 10, bgcolor: '#4caf50', borderRadius: '50%' }} /> Consumed: {formatMoney(consumedCost)}
+                      </Typography>
+                      <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Box sx={{ width: 10, height: 10, bgcolor: '#ef5350', borderRadius: '50%' }} /> Wasted: {formatMoney(wastedCost)}
+                      </Typography>
+                      {unmarkedCost > 0.0001 && (
+                        <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Box sx={{ width: 10, height: 10, bgcolor: '#42a5f5', borderRadius: '50%' }} /> Unmarked: {formatMoney(unmarkedCost)}
+                        </Typography>
+                      )}
+                    </Stack>
                   </Box>
                 );
               }

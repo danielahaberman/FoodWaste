@@ -5,7 +5,7 @@ import { foodPurchaseAPI } from "../../api";
 // MUI components
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { IconButton, Paper,Button, Box } from "@mui/material";
+import { IconButton, Paper, Button, Box, Typography } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import LogoutIcon from '@mui/icons-material/Logout';
 import { useNavigate } from "react-router-dom";
@@ -70,20 +70,51 @@ const deletePurchase = async (purchaseId) => {
     dayjs(purchase.purchase_date).isSame(selectedDate, "day")
   );
 
+  // Check if selected date is within 7 days (can add/delete)
+  const isWithin7Days = dayjs().subtract(7, 'day').isSameOrBefore(selectedDate, 'day');
+  const isDateInPast = selectedDate.isBefore(dayjs(), 'day');
+  const isDateInFuture = selectedDate.isAfter(dayjs(), 'day');
+  
+  // Can only add/delete if within 7 days and not in future
+  const canModify = isWithin7Days && !isDateInFuture;
+
   return (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <LocalizationProvider dateAdapter={AdapterDayjs}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
           <DateNavigator value={selectedDate} onChange={setSelectedDate} />
-          <Button variant="contained" size="small" onClick={() => setLoggingPurchase(true)}>
+          <Button 
+            variant="contained" 
+            size="small" 
+            onClick={() => setLoggingPurchase(true)}
+            disabled={!canModify}
+            title={!canModify ? "Can only add food for the past 7 days" : "Add food for this date"}
+          >
             Add
           </Button>
         </Box>
+        {!canModify && (
+          <Typography 
+            variant="caption" 
+            color="text.secondary" 
+            sx={{ 
+              textAlign: 'center', 
+              fontStyle: 'italic',
+              mt: 0.5 
+            }}
+          >
+            View only - can only add/delete food for the past 7 days
+          </Typography>
+        )}
       </LocalizationProvider>
 
       <Box sx={{ flex: 1, overflow: "auto", pb: '88px' }}>
         {filteredPurchases.length > 0 ? (
-          <FoodPurchaseList deletePurchase={deletePurchase} purchases={filteredPurchases} />
+          <FoodPurchaseList 
+            deletePurchase={deletePurchase} 
+            purchases={filteredPurchases} 
+            canModify={canModify}
+          />
         ) : (
           <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "50vh", color: "text.secondary", gap: 1 }}>
             <RestaurantIcon sx={{ fontSize: 40, opacity: 0.6 }} />

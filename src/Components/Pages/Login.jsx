@@ -2,7 +2,17 @@
 /* eslint-disable no-unused-vars */
 import React, { useState } from "react";
 import PageLayout from "../PageLayout";
-import { TextField, Button } from "@mui/material";
+import { 
+  TextField, 
+  Button, 
+  Typography, 
+  Box, 
+  Card, 
+  CardContent, 
+  Alert,
+  Container,
+  Paper
+} from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { setAuthenticated, getIntendedDestination, clearIntendedDestination } from "../../utils/authUtils";
 import { authAPI } from "../../api";
@@ -11,14 +21,23 @@ function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
   const handleLogin = async () => {
+    if (!email || !password) {
+      setError("Please fill in all fields");
+      return;
+    }
+
     try {
+      setLoading(true);
+      setError("");
       const response = await authAPI.login({
         username: email,
         password,
       });
-      // Store the token in localStorage or state
+      
       console.log("response", response);
       setAuthenticated(response.data.user_id);
       
@@ -44,86 +63,133 @@ function LoginPage() {
       }
     } catch (err) {
       setError("Invalid credentials or server error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleKeyPress = (event) => {
+    if (event.key === 'Enter') {
+      handleLogin();
     }
   };
 
   return (
-    <PageLayout>
-      <div
-        style={{
-          fontSize: "28px",
-          fontWeight: "bold",
-          fontFamily: "Arial, sans-serif",
-          textAlign: "center",
-          color: "#F2F3F4",
-          marginBottom: "16px",
-          backgroundColor: "#FF9F43",
-          padding: "12px",
-          borderRadius: "8px"
+    <PageLayout backgroundColor="#f5f5f5">
+      <Container 
+        maxWidth="sm" 
+        sx={{ 
+          height: '100vh', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          justifyContent: 'center',
+          alignItems: 'center',
+          py: 4
         }}
       >
-        Login
-      </div>
-
-      <div
-        style={{
-          border: "1px solid #01796F",
-          width: "100%",
-          maxWidth: "400px",
-          borderRadius: "12px",
-          margin: "auto",
-          padding: "24px",
-          backgroundColor: "#FFB37A",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          boxShadow: "0px 4px 10px rgba(0,0,0,0.1)",
-        }}
-      >
-        <TextField
-          label="Username"
-          variant="standard"
-          placeholder="User Name"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          style={{ width: "100%" }}
-        />
-        <TextField
-          type="password"
-          label="Password"
-          variant="standard"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          style={{ width: "100%", marginTop: "16px" }}
-        />
-        {error && <div style={{ color: "red", marginTop: "8px" }}>{error}</div>}
-        <Button
-          onClick={handleLogin}
-          style={{ 
-            backgroundColor: "#01796F", 
-            color: "#F2F3F4", 
-            marginTop: "16px",
-            width: "100%",
-            borderRadius: "8px"
+        <Typography 
+          variant="h3" 
+          component="h1" 
+          sx={{ 
+            fontWeight: 'bold', 
+            color: '#1976d2', 
+            mb: 4,
+            textAlign: 'center'
           }}
-          variant="contained"
         >
           Login
-        </Button>
-        <Button
-          onClick={() => navigate("/")}
-          variant="text"
-          style={{
-            marginTop: "8px",
-            width: "100%",
-            color: "#01796F",
-            textDecoration: "underline"
+        </Typography>
+
+        <Paper 
+          elevation={3}
+          sx={{ 
+            width: '100%', 
+            maxWidth: 400,
+            borderRadius: 2,
+            overflow: 'hidden'
           }}
         >
-          Back to Landing
-        </Button>
-      </div>
+          <Card sx={{ backgroundColor: 'white' }}>
+            <CardContent sx={{ p: 4 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <TextField
+                  label="Username"
+                  variant="outlined"
+                  placeholder="Enter your username"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  fullWidth
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 1
+                    }
+                  }}
+                />
+                
+                <TextField
+                  type="password"
+                  label="Password"
+                  variant="outlined"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  fullWidth
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 1
+                    }
+                  }}
+                />
+
+                {error && (
+                  <Alert severity="error" sx={{ borderRadius: 1 }}>
+                    {error}
+                  </Alert>
+                )}
+
+                <Button
+                  onClick={handleLogin}
+                  disabled={loading}
+                  variant="contained"
+                  size="large"
+                  fullWidth
+                  sx={{
+                    backgroundColor: '#1976d2',
+                    borderRadius: 1,
+                    py: 1.5,
+                    fontSize: '1.1rem',
+                    fontWeight: 'bold',
+                    '&:hover': {
+                      backgroundColor: '#1565c0'
+                    },
+                    '&:disabled': {
+                      backgroundColor: '#ccc'
+                    }
+                  }}
+                >
+                  {loading ? 'Logging in...' : 'Login'}
+                </Button>
+
+                <Button
+                  onClick={() => navigate("/")}
+                  variant="text"
+                  fullWidth
+                  sx={{
+                    color: '#1976d2',
+                    '&:hover': {
+                      backgroundColor: 'rgba(25, 118, 210, 0.04)'
+                    }
+                  }}
+                >
+                  Back to Landing
+                </Button>
+              </Box>
+            </CardContent>
+          </Card>
+        </Paper>
+      </Container>
     </PageLayout>
   );
 }

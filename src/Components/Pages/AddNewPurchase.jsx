@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import dayjs from "dayjs";
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
 import {
@@ -15,6 +16,10 @@ import {
   Stack,
   TextField,
   Typography,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { foodPurchaseAPI, foodDataAPI } from "../../api";
@@ -30,6 +35,8 @@ function AddNewPurchase({
   const [foodCategories, setFoodCategories] = useState([]);
   const [showNewFoodForm, setShowNewFoodForm] = useState(false);
   const [hideNew, setHideNew] = useState(false);
+  const [showDateConfirmation, setShowDateConfirmation] = useState(false);
+  const [pendingFoodItem, setPendingFoodItem] = useState(null);
 
   const initialNewFoodItem = {
     name: "",
@@ -78,27 +85,54 @@ function AddNewPurchase({
 
   const handleAddToPurchase = async (foodItem) => {
     console.log("fooditem", foodItem);
-    try {
-      // Convert to US East Coast timezone and format as YYYY-MM-DD
-    const purchaseDate = selectedDate.format('YYYY-MM-DD');
+    
+    // Check if selected date is in the past (not today)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selectedDateOnly = new Date(selectedDate.format('YYYY-MM-DD'));
+    
+    if (selectedDateOnly < today) {
+      // Show confirmation modal for past dates
+      setPendingFoodItem(foodItem);
+      setShowDateConfirmation(true);
+      return;
+    }
+    
+    // If today or future date, proceed normally
+    await addFoodToDate(foodItem, selectedDate);
+  };
 
+  const addFoodToDate = async (foodItem, date) => {
+    try {
+      const purchaseDate = date.format('YYYY-MM-DD');
+      
       const response = await foodPurchaseAPI.addPurchase({
-          user_id: localStorage.getItem("userId"),
-          name: foodItem.name,
-          category: foodItem.category,
-          category_id: foodItem.category_id,
-          price: foodItem.price,
-          quantity: foodItem.quantity,
-          quantity_type: foodItem.quantity_type,
-          quantity_type_id: foodItem.quantity_type_id,
-          purchase_date: purchaseDate,
-        });
+        user_id: localStorage.getItem("userId"),
+        name: foodItem.name,
+        category: foodItem.category,
+        category_id: foodItem.category_id,
+        price: foodItem.price,
+        quantity: foodItem.quantity,
+        quantity_type: foodItem.quantity_type,
+        quantity_type_id: foodItem.quantity_type_id,
+        purchase_date: purchaseDate,
+      });
 
       console.log(response.data);
       fetchFoodPurchases();
+      setLoggingPurchase(false);
     } catch (error) {
       console.error("Error adding purchase:", error);
     }
+  };
+
+  const handleConfirmDateChoice = async (useToday) => {
+    if (pendingFoodItem) {
+      const targetDate = useToday ? dayjs() : selectedDate;
+      await addFoodToDate(pendingFoodItem, targetDate);
+    }
+    setShowDateConfirmation(false);
+    setPendingFoodItem(null);
   };
 
   useEffect(() => {
@@ -303,11 +337,57 @@ function AddNewPurchase({
             }}
           >
             Add+
-          </Button>
-        </Box>
-      </Modal>
-    </Box>
-  );
-}
+                     </Button>
+         </Box>
+       </Modal>
+
+       {/* Date Confirmation Modal */}
+       <Dialog
+         open={showDateConfirmation}
+         onClose={() => setShowDateConfirmation(false)}
+         maxWidth="sm"
+         fullWidth
+       >
+         <DialogTitle sx={{ textAlign: 'center', color: 'warning.main' }}>
+           ⚠️ Adding Food to Previous Day
+         </DialogTitle>
+         <DialogContent>
+           <Typography variant="body1" sx={{ mb: 2, textAlign: 'center' }}>
+             You're adding <strong>{pendingFoodItem?.name}</strong> to{' '}
+             <strong>{selectedDate.format('MMM D, YYYY')}</strong>
+           </Typography>
+           <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+             Did you mean to add this to today instead?
+           </Typography>
+           <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+             Today is {new Date().toLocaleDateString('en-US', { 
+               weekday: 'long', 
+               year: 'numeric', 
+               month: 'long', 
+               day: 'numeric' 
+             })}
+           </Typography>
+         </DialogContent>
+         <DialogActions sx={{ justifyContent: 'center', pb: 3, gap: 2 }}>
+           <Button
+             variant="outlined"
+             onClick={() => handleConfirmDateChoice(false)}
+             size="large"
+           >
+             Keep Selected Date
+           </Button>
+           <Button
+             variant="contained"
+             onClick={() => handleConfirmDateChoice(true)}
+             size="large"
+             color="primary"
+           >
+             Add to Today
+           </Button>
+         </DialogActions>
+       </Dialog>
+     </Box>
+   );
+ }
 
 export default AddNewPurchase;

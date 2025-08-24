@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import dayjs from "dayjs";
 import { surveyAPI } from "../../api";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import weekOfYear from "dayjs/plugin/weekOfYear";
@@ -24,6 +25,9 @@ function QaPage({ setShowSurvey }) {
   const [lastWeeklyCompletion, setLastWeeklyCompletion] = useState(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [errorStatus, setErrorStatus] = useState(null);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const stageParam = searchParams.get('stage');
 
   useEffect(() => {
     const fetchSurveyStatus = async () => {
@@ -35,18 +39,24 @@ function QaPage({ setShowSurvey }) {
         setInitialCompleted(res.data.initialCompleted);
         setLastWeeklyCompletion(res.data.lastWeeklyCompletion);
 
-        // Only fetch questions if initial not completed OR last weekly completion is not this week
-        const completedThisWeek =
-          res.data.lastWeeklyCompletion &&
-          dayjs(res.data.lastWeeklyCompletion).week() === dayjs().week() &&
-          dayjs(res.data.lastWeeklyCompletion).year() === dayjs().year();
-
-        if (!res.data.initialCompleted || !completedThisWeek) {
-          const stage = res.data.initialCompleted ? "weekly" : "initial";
-          const qRes = await surveyAPI.getSurveyQuestions({ stage });
+        // If stage parameter is provided, use it (for initial survey redirect)
+        if (stageParam) {
+          const qRes = await surveyAPI.getSurveyQuestions({ stage: stageParam });
           setSurveyQuestions(qRes.data);
         } else {
-          setSurveyQuestions([]); // empty to indicate no questions this week
+          // Only fetch questions if initial not completed OR last weekly completion is not this week
+          const completedThisWeek =
+            res.data.lastWeeklyCompletion &&
+            dayjs(res.data.lastWeeklyCompletion).week() === dayjs().week() &&
+            dayjs(res.data.lastWeeklyCompletion).year() === dayjs().year();
+
+          if (!res.data.initialCompleted || !completedThisWeek) {
+            const stage = res.data.initialCompleted ? "weekly" : "initial";
+            const qRes = await surveyAPI.getSurveyQuestions({ stage });
+            setSurveyQuestions(qRes.data);
+          } else {
+            setSurveyQuestions([]); // empty to indicate no questions this week
+          }
         }
 
         setErrorStatus(null);
@@ -80,7 +90,16 @@ function QaPage({ setShowSurvey }) {
         {/* Top Bar */}
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
           <Typography variant="h6">Survey</Typography>
-          <Button variant="outlined" onClick={() => setShowSurvey(false)}>
+          <Button 
+            variant="outlined" 
+            onClick={() => {
+              if (setShowSurvey) {
+                setShowSurvey(false);
+              } else {
+                navigate("/home");
+              }
+            }}
+          >
             Back
           </Button>
         </Box>

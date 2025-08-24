@@ -36,7 +36,7 @@ const categoryEmojiMap = {
   Household: "🏠",
 };
 
-const FoodPurchaseList = ({ purchases, deletePurchase }) => {
+const FoodPurchaseList = ({ purchases, deletePurchase, canModify = true }) => {
   const [activeId, setActiveId] = useState(null);
   const listRef = useRef(null);
 
@@ -111,15 +111,19 @@ const FoodPurchaseList = ({ purchases, deletePurchase }) => {
                   size="small"
                   onClick={(e) => {
                     e.stopPropagation();
-                    deletePurchase(id);
-                    setActiveId(null);
+                    if (canModify) {
+                      deletePurchase(id);
+                      setActiveId(null);
+                    }
                   }}
+                  disabled={!canModify}
+                  title={!canModify ? "Can only delete food from the past 7 days" : "Delete this food item"}
                   sx={{
                     position: "absolute",
                     right: 8,
                     top: "50%",
                     transform: "translateY(-50%)",
-                    color: "error.main",
+                    color: canModify ? "error.main" : "action.disabled",
                   }}
                 >
                   <DeleteIcon fontSize="small" />

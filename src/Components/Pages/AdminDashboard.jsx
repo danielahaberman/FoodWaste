@@ -18,7 +18,17 @@ import {
   CircularProgress,
   Alert,
   Chip,
-  Divider
+  Divider,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  List,
+  ListItem,
+  ListItemText,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails
 } from '@mui/material';
 import { adminAPI } from '../../api.jsx';
 
@@ -55,6 +65,13 @@ function AdminDashboard() {
   
   // Track current survey filter
   const [currentSurveyFilter, setCurrentSurveyFilter] = useState('all');
+  
+  // Survey question view states
+  const [surveyViewMode, setSurveyViewMode] = useState('summary'); // 'summary' or 'byQuestion'
+  const [availableQuestions, setAvailableQuestions] = useState([]);
+  const [selectedQuestion, setSelectedQuestion] = useState('');
+  const [questionResponses, setQuestionResponses] = useState(null);
+  const [loadingQuestionResponses, setLoadingQuestionResponses] = useState(false);
 
   useEffect(() => {
     loadOverviewData();
@@ -84,11 +101,39 @@ function AdminDashboard() {
       const response = await adminAPI.getSurveyResponses(stage);
       setSurveyResponses(response.data);
       setCurrentSurveyFilter(stage || 'all');
+      
+      // Extract unique questions for the question selector
+      const questionMap = new Map();
+      response.data.forEach(item => {
+        if (!questionMap.has(item.question_id)) {
+          questionMap.set(item.question_id, {
+            id: item.question_id,
+            text: item.question_text
+          });
+        }
+      });
+      const questions = Array.from(questionMap.values());
+      setAvailableQuestions(questions);
     } catch (err) {
       console.error('Error loading survey responses:', err);
       setError('Failed to load survey responses');
     } finally {
       setLoadingSurveyResponses(false);
+    }
+  };
+
+  const loadQuestionResponses = async (questionId) => {
+    if (!questionId) return;
+    
+    try {
+      setLoadingQuestionResponses(true);
+      const response = await adminAPI.getQuestionResponses(questionId, currentSurveyFilter === 'all' ? null : currentSurveyFilter);
+      setQuestionResponses(response.data);
+    } catch (err) {
+      console.error('Error loading question responses:', err);
+      setError('Failed to load question responses');
+    } finally {
+      setLoadingQuestionResponses(false);
     }
   };
 
@@ -148,6 +193,158 @@ function AdminDashboard() {
     } catch (err) {
       console.error('Export error:', err);
       setError('Failed to export data');
+    }
+  };
+
+  const renderQuestionVisualization = (question, responses) => {
+    if (!question || !responses) return null;
+
+    const questionType = question.type;
+    const responseCounts = {};
+    
+    // Count responses
+    responses.forEach(response => {
+      const value = response.response;
+      responseCounts[value] = (responseCounts[value] || 0) + 1;
+    });
+
+    if (questionType === 'text') {
+      // Text responses - show as list
+      return (
+        <Card>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Text Responses ({responses.length} total)
+            </Typography>
+            <List sx={{ maxHeight: 400, overflow: 'auto' }}>
+              {responses.map((response, index) => (
+                <ListItem key={index} divider>
+                  <ListItemText 
+                    primary={response.response}
+                    secondary={`User ID: ${response.user_id} • ${new Date(response.created_at).toLocaleDateString()}`}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </CardContent>
+        </Card>
+      );
+    } else if (questionType === 'number' || questionType === 'money') {
+      // Numeric responses - show statistics and distribution
+      const numericResponses = responses
+        .map(r => parseFloat(r.response))
+        .filter(r => !isNaN(r));
+      
+      const avg = numericResponses.length > 0 ? numericResponses.reduce((a, b) => a + b, 0) / numericResponses.length : 0;
+      const min = numericResponses.length > 0 ? Math.min(...numericResponses) : 0;
+      const max = numericResponses.length > 0 ? Math.max(...numericResponses) : 0;
+      
+      return (
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={4}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Statistics
+                </Typography>
+                <Typography variant="body2">Average: {avg.toFixed(2)}</Typography>
+                <Typography variant="body2">Min: {min.toFixed(2)}</Typography>
+                <Typography variant="body2">Max: {max.toFixed(2)}</Typography>
+                <Typography variant="body2">Total Responses: {numericResponses.length}</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} md={8}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Response Distribution
+                </Typography>
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Response</TableCell>
+                        <TableCell>Count</TableCell>
+                        <TableCell>Percentage</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {Object.entries(responseCounts)
+                        .sort(([,a], [,b]) => b - a)
+                        .map(([response, count]) => (
+                          <TableRow key={response}>
+                            <TableCell>{response}</TableCell>
+                            <TableCell>{count}</TableCell>
+                            <TableCell>{((count / responses.length) * 100).toFixed(1)}%</TableCell>
+                          </TableRow>
+                        ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      );
+    } else {
+      // Multiple choice, rating, yes/no - show as chart-like table
+      return (
+        <Card>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Response Distribution ({responses.length} total)
+            </Typography>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Response</TableCell>
+                    <TableCell>Count</TableCell>
+                    <TableCell>Percentage</TableCell>
+                    <TableCell>Visual</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {Object.entries(responseCounts)
+                    .sort(([,a], [,b]) => b - a)
+                    .map(([response, count]) => {
+                      const percentage = (count / responses.length) * 100;
+                      const barWidth = Math.max(percentage, 5); // Minimum 5% width
+                      
+                      return (
+                        <TableRow key={response}>
+                          <TableCell>{response}</TableCell>
+                          <TableCell>{count}</TableCell>
+                          <TableCell>{percentage.toFixed(1)}%</TableCell>
+                          <TableCell>
+                            <Box sx={{ width: '100%', bgcolor: 'grey.200', borderRadius: 1 }}>
+                              <Box 
+                                sx={{ 
+                                  width: `${barWidth}%`, 
+                                  bgcolor: 'primary.main', 
+                                  height: 20, 
+                                  borderRadius: 1,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center'
+                                }}
+                              >
+                                <Typography variant="caption" sx={{ color: 'white', fontWeight: 'bold' }}>
+                                  {count}
+                                </Typography>
+                              </Box>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </CardContent>
+        </Card>
+      );
     }
   };
 
@@ -332,37 +529,85 @@ function AdminDashboard() {
               />
             )}
           </Typography>
-          <Button 
-            variant={currentSurveyFilter === 'initial' ? "contained" : "outlined"}
-            onClick={() => loadSurveyResponses('initial')}
-            sx={{ mr: 1 }}
-            disabled={loadingSurveyResponses}
-          >
-            Initial Survey
-          </Button>
-          <Button 
-            variant={currentSurveyFilter === 'weekly' ? "contained" : "outlined"}
-            onClick={() => loadSurveyResponses('weekly')}
-            sx={{ mr: 1 }}
-            disabled={loadingSurveyResponses}
-          >
-            Weekly Survey
-          </Button>
-          <Button 
-            variant={currentSurveyFilter === 'final' ? "contained" : "outlined"}
-            onClick={() => loadSurveyResponses('final')}
-            sx={{ mr: 1 }}
-            disabled={loadingSurveyResponses}
-          >
-            Final Survey
-          </Button>
-          <Button 
-            variant={currentSurveyFilter === 'all' ? "contained" : "outlined"}
-            onClick={() => loadSurveyResponses()}
-            disabled={loadingSurveyResponses}
-          >
-            All Surveys
-          </Button>
+          
+          {/* Survey Filter Buttons */}
+          <Box sx={{ mb: 2 }}>
+            <Button 
+              variant={currentSurveyFilter === 'initial' ? "contained" : "outlined"}
+              onClick={() => loadSurveyResponses('initial')}
+              sx={{ mr: 1 }}
+              disabled={loadingSurveyResponses}
+            >
+              Initial Survey
+            </Button>
+            <Button 
+              variant={currentSurveyFilter === 'weekly' ? "contained" : "outlined"}
+              onClick={() => loadSurveyResponses('weekly')}
+              sx={{ mr: 1 }}
+              disabled={loadingSurveyResponses}
+            >
+              Weekly Survey
+            </Button>
+            <Button 
+              variant={currentSurveyFilter === 'final' ? "contained" : "outlined"}
+              onClick={() => loadSurveyResponses('final')}
+              sx={{ mr: 1 }}
+              disabled={loadingSurveyResponses}
+            >
+              Final Survey
+            </Button>
+            <Button 
+              variant={currentSurveyFilter === 'all' ? "contained" : "outlined"}
+              onClick={() => loadSurveyResponses()}
+              disabled={loadingSurveyResponses}
+            >
+              All Surveys
+            </Button>
+          </Box>
+
+          {/* View Mode Toggle */}
+          {surveyResponses && (
+            <Box sx={{ mb: 2 }}>
+              <Button 
+                variant={surveyViewMode === 'summary' ? "contained" : "outlined"}
+                onClick={() => setSurveyViewMode('summary')}
+                sx={{ mr: 1 }}
+              >
+                Summary View
+              </Button>
+              <Button 
+                variant={surveyViewMode === 'byQuestion' ? "contained" : "outlined"}
+                onClick={() => setSurveyViewMode('byQuestion')}
+              >
+                By Question View
+              </Button>
+            </Box>
+          )}
+
+          {/* Question Selector for By Question View */}
+          {surveyViewMode === 'byQuestion' && availableQuestions.length > 0 && (
+            <Box sx={{ mb: 2 }}>
+              <FormControl sx={{ minWidth: 400 }}>
+                <InputLabel>Select Question</InputLabel>
+                <Select
+                  value={selectedQuestion}
+                  onChange={(e) => {
+                    setSelectedQuestion(e.target.value);
+                    if (e.target.value) {
+                      loadQuestionResponses(e.target.value);
+                    }
+                  }}
+                  label="Select Question"
+                >
+                  {availableQuestions.map((question) => (
+                    <MenuItem key={question.id} value={question.id}>
+                      {question.text}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+          )}
         </Box>
         
         {loadingSurveyResponses ? (
@@ -370,26 +615,55 @@ function AdminDashboard() {
             <CircularProgress />
           </Box>
         ) : surveyResponses ? (
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Question</TableCell>
-                  <TableCell>Response</TableCell>
-                  <TableCell>Count</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {surveyResponses.map((row, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{row.question_text}</TableCell>
-                    <TableCell>{row.response}</TableCell>
-                    <TableCell>{row.count}</TableCell>
+          surveyViewMode === 'summary' ? (
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Question</TableCell>
+                    <TableCell>Response</TableCell>
+                    <TableCell>Count</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                </TableHead>
+                <TableBody>
+                  {surveyResponses.map((row, index) => (
+                    <TableRow key={index}>
+                      <TableCell>{row.question_text}</TableCell>
+                      <TableCell>{row.response}</TableCell>
+                      <TableCell>{row.count}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          ) : (
+            // By Question View
+            <Box>
+              {loadingQuestionResponses ? (
+                <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+                  <CircularProgress />
+                </Box>
+              ) : questionResponses ? (
+                <Box>
+                  <Typography variant="h5" gutterBottom>
+                    {questionResponses.question.question_text}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary" gutterBottom>
+                    Type: {questionResponses.question.type} • Stage: {questionResponses.question.stage}
+                  </Typography>
+                  {renderQuestionVisualization(questionResponses.question, questionResponses.responses)}
+                </Box>
+              ) : selectedQuestion ? (
+                <Typography variant="body1" color="textSecondary" align="center">
+                  Select a question above to view detailed responses
+                </Typography>
+              ) : (
+                <Typography variant="body1" color="textSecondary" align="center">
+                  Select a question to view detailed responses
+                </Typography>
+              )}
+            </Box>
+          )
         ) : (
           <Typography variant="body1" color="textSecondary" align="center">
             Click a button above to load survey responses data

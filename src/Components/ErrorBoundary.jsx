@@ -114,7 +114,7 @@ function ErrorFallback() {
           </Button>
           
           <Typography variant="caption" color="text.secondary" sx={{ mt: 2 }}>
-            If this keeps happening, try refreshing the page or contact support
+            If this keeps happening, try refreshing the page or contact me
           </Typography>
         </Stack>
       </Paper>

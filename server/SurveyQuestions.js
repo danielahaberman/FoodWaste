@@ -72,7 +72,7 @@ const questions = [
   },
   {
     text: "How much do you usually spend on groceries per week?",
-    type: "number",
+    type: "money",
     stage: "initial",
     options: [],
     placeholder: "Enter amount in dollars (e.g., 150)"

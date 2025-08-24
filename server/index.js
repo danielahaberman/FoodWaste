@@ -1048,6 +1048,14 @@ app.get("/admin/analytics/overview", async (req, res) => {
 // GET user demographics
 app.get("/admin/analytics/demographics", async (req, res) => {
   try {
+    // Get total user count
+    const userCountQuery = `
+      SELECT COUNT(DISTINCT user_id) as total_users
+      FROM survey_responses 
+      WHERE user_id > 0
+    `;
+    const userCountResult = await pool.query(userCountQuery);
+
     // Get gender distribution
     const genderQuery = `
       SELECT sr.response, COUNT(*) as count
@@ -1079,6 +1087,7 @@ app.get("/admin/analytics/demographics", async (req, res) => {
     const incomeResult = await pool.query(incomeQuery);
 
     res.json({
+      totalUsers: userCountResult.rows[0]?.total_users || 0,
       gender: genderResult.rows,
       age: ageResult.rows,
       income: incomeResult.rows
@@ -1094,7 +1103,7 @@ app.get("/admin/analytics/survey-responses", async (req, res) => {
   try {
     const { stage } = req.query;
     let query = `
-      SELECT sq.question_text, sr.response, COUNT(*) as count
+      SELECT sq.id as question_id, sq.question_text, sr.response, COUNT(*) as count
       FROM survey_responses sr
       JOIN survey_questions sq ON sr.question_id = sq.id
       WHERE sr.user_id > 0
@@ -1102,16 +1111,66 @@ app.get("/admin/analytics/survey-responses", async (req, res) => {
     
     if (stage) {
       query += ` AND sq.stage = $1`;
-      query += ` GROUP BY sq.question_text, sr.response ORDER BY sq.question_text, count DESC`;
+      query += ` GROUP BY sq.id, sq.question_text, sr.response ORDER BY sq.question_text, count DESC`;
       const result = await pool.query(query, [stage]);
       res.json(result.rows);
     } else {
-      query += ` GROUP BY sq.question_text, sr.response ORDER BY sq.question_text, count DESC`;
+      query += ` GROUP BY sq.id, sq.question_text, sr.response ORDER BY sq.question_text, count DESC`;
       const result = await pool.query(query);
       res.json(result.rows);
     }
   } catch (err) {
     console.error("Error getting survey responses:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET question responses for specific question
+app.get("/admin/analytics/question-responses", async (req, res) => {
+  try {
+    const { questionId, stage } = req.query;
+    
+    if (!questionId) {
+      return res.status(400).json({ error: "Question ID is required" });
+    }
+
+    // Get question details
+    const questionQuery = `
+      SELECT id, question_text, type, stage
+      FROM survey_questions 
+      WHERE id = $1
+    `;
+    const questionResult = await pool.query(questionQuery, [questionId]);
+    
+    if (questionResult.rows.length === 0) {
+      return res.status(404).json({ error: "Question not found" });
+    }
+
+    const question = questionResult.rows[0];
+    
+    // Get all responses for this question
+    let responsesQuery = `
+      SELECT sr.response, sr.user_id, sr.response_date
+      FROM survey_responses sr
+      WHERE sr.question_id = $1 AND sr.user_id > 0
+    `;
+    
+    if (stage) {
+      responsesQuery += ` AND sr.question_id IN (SELECT id FROM survey_questions WHERE stage = $2)`;
+      const responsesResult = await pool.query(responsesQuery, [questionId, stage]);
+      res.json({
+        question: question,
+        responses: responsesResult.rows
+      });
+    } else {
+      const responsesResult = await pool.query(responsesQuery, [questionId]);
+      res.json({
+        question: question,
+        responses: responsesResult.rows
+      });
+    }
+  } catch (err) {
+    console.error("Error getting question responses:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -1445,283 +1504,21 @@ app.use((req, res) => {
 
 
 
-// Add this somewhere near the top or before seeding
-async function seedDefaultCategories() {
-  try {
-    // Expanded set of major grocery categories
-    const defaultCategories = [
-      "Fruits",
-      "Vegetables",
-      "Bakery",
-      "Dairy",
-      "Meat",
-      "Seafood",
-      "Grains",
-      "Canned Goods",
-      "Frozen",
-      "Beverages",
-      "Juice",
-      "Snacks",
-      "Condiments",
-      "Spices",
-      "Pantry",
-      "Deli",
-      "Prepared Foods",
-      "Breakfast",
-      "Sauces",
-      "Baking",
-      "Oils & Vinegars",
-      "Household"
-    ];
-
-    for (const category of defaultCategories) {
-      const { rows } = await pool.query(
-        "SELECT id FROM categories WHERE name = $1",
-        [category]
-      );
-      if (rows.length === 0) {
-        await pool.query(
-          "INSERT INTO categories (name) VALUES ($1)",
-          [category]
-        );
-        console.log(`Inserted default category: ${category}`);
-      }
-    }
-  } catch (err) {
-    console.error("Error seeding categories:", err);
-  }
-}
-
-async function seedDefaultQuantityTypes() {
-  try {
-    // Add all quantity types referenced in your food items
-    const defaultQuantityTypes = [
-      "Each",
-      "Loaf",
-      "Pound",
-      "Kilogram",
-      "Liter",
-      "Box",
-      "Bunch",
-      "Lb",   // Be sure this matches your DB terminology (you had both Pound and Lb)
-      "Cup",
-      "Dozen",
-      "Bag",
-      "Gallon"    ];
-
-    for (const qtyType of defaultQuantityTypes) {
-      const { rows } = await pool.query(
-        "SELECT id FROM quantity_types WHERE name = $1",
-        [qtyType]
-      );
-      if (rows.length === 0) {
-        await pool.query(
-          "INSERT INTO quantity_types (name) VALUES ($1)",
-          [qtyType]
-        );
-        console.log(`Inserted default quantity type: ${qtyType}`);
-      }
-    }
-  } catch (err) {
-    console.error("Error seeding quantity types:", err);
-  }
-}
-
-
-async function seedDefaultSurveyQuestions() {
-  try {
-    console.log("Seeding survey questions...");
-    const defaultQuestions = questions;
-
-    for (const question of defaultQuestions) {
-      // Check if question exists already
-      const existing = await pool.query(
-        "SELECT id FROM survey_questions WHERE question_text = $1 AND stage = $2",
-        [question.text, question.stage]
-      );
-
-      let questionId;
-      if (existing.rows.length === 0) {
-        const insertQ = await pool.query(
-          "INSERT INTO survey_questions (question_text, type, stage) VALUES ($1, $2, $3) RETURNING id",
-          [question.text, question.type, question.stage]
-        );
-        questionId = insertQ.rows[0].id;
-        console.log(`Inserted survey question: ${question.text}`);
-      } else {
-        questionId = existing.rows[0].id;
-      }
-
-      // Insert options if it's a multiple_choice question
-      if (question.type === "multiple_choice" && question.options.length > 0) {
-        for (const optionText of question.options) {
-          const optionExists = await pool.query(
-            "SELECT id FROM survey_question_options WHERE question_id = $1 AND option_text = $2",
-            [questionId, optionText]
-          );
-
-          if (optionExists.rows.length === 0) {
-            await pool.query(
-              "INSERT INTO survey_question_options (question_id, option_text) VALUES ($1, $2)",
-              [questionId, optionText]
-            );
-            console.log(`  Added option: ${optionText}`);
-          }
-        }
-      }
-    }
-    console.log("Survey questions seeding completed!");
-  } catch (err) {
-    console.error("Error seeding survey questions:", err);
-  }
-}
-
-async function seedSentinelUser() {
-  try {
-    // If -1 already exists, nothing to do.
-    const existing = await pool.query("SELECT id FROM users WHERE id = -1");
-    if (existing.rows.length > 0) {
-      return;
-    }
-
-    // Get column metadata for users table
-    const colRes = await pool.query(
-      `
-      SELECT column_name, is_nullable, column_default
-      FROM information_schema.columns
-      WHERE table_name = 'users'
-      `
-    );
-
-    // Determine which columns (besides id) are required: NOT NULL and no default
-    const requiredCols = colRes.rows
-      .filter(col => col.column_name !== "id" && col.is_nullable === "NO" && col.column_default === null)
-      .map(col => col.column_name);
-
-    // Build a values map with safe placeholders. You may need to adapt these based on your actual schema.
-    const columns = ["id"];
-    const params = [-1]; // sentinel id
-
-    for (const col of requiredCols) {
-      // Provide sensible dummy values; you can extend this mapping if your schema has other required fields.
-      let val;
-      if (col.toLowerCase().includes("user") || col.toLowerCase().includes("name")) {
-        val = "public"; // e.g., username
-      } else if (col.toLowerCase().includes("password")) {
-        // If you hash passwords normally, generate a dummy hash or empty string depending on your auth logic.
-        val = crypto.createHash("sha256").update("public").digest("hex");
-      } else if (col.toLowerCase().includes("email")) {
-        val = "public@example.com"; // in case email exists in some environments
-      } else {
-        // fallback generic
-        val = null;
-      }
-
-      // If fallback produced null for a required column, you have to decide a value; skip if can't supply.
-      if (val === null) {
-        console.warn(`Cannot seed sentinel user: no placeholder for required column "${col}"`);
-        continue;
-      }
-
-      columns.push(col);
-      params.push(val);
-    }
-
-    // Build query string
-    const colList = columns.map(c => `"${c}"`).join(", ");
-    const paramPlaceholders = params.map((_, i) => `$${i + 1}`).join(", ");
-
-    const insertQuery = `INSERT INTO users (${colList}) VALUES (${paramPlaceholders})`;
-
-    await pool.query(insertQuery, params);
-    console.log("Inserted sentinel user with id -1");
-  } catch (err) {
-    console.error("Error seeding sentinel user:", err);
-  }
-}
-
-async function seedDefaultFoodItems() {
-  try {
-    // Lookup categories and quantity types to get their IDs
-    const categoryRes = await pool.query("SELECT id, name FROM categories");
-    const quantityTypeRes = await pool.query("SELECT id, name FROM quantity_types");
-
-    const categoryMap = {};
-    categoryRes.rows.forEach(c => {
-      categoryMap[c.name] = c.id;
-    });
-
-    const qtyTypeMap = {};
-    quantityTypeRes.rows.forEach(qt => {
-      qtyTypeMap[qt.name] = qt.id;
-    });
-
-    // Now you can define default food items using names and map to IDs
-const defaultItems = foodItems
 
 
 
-    for (const item of defaultItems) {
-      // Get IDs from maps
-      const category_id = categoryMap[item.category];
-      const quantity_type_id = qtyTypeMap[item.quantity_type];
-
-      if (!category_id || !quantity_type_id) {
-        console.warn(`Skipping ${item.name} because category or quantity type not found.`);
-        continue;
-      }
-
-      // Check if this food item exists for user_id -1
-      const { rows } = await pool.query(
-        "SELECT id FROM food_items WHERE name = $1 AND user_id = -1",
-        [item.name]
-      );
-
-      if (rows.length === 0) {
- await pool.query(
-  `INSERT INTO food_items (name, category_id, price, quantity, quantity_type_id, emoji, user_id)
-   VALUES ($1, $2, $3, $4, $5, $6, -1)`,
-  [item.name, category_id, item.price, item.quantity, quantity_type_id, item.emoji || null]
-);
-        console.log(`Inserted default food item: ${item.name}`);
-      }
-    }
-  } catch (err) {
-    console.error("Error seeding default food items:", err);
-  }
-}
 
 
 
-// Call all seeds in sequence before starting server
-async function createTablesIfNotExists() {
-  try {
-    await pool.query(query);
-    console.log("Tables created or confirmed existing");
-  } catch (err) {
-    console.error("Error creating tables:", err);
-  }
-}
-async function addEmojiColumnIfNeeded() {
-  try {
-    await pool.query(`ALTER TABLE food_items ADD COLUMN IF NOT EXISTS emoji VARCHAR(10);`);
-    console.log("Ensured emoji column exists");
-  } catch (err) {
-    console.error("Error adding emoji column:", err);
-  }
-}
-async function seedAllDefaults() {
-  await createTablesIfNotExists();
-  await seedSentinelUser();
-  await seedDefaultCategories();
-  await seedDefaultQuantityTypes();
-  await addEmojiColumnIfNeeded();
-  await seedDefaultFoodItems();
-  await seedDefaultSurveyQuestions()
-}
 
-    await seedAllDefaults();
-    
+
+
+
+
+
+
+
+
     // Start server
     const PORT = process.env.PORT || 5001;
     app.listen(PORT, () => {

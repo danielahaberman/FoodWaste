@@ -14,6 +14,7 @@ import QaPage from './Components/Pages/QaPage';
 import TermsAndConditions from './Components/Pages/TermsAndConditions';
 import TermsGuard from './Components/TermsGuard';
 import AuthGuard from './Components/AuthGuard';
+import SurveyGuard from './Components/SurveyGuard';
 import ErrorBoundary from './Components/ErrorBoundary';
 import AdminDashboard from './Components/Pages/AdminDashboard';
 function App() {
@@ -22,7 +23,8 @@ function App() {
       <BrowserRouter>
         <TermsGuard>
           <AuthGuard>
-            <Routes>
+            <SurveyGuard>
+              <Routes>
               {/* Pages that don't require SidebarLayout */}
               <Route path="/" element={<LandingPage />} />
               <Route path="/auth/login" element={<LoginPage />} />
@@ -39,6 +41,7 @@ function App() {
               {/* Admin routes (no sidebar) */}
               <Route path="/admin" element={<AdminDashboard />} />
             </Routes>
+            </SurveyGuard>
           </AuthGuard>
         </TermsGuard>
       </BrowserRouter>
