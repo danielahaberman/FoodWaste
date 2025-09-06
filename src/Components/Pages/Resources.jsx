@@ -360,8 +360,7 @@ const Resources = () => {
                           alignItems="center" 
                           gap={1} 
                           mb={1}
-                          flexDirection={{ xs: 'column', sm: 'row' }}
-                          alignItems={{ xs: 'flex-start', sm: 'center' }}
+                          flexWrap="wrap"
                         >
                           <Typography 
                             variant="subtitle1" 
