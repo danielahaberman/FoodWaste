@@ -20,9 +20,6 @@ import {
   DialogActions,
   TextField,
   Stack,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
   ToggleButtonGroup,
   ToggleButton,
   Menu,
@@ -36,7 +33,6 @@ import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import RestaurantIcon from "@mui/icons-material/Restaurant";
 import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
 import FastfoodIcon from "@mui/icons-material/Fastfood";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import CloseIcon from "@mui/icons-material/Close";
 import { Pie, Line } from "react-chartjs-2";
@@ -103,12 +99,25 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
   const [tabIndex, setTabIndex] = useState(0); // 0: overall pie, 1: trend, 2: by category
   const [activeWeekOf, setActiveWeekOf] = useState(null);
   const [byCategory, setByCategory] = useState([]);
-  const [showPreviousWeeks, setShowPreviousWeeks] = useState(false);
 
-  // Edit limit: 30 days back from today
-  const EDIT_LIMIT_DAYS = 30;
-  const getEditableDateLimit = () => {
-    return moment.tz('America/New_York').subtract(EDIT_LIMIT_DAYS, 'days').startOf('day');
+  // Show exactly 2 editable weeks (previous week + current week) plus next week (disabled), with 7-day edit limit
+  const getEditableWeeks = () => {
+    const currentWeek = moment.tz('America/New_York').startOf('week');
+    const previousWeek = currentWeek.clone().subtract(1, 'week');
+    const nextWeek = currentWeek.clone().add(1, 'week');
+    
+    return {
+      previousWeek: previousWeek.format('MM/DD/YYYY'),
+      currentWeek: currentWeek.format('MM/DD/YYYY'),
+      nextWeek: nextWeek.format('MM/DD/YYYY')
+    };
+  };
+
+  // Helper function to format week date range
+  const formatWeekRange = (weekStart) => {
+    const start = moment.tz(weekStart, 'MM/DD/YYYY', 'America/New_York');
+    const end = start.clone().add(6, 'days');
+    return `${start.format('MMM D')} - ${end.format('MMM D, YYYY')}`;
   };
 
   // Per-item action menu
@@ -316,25 +325,51 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
   };
 
   const markWeekAsWasted = async (weekOf) => {
-    await consumptionAPI.autoWasteWeek({ user_id: userId, week_start: weekOf });
-    await fetchWeeklyPurchaseSummary();
-    const m = await fetchBatchSummaries();
-    setSummaryMap(m);
-    await ensureWeekChart(weekOf, true);
-    
-    // Dispatch task completion event to update streak and task counts
-    window.dispatchEvent(new CustomEvent('taskCompleted'));
+    try {
+      console.log('Marking week as wasted:', weekOf);
+      const response = await consumptionAPI.autoWasteWeek({ user_id: userId, week_start: weekOf });
+      console.log('Auto waste week response:', response);
+      
+      if (response.data.inserted === 0) {
+        alert('No remaining food to mark as wasted for this week. All food has already been consumed or wasted.');
+        return;
+      }
+      
+      await fetchWeeklyPurchaseSummary();
+      const m = await fetchBatchSummaries();
+      setSummaryMap(m);
+      await ensureWeekChart(weekOf, true);
+      
+      // Dispatch task completion event to update streak and task counts
+      window.dispatchEvent(new CustomEvent('taskCompleted'));
+    } catch (error) {
+      console.error('Error marking week as wasted:', error);
+      alert('Failed to mark week as wasted: ' + (error?.response?.data?.error || error.message));
+    }
   };
 
   const markWeekAsConsumed = async (weekOf) => {
-    await consumptionAPI.autoConsumeWeek({ user_id: userId, week_start: weekOf });
-    await fetchWeeklyPurchaseSummary();
-    const m = await fetchBatchSummaries();
-    setSummaryMap(m);
-    await ensureWeekChart(weekOf, true);
-    
-    // Dispatch task completion event to update streak and task counts
-    window.dispatchEvent(new CustomEvent('taskCompleted'));
+    try {
+      console.log('Marking week as consumed:', weekOf);
+      const response = await consumptionAPI.autoConsumeWeek({ user_id: userId, week_start: weekOf });
+      console.log('Auto consume week response:', response);
+      
+      if (response.data.inserted === 0) {
+        alert('No remaining food to mark as consumed for this week. All food has already been consumed or wasted.');
+        return;
+      }
+      
+      await fetchWeeklyPurchaseSummary();
+      const m = await fetchBatchSummaries();
+      setSummaryMap(m);
+      await ensureWeekChart(weekOf, true);
+      
+      // Dispatch task completion event to update streak and task counts
+      window.dispatchEvent(new CustomEvent('taskCompleted'));
+    } catch (error) {
+      console.error('Error marking week as consumed:', error);
+      alert('Failed to mark week as consumed: ' + (error?.response?.data?.error || error.message));
+    }
   };
 
   if (loading)
@@ -380,7 +415,7 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
             <ArrowBackIcon />
           </IconButton>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            {activeWeekOf ? `Week of ${activeWeekOf}` : 'Weekly Summary'}
+            {activeWeekOf ? formatWeekRange(activeWeekOf) : 'Weekly Summary'}
           </Typography>
           {!activeWeekOf && (
             <Button color="inherit" onClick={() => setOverallOpen(true)}>Trends</Button>
@@ -399,10 +434,36 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
             <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
               Recent Weeks (Editable)
             </Typography>
-            {weeklySummary.filter((week) => {
-              const weekDate = moment.tz(week.weekOf, 'MM/DD/YYYY', 'America/New_York');
-              return weekDate.isAfter(getEditableDateLimit());
-            }).map((week) => {
+            {(() => {
+              const editableWeeks = getEditableWeeks();
+              
+              // Show both previous week and current week (editable)
+              const allWeeks = [];
+              
+              // Add previous week (with data if available, or placeholder)
+              const previousWeekData = weeklySummary.find(week => week.weekOf === editableWeeks.previousWeek);
+              if (previousWeekData) {
+                allWeeks.push(previousWeekData);
+              } else {
+                allWeeks.push({
+                  weekOf: editableWeeks.previousWeek,
+                  purchases: []
+                });
+              }
+              
+              // Add current week (with data if available, or placeholder)
+              const currentWeekData = weeklySummary.find(week => week.weekOf === editableWeeks.currentWeek);
+              if (currentWeekData) {
+                allWeeks.push(currentWeekData);
+              } else {
+                allWeeks.push({
+                  weekOf: editableWeeks.currentWeek,
+                  purchases: []
+                });
+              }
+              
+              return allWeeks;
+            })().map((week) => {
             // Calculate completion status for this week
             const ids = week.purchases.map(p => p.id);
             let totalItems = 0;
@@ -433,6 +494,9 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
             const isPastWeek = moment.tz(week.weekOf, 'MM/DD/YYYY', 'America/New_York').isBefore(moment.tz('America/New_York').startOf('week'));
             const showCompletion = isCompleted && isPastWeek;
             
+            // Handle empty weeks
+            const isEmpty = week.purchases.length === 0;
+            
             return (
         <Paper
           key={week.weekOf}
@@ -444,7 +508,7 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
             width: "100%", // Use percentage instead of viewport units
             maxWidth: "100%", // Ensure it doesn't overflow
             cursor: 'pointer',
-            border: showCompletion ? 2 : 1,
+            border: 2,
             borderColor: showCompletion ? "success.main" : "divider",
             position: 'relative',
             boxSizing:"border-box",
@@ -455,7 +519,37 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
               boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
             }
           }}
-          onClick={() => openWeekDetails(week.weekOf)}
+          onClick={() => {
+            if (isEmpty) {
+              // For empty weeks, navigate to the first day within the week that's still within 7 days
+              if (onGoToDate) {
+                const weekStart = moment.tz(week.weekOf, 'MM/DD/YYYY', 'America/New_York');
+                const weekEnd = weekStart.clone().add(6, 'days');
+                const today = moment.tz('America/New_York');
+                const sevenDaysAgo = today.clone().subtract(7, 'days');
+                
+                // Find the first day in the week range that's still within 7 days
+                let targetDate = weekStart;
+                for (let i = 0; i < 7; i++) {
+                  const dayInWeek = weekStart.clone().add(i, 'days');
+                  if (dayInWeek.isSameOrAfter(sevenDaysAgo) && dayInWeek.isSameOrBefore(today)) {
+                    targetDate = dayInWeek;
+                    break;
+                  }
+                }
+                
+                // If no day in the week is within 7 days, use the last day of the week
+                if (!targetDate.isSameOrAfter(sevenDaysAgo)) {
+                  targetDate = weekEnd;
+                }
+                
+                onGoToDate(targetDate.format('MM/DD/YYYY'));
+              }
+            } else {
+              // For weeks with data, open the week details
+              openWeekDetails(week.weekOf);
+            }
+          }}
         >
           <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -466,7 +560,7 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
               gutterBottom
               sx={{ borderBottom: 2, borderColor: "primary.main", pb: 0.5 }}
             >
-              {week.weekOf}
+              {formatWeekRange(week.weekOf)}
             </Typography>
             {showCompletion && (
               <Box sx={{ 
@@ -481,7 +575,8 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
                 fontSize: '0.75rem',
                 fontWeight: 'bold',
                 whiteSpace:"nowrap",
-                position:"absolute", top:"-10px"
+                position:"absolute", top:"-10px",
+                boxSizing:"border-box"
               }}>
                 ✓ Complete
               </Box>
@@ -496,22 +591,27 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
             gap: 1, 
             mb: 1,
             p: 1,
-            backgroundColor: 'primary.50',
+            backgroundColor: isEmpty ? 'grey.100' : 'primary.50',
             borderRadius: 1,
             border: '1px solid',
-            borderColor: 'primary.200'
+            borderColor: isEmpty ? 'grey.300' : 'primary.200'
           }}>
-            <Typography variant="body2" sx={{ color: 'primary.main', fontWeight: 500 }}>
-              👆 Tap to manage food waste/consumption
+            <Typography variant="body2" sx={{ color: isEmpty ? 'text.secondary' : 'primary.main', fontWeight: 500 }}>
+              {isEmpty ? '📅 No food added yet - Tap to add food' : '👆 Tap to manage food waste/consumption'}
             </Typography>
           </Box>
           {/* Summary line with icons */}
           <Typography variant="body2" color="text.primary" display="flex" alignItems="center" gap={2}>
             <Box component="span" display="inline-flex" alignItems="center" gap={0.5}>
               <ShoppingCartIcon sx={{ color: 'primary.main', fontSize: 18 }} />
-              {week.purchases.length}
+              {week.purchases.length} {week.purchases.length === 1 ? 'item' : 'items'}
             </Box>
-            {(() => {
+            {isEmpty ? (
+              <Box component="span" display="inline-flex" alignItems="center" gap={0.5}>
+                <FastfoodIcon sx={{ color: 'grey.400', fontSize: 18 }} />
+                No food added yet
+              </Box>
+            ) : (() => {
               const ids = week.purchases.map(p => p.id);
               let c = 0, w = 0, cc = 0, wc = 0, unloggedCost = 0;
               
@@ -565,10 +665,10 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
         );
         })}
         
-        {/* Upcoming Week Card */}
+        {/* Next Week Card */}
         {(() => {
-          const nextWeek = moment.tz('America/New_York').add(1, 'week').startOf('week');
-          const nextWeekFormatted = nextWeek.format('MM/DD/YYYY');
+          const editableWeeks = getEditableWeeks();
+          const nextWeekFormatted = editableWeeks.nextWeek;
           
           return (
             <Paper
@@ -596,7 +696,7 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
                     gutterBottom
                     sx={{ borderBottom: 2, borderColor: "grey.400", pb: 0.5 }}
                   >
-                    {nextWeekFormatted}
+                    {formatWeekRange(nextWeekFormatted)}
                   </Typography>
                   <Box sx={{ 
                     display: 'flex', 
@@ -655,231 +755,6 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
         })()}
         </Box>
         
-        {/* Previous Weeks Toggle Button */}
-        <Box sx={{ mb: 2, textAlign: 'center' }}>
-          <Button
-            variant="outlined"
-            onClick={() => setShowPreviousWeeks(!showPreviousWeeks)}
-            sx={{ 
-              borderColor: 'grey.400',
-              color: 'text.secondary',
-              '&:hover': {
-                borderColor: 'primary.main',
-                color: 'primary.main'
-              }
-            }}
-          >
-            {showPreviousWeeks ? 'Hide' : 'View'} Previous Weeks (Read-Only)
-          </Button>
-        </Box>
-        
-        {/* Read-Only Previous Weeks Section */}
-        {showPreviousWeeks && (
-          <Box sx={{ backgroundColor: 'grey.100', borderRadius: 2, p: 1, mb: 2 }}>
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'text.secondary' }}>
-              Previous Weeks (View Only)
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', fontStyle: 'italic' }}>
-              Weeks older than {EDIT_LIMIT_DAYS} days are read-only for data integrity
-            </Typography>
-            {(() => {
-              const previousWeeks = weeklySummary.filter((week) => {
-                const weekDate = moment.tz(week.weekOf, 'MM/DD/YYYY', 'America/New_York');
-                return weekDate.isSameOrBefore(getEditableDateLimit());
-              });
-              
-              if (previousWeeks.length === 0) {
-                return (
-                  <Box sx={{ textAlign: 'center', py: 4 }}>
-                    <Typography variant="body1" color="text.secondary">
-                      No previous weeks to display
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                      All your weeks are within the {EDIT_LIMIT_DAYS}-day editing window
-                    </Typography>
-                  </Box>
-                );
-              }
-              
-              return previousWeeks.map((week) => {
-              // Calculate completion status for this week
-              const ids = week.purchases.map(p => p.id);
-              let totalItems = 0;
-              let completedItems = 0;
-              let totalQuantity = 0;
-              let completedQuantity = 0;
-              
-              ids.forEach(id => {
-                const s = summaryMap[id] || {};
-                const purchase = week.purchases.find(p => p.id === id);
-                if (purchase) {
-                  const baseQty = parseFloat(purchase.quantity) || 0;
-                  const consumedQty = parseFloat(s.consumed_qty || 0);
-                  const wastedQty = parseFloat(s.wasted_qty || 0);
-                  const totalLogged = consumedQty + wastedQty;
-                  
-                  totalItems++;
-                  totalQuantity += baseQty;
-                  completedQuantity += totalLogged;
-                  
-                  if (totalLogged >= baseQty - 0.0001) { // Account for floating point precision
-                    completedItems++;
-                  }
-                }
-              });
-              
-              const isCompleted = totalItems > 0 && completedItems === totalItems;
-              const isPastWeek = moment.tz(week.weekOf, 'MM/DD/YYYY', 'America/New_York').isBefore(moment.tz('America/New_York').startOf('week'));
-              const showCompletion = isCompleted && isPastWeek;
-              
-              return (
-                <Paper
-                  key={week.weekOf}
-                  elevation={1}
-                  sx={{
-                    mb: 2,
-                    p: { xs: 1.5, sm: 2 },
-                    borderRadius: 2,
-                    width: "100%",
-                    maxWidth: "100%",
-                    border: showCompletion ? 2 : 1,
-                    borderColor: showCompletion ? "success.main" : "grey.300",
-                    position: 'relative',
-                    boxSizing: "border-box",
-                    opacity: 0.7,
-                    backgroundColor: 'grey.50'
-                  }}
-                >
-                  <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography
-                        variant="h6"
-                        fontWeight={700}
-                        color="text.secondary"
-                        gutterBottom
-                        sx={{ borderBottom: 2, borderColor: "grey.400", pb: 0.5 }}
-                      >
-                        {week.weekOf}
-                      </Typography>
-                      {showCompletion && (
-                        <Box sx={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          gap: 0.5,
-                          backgroundColor: 'success.main',
-                          color: 'white',
-                          px: 1,
-                          py: 0.25,
-                          borderRadius: 1,
-                          fontSize: '0.75rem',
-                          fontWeight: 'bold',
-                          whiteSpace: "nowrap",
-                          position: "absolute", 
-                          top: "-10px"
-                        }}>
-                          ✓ Complete
-                        </Box>
-                      )}
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: 0.5,
-                        backgroundColor: 'grey.400',
-                        color: 'white',
-                        px: 1,
-                        py: 0.25,
-                        borderRadius: 1,
-                        fontSize: '0.75rem',
-                        fontWeight: 'bold',
-                        whiteSpace: "nowrap",
-                        position: "absolute", 
-                        top: "-10px",
-                        right: "10px"
-                      }}>
-                        Read Only
-                      </Box>
-                    </Box>
-                  </Stack>
-                  
-                  {/* Read-only instruction */}
-                  <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: 1, 
-                    mb: 1,
-                    p: 1,
-                    backgroundColor: 'grey.200',
-                    borderRadius: 1,
-                    border: '1px solid',
-                    borderColor: 'grey.300'
-                  }}>
-                    <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                      📖 View only - Cannot edit data older than {EDIT_LIMIT_DAYS} days
-                    </Typography>
-                  </Box>
-                  
-                  {/* Summary line with icons */}
-                  <Typography variant="body2" color="text.secondary" display="flex" alignItems="center" gap={2}>
-                    <Box component="span" display="inline-flex" alignItems="center" gap={0.5}>
-                      <ShoppingCartIcon sx={{ color: 'grey.400', fontSize: 18 }} />
-                      {week.purchases.length}
-                    </Box>
-                    {(() => {
-                      const ids = week.purchases.map(p => p.id);
-                      let c = 0, w = 0, cc = 0, wc = 0, unloggedCost = 0;
-                      
-                      ids.forEach(id => {
-                        const s = summaryMap[id] || {};
-                        const purchase = week.purchases.find(p => p.id === id);
-                        if (purchase) {
-                          c += parseFloat(s.consumed_qty || 0);
-                          w += parseFloat(s.wasted_qty || 0);
-                          cc += parseFloat(s.consumed_cost || 0);
-                          wc += parseFloat(s.wasted_cost || 0);
-                          
-                          // Calculate unlogged cost for this item
-                          const baseQty = parseFloat(purchase.quantity || 0);
-                          const price = parseFloat(purchase.price || 0);
-                          const unitCost = baseQty > 0 && price ? price / baseQty : 0;
-                          const consumedQty = parseFloat(s.consumed_qty || 0);
-                          const wastedQty = parseFloat(s.wasted_qty || 0);
-                          const remainingQty = Math.max(0, baseQty - consumedQty - wastedQty);
-                          unloggedCost += unitCost * remainingQty;
-                        }
-                      });
-                      
-                      // Check if there's any consumption data
-                      const hasConsumptionData = c > 0 || w > 0;
-                      
-                      if (hasConsumptionData) {
-                        return (
-                          <>
-                            <Box component="span" display="inline-flex" alignItems="center" gap={0.5}>
-                              <RestaurantIcon sx={{ color: 'grey.400', fontSize: 18 }} />
-                              {formatNum(c)} ({formatMoney(cc)})
-                            </Box>
-                            <Box component="span" display="inline-flex" alignItems="center" gap={0.5}>
-                              <DeleteForeverIcon sx={{ color: 'grey.400', fontSize: 18 }} />
-                              {formatNum(w)} ({formatMoney(wc)})
-                            </Box>
-                          </>
-                        );
-                      } else {
-                        return (
-                          <Box component="span" display="inline-flex" alignItems="center" gap={0.5}>
-                            <FastfoodIcon sx={{ color: 'grey.400', fontSize: 18 }} />
-                            Unlogged: {formatMoney(unloggedCost)}
-                          </Box>
-                        );
-                      }
-                    })()}
-                  </Typography>
-                </Paper>
-              );
-              });
-            })()}
-          </Box>
-        )}
         </Box>
       )}
 
@@ -988,8 +863,9 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
             {/* Bulk Actions for the week */}
             {(() => {
               const currentWeek = weeklySummary.find(w => w.weekOf === activeWeekOf);
+              const editableWeeks = getEditableWeeks();
               const isWeekEditable = currentWeek ? 
-                moment.tz(currentWeek.weekOf, 'MM/DD/YYYY', 'America/New_York').isAfter(getEditableDateLimit()) : 
+                (currentWeek.weekOf === editableWeeks.previousWeek || currentWeek.weekOf === editableWeeks.currentWeek) : 
                 false;
               
               // Calculate total remaining portions for this week
@@ -1014,7 +890,7 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
                   </Typography>
                   {!isWeekEditable && (
                     <Typography variant="caption" sx={{ mb: 1, color: 'text.secondary', fontStyle: 'italic', fontSize: '0.7rem' }}>
-                      This week is read-only (older than {EDIT_LIMIT_DAYS} days)
+                      This week is read-only (not in the last 2 weeks)
                     </Typography>
                   )}
                   {!hasRemainingPortions && isWeekEditable && (
@@ -1047,7 +923,32 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
                   <Button 
                     variant="contained" 
                     size="small" 
-                    onClick={() => { if(onGoToDate) onGoToDate(activeWeekOf); }}
+                    onClick={() => { 
+                      if(onGoToDate) {
+                        // Navigate to the first day within the week that's still within 7 days
+                        const weekStart = moment.tz(activeWeekOf, 'MM/DD/YYYY', 'America/New_York');
+                        const weekEnd = weekStart.clone().add(6, 'days');
+                        const today = moment.tz('America/New_York');
+                        const sevenDaysAgo = today.clone().subtract(7, 'days');
+                        
+                        // Find the first day in the week range that's still within 7 days
+                        let targetDate = weekStart;
+                        for (let i = 0; i < 7; i++) {
+                          const dayInWeek = weekStart.clone().add(i, 'days');
+                          if (dayInWeek.isSameOrAfter(sevenDaysAgo) && dayInWeek.isSameOrBefore(today)) {
+                            targetDate = dayInWeek;
+                            break;
+                          }
+                        }
+                        
+                        // If no day in the week is within 7 days, use the last day of the week
+                        if (!targetDate.isSameOrAfter(sevenDaysAgo)) {
+                          targetDate = weekEnd;
+                        }
+                        
+                        onGoToDate(targetDate.format('MM/DD/YYYY'));
+                      }
+                    }}
                     sx={{ width: '100%', fontSize: '0.8rem', py: 0.5 }}
                   >
                     Add more food
@@ -1145,15 +1046,16 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
               {(() => {
                 // Check if the current week is editable
                 const currentWeek = weeklySummary.find(w => w.weekOf === activeWeekOf);
+                const editableWeeks = getEditableWeeks();
                 const isWeekEditable = currentWeek ? 
-                  moment.tz(currentWeek.weekOf, 'MM/DD/YYYY', 'America/New_York').isAfter(getEditableDateLimit()) : 
+                  (currentWeek.weekOf === editableWeeks.previousWeek || currentWeek.weekOf === editableWeeks.currentWeek) : 
                   false;
                 
                 if (!isWeekEditable) {
                   return (
                     <MenuItem disabled>
                       <Typography variant="body2" color="text.secondary">
-                        Cannot edit items older than {EDIT_LIMIT_DAYS} days
+                        Cannot edit items not in the last 2 weeks
                       </Typography>
                     </MenuItem>
                   );

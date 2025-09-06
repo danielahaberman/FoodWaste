@@ -344,19 +344,48 @@ function AddNewPurchase({
          onClose={() => setShowDateConfirmation(false)}
          maxWidth="sm"
          fullWidth
+         sx={{
+           '& .MuiDialog-paper': {
+             margin: { xs: 2, sm: 3 },
+             maxHeight: { xs: '90vh', sm: 'auto' },
+             borderRadius: { xs: 2, sm: 3 }
+           }
+         }}
        >
-         <DialogTitle sx={{ textAlign: 'center', color: 'warning.main' }}>
+         <DialogTitle sx={{ 
+           textAlign: 'center', 
+           color: 'warning.main',
+           fontSize: { xs: '1.1rem', sm: '1.25rem' },
+           fontWeight: 600,
+           px: { xs: 2, sm: 3 },
+           pt: { xs: 2, sm: 3 }
+         }}>
            ⚠️ Adding Food to Previous Day
          </DialogTitle>
-         <DialogContent>
-           <Typography variant="body1" sx={{ mb: 2, textAlign: 'center' }}>
+         <DialogContent sx={{ px: { xs: 2, sm: 3 }, py: { xs: 1, sm: 2 } }}>
+           <Typography variant="body1" sx={{ 
+             mb: 2, 
+             textAlign: 'center',
+             fontSize: { xs: '0.95rem', sm: '1rem' },
+             lineHeight: 1.4
+           }}>
              You're adding <strong>{pendingFoodItem?.name}</strong> to{' '}
              <strong>{selectedDate.format('MMM D, YYYY')}</strong>
            </Typography>
-           <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+           <Typography variant="body2" sx={{ 
+             mb: 2, 
+             color: 'text.secondary',
+             textAlign: 'center',
+             fontSize: { xs: '0.9rem', sm: '0.95rem' }
+           }}>
              Did you mean to add this to today instead?
            </Typography>
-           <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+           <Typography variant="body2" sx={{ 
+             color: 'text.secondary', 
+             fontStyle: 'italic',
+             textAlign: 'center',
+             fontSize: { xs: '0.85rem', sm: '0.9rem' }
+           }}>
              Today is {new Date().toLocaleDateString('en-US', { 
                weekday: 'long', 
                year: 'numeric', 
@@ -365,11 +394,23 @@ function AddNewPurchase({
              })}
            </Typography>
          </DialogContent>
-         <DialogActions sx={{ justifyContent: 'center', pb: 3, gap: 2 }}>
+         <DialogActions sx={{ 
+           justifyContent: 'center', 
+           pb: { xs: 2, sm: 3 },
+           px: { xs: 2, sm: 3 },
+           flexDirection: { xs: 'column', sm: 'row' },
+           gap: { xs: 1.5, sm: 2 }
+         }}>
            <Button
              variant="outlined"
              onClick={() => handleConfirmDateChoice(false)}
              size="large"
+             fullWidth={{ xs: true, sm: false }}
+             sx={{
+               minHeight: { xs: 48, sm: 40 },
+               fontSize: { xs: '0.95rem', sm: '1rem' },
+               py: { xs: 1.5, sm: 1 }
+             }}
            >
              Keep Selected Date
            </Button>
@@ -378,6 +419,12 @@ function AddNewPurchase({
              onClick={() => handleConfirmDateChoice(true)}
              size="large"
              color="primary"
+             fullWidth={{ xs: true, sm: false }}
+             sx={{
+               minHeight: { xs: 48, sm: 40 },
+               fontSize: { xs: '0.95rem', sm: '1rem' },
+               py: { xs: 1.5, sm: 1 }
+             }}
            >
              Add to Today
            </Button>

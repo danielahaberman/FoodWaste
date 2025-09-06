@@ -33,11 +33,11 @@ const SidebarLayout = () => {
           margin: { xs: 0, sm: "0 auto" },
           px: { xs: 0, sm: 2 }, // No padding on mobile, padding on larger screens
           pt: { xs: 0, sm: 3 }, // No top padding on mobile, normal padding on larger screens
-          pb: { xs: 8, sm: 9 }, // Space for bottom bar
-          backgroundColor: "#ffffff",
+          pb: { xs: 0, sm: 9 }, // No bottom padding on mobile for full height, padding on larger screens
+          backgroundColor: "transparent", // Make transparent to allow background to show through
           borderRadius: { xs: 0, sm: 2 }, // No border radius on mobile
           boxShadow: { xs: "none", sm: "0 2px 8px rgba(0,0,0,0.05)" }, // No shadow on mobile
-          overflow: "hidden",
+          overflow: "visible", // Allow content to extend beyond container
           height: "100%",
         }}
       >
@@ -47,7 +47,7 @@ const SidebarLayout = () => {
             flexGrow: 1,
             width: "100%",
             height: "100%",
-            overflow: "auto",
+            overflow: "visible", // Allow content to extend beyond
             display: "flex",
             flexDirection: "column",
           }}

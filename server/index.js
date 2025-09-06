@@ -635,12 +635,15 @@ app.delete("/consumption-log/:id", requireUserId, async (req, res) => {
 app.post("/consumption-log/auto-waste-week", requireUserId, async (req, res) => {
   const { user_id, week_start } = req.body; // ISO date or MM/DD/YYYY
   try {
-    const start = week_start ? moment.tz(week_start, 'America/New_York').startOf('week') : moment.tz('America/New_York').subtract(1, 'week').startOf('week');
+    console.log('Auto-waste-week request:', { user_id, week_start });
+    const start = week_start ? moment.tz(week_start, 'MM/DD/YYYY', 'America/New_York') : moment.tz('America/New_York').subtract(1, 'week').startOf('week');
     const end = start.clone().endOf('week');
+    console.log('Date range:', { start: start.format('YYYY-MM-DD'), end: end.format('YYYY-MM-DD') });
 
     // purchases in week
     const pQ = `SELECT id, quantity, quantity_type, price FROM purchases WHERE user_id = $1 AND purchase_date BETWEEN $2 AND $3`;
     const pR = await pool.query(pQ, [user_id, start.toDate(), end.toDate()]);
+    console.log('Found purchases:', pR.rows.length);
     if (pR.rows.length === 0) return res.json({ inserted: 0 });
     const ids = pR.rows.map(r => r.id);
 
@@ -662,6 +665,7 @@ app.post("/consumption-log/auto-waste-week", requireUserId, async (req, res) => 
       const totals = map[p.id] || { consumed_qty: 0, wasted_qty: 0 };
       const base = parseFloat(p.quantity) || 0;
       const remaining = base - parseFloat(totals.consumed_qty || 0) - parseFloat(totals.wasted_qty || 0);
+      console.log(`Purchase ${p.id}: base=${base}, consumed=${totals.consumed_qty}, wasted=${totals.wasted_qty}, remaining=${remaining}`);
       if (remaining > 0.0001) {
         const unitCost = (parseFloat(p.price) && base) ? (parseFloat(p.price) / base) : null;
         const cost_value = unitCost !== null ? unitCost * remaining : null;
@@ -671,6 +675,7 @@ app.post("/consumption-log/auto-waste-week", requireUserId, async (req, res) => 
           [user_id, p.id, remaining, p.quantity_type, cost_value, p.purchase_date]
         );
         inserted++;
+        console.log(`Inserted waste log for purchase ${p.id}, remaining: ${remaining}`);
       }
     }
     res.json({ inserted });
@@ -684,7 +689,7 @@ app.post("/consumption-log/auto-waste-week", requireUserId, async (req, res) => 
 app.post("/consumption-log/auto-consume-week", requireUserId, async (req, res) => {
   const { user_id, week_start } = req.body; // ISO date or MM/DD/YYYY
   try {
-    const start = week_start ? moment.tz(week_start, 'America/New_York').startOf('week') : moment.tz('America/New_York').subtract(1, 'week').startOf('week');
+    const start = week_start ? moment.tz(week_start, 'MM/DD/YYYY', 'America/New_York') : moment.tz('America/New_York').subtract(1, 'week').startOf('week');
     const end = start.clone().endOf('week');
 
     // purchases in week
