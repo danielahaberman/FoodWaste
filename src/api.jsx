@@ -70,6 +70,20 @@ export const consumptionAPI = {
   deleteLog: (id, params) => api.delete(`/consumption-log/${id}`, { params }),
 };
 
+// Daily Tasks endpoints
+export const dailyTasksAPI = {
+  getTodayTasks: (params) => api.get("/api/daily-tasks/today", { params }),
+  markPopupShown: (data) => api.post("/api/daily-tasks/mark-popup-shown", data),
+  getStreak: (params) => api.get("/api/daily-tasks/streak", { params }),
+};
+
+// Leaderboard endpoints
+export const leaderboardAPI = {
+  getCurrentStreaks: (params) => api.get("/api/leaderboard/current-streaks", { params }),
+  getLongestStreaks: (params) => api.get("/api/leaderboard/longest-streaks", { params }),
+  getTotalCompletions: (params) => api.get("/api/leaderboard/total-completions", { params }),
+};
+
 // Admin Analytics endpoints
 export const adminAPI = {
   getOverview: () => api.get("/admin/analytics/overview"),
@@ -92,6 +106,7 @@ export const adminAPI = {
   
   // User Data Management endpoints
   deleteAllUserData: (confirm) => api.delete("/admin/delete-all-user-data", { confirm }),
+  searchUsers: (query, limit = 10) => api.get("/admin/search-users", { params: { q: query, limit } }),
   searchUser: (userId) => api.get(`/admin/search-user/${userId}`),
   deleteUser: (userId, confirm) => api.delete(`/admin/delete-user/${userId}`, { confirm }),
   deleteUserData: (userId, confirm) => api.delete(`/admin/delete-user-data/${userId}`, { confirm })

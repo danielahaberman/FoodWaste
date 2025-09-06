@@ -28,6 +28,14 @@ const getRandomDateInWeek = (weekOffset) => {
   return new Date(randomTime);
 };
 
+// Helper function to get random date within last N days
+const getRandomDateInLastNDays = (days) => {
+  const now = new Date();
+  const startDate = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
+  const randomTime = startDate.getTime() + Math.random() * (now.getTime() - startDate.getTime());
+  return new Date(randomTime);
+};
+
 // Generate fake users
 export const generateFakeUsers = async (count = 5) => {
   console.log(`Generating ${count} fake users...`);
@@ -408,6 +416,62 @@ const generateDefaultResponse = (question) => {
   return "Sample response";
 };
 
+// Generate fake streak data for a user
+export const generateFakeStreakData = async (userId) => {
+  console.log(`Generating fake streak data for user ${userId}...`);
+  
+  try {
+    // Generate realistic streak data
+    const currentStreak = getRandomNumber(0, 14); // 0-14 day current streak
+    const longestStreak = Math.max(currentStreak, getRandomNumber(1, 30)); // Longest streak is at least current streak
+    const totalCompletions = getRandomNumber(5, 50); // 5-50 total completions
+    
+    // Calculate last completion date based on current streak
+    let lastCompletionDate = null;
+    if (currentStreak > 0) {
+      // If they have a current streak, last completion was recent
+      const daysAgo = getRandomNumber(0, currentStreak - 1);
+      lastCompletionDate = new Date();
+      lastCompletionDate.setDate(lastCompletionDate.getDate() - daysAgo);
+    } else {
+      // If no current streak, last completion was some time ago
+      const daysAgo = getRandomNumber(1, 30);
+      lastCompletionDate = new Date();
+      lastCompletionDate.setDate(lastCompletionDate.getDate() - daysAgo);
+    }
+    
+    // Insert or update user streak data
+    const query = `
+      INSERT INTO user_streaks (user_id, current_streak, longest_streak, last_completion_date, total_completions, updated_at)
+      VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+      ON CONFLICT (user_id) 
+      DO UPDATE SET 
+        current_streak = $2,
+        longest_streak = $3,
+        last_completion_date = $4,
+        total_completions = $5,
+        updated_at = CURRENT_TIMESTAMP
+      RETURNING *
+    `;
+    
+    const result = await pool.query(query, [
+      userId,
+      currentStreak,
+      longestStreak,
+      lastCompletionDate,
+      totalCompletions
+    ]);
+    
+    const streakData = result.rows[0];
+    console.log(`Generated streak data for user ${userId}: current=${currentStreak}, longest=${longestStreak}, total=${totalCompletions}`);
+    
+    return streakData;
+  } catch (error) {
+    console.error(`Error generating fake streak data for user ${userId}:`, error);
+    throw error;
+  }
+};
+
 // Main function to generate all fake data for a user
 export const generateFakeDataForUser = async (userId) => {
   console.log(`Generating complete fake data for user ${userId}...`);
@@ -422,10 +486,14 @@ export const generateFakeDataForUser = async (userId) => {
     // Generate survey responses
     const surveyResponses = await generateFakeSurveyResponses(userId);
     
+    // Generate streak data
+    const streakData = await generateFakeStreakData(userId);
+    
     return {
       purchases,
       consumptionLogs,
-      surveyResponses
+      surveyResponses,
+      streakData
     };
   } catch (error) {
     console.error(`Error generating fake data for user ${userId}:`, error);
@@ -463,7 +531,8 @@ export const generateFakeUsersWithData = async (count = 5) => {
           user,
           purchases: [],
           consumptionLogs: [],
-          surveyResponses: []
+          surveyResponses: [],
+          streakData: null
         });
       }
     }
@@ -482,13 +551,14 @@ export const cleanupFakeUsers = async () => {
   
   try {
     // Delete all users with username starting with 'DummyUser'
+    // This will cascade delete all associated data including streaks due to foreign key constraints
     const result = await pool.query(`
       DELETE FROM users 
       WHERE username LIKE 'DummyUser%'
       RETURNING id, username
     `);
     
-    console.log(`Deleted ${result.rows.length} fake users and all their associated data`);
+    console.log(`Deleted ${result.rows.length} fake users and all their associated data (including streaks)`);
     return result.rows;
   } catch (error) {
     console.error('Error cleaning up fake users:', error);

@@ -92,6 +92,62 @@ const foodItems = [
   { name: "Ketchup", category: "Condiments", price: 2.5, quantity_type: "Each", emoji: "🍅" },
   { name: "Mayonnaise", category: "Condiments", price: 3.0, quantity_type: "Each", emoji: "🥪" },
   { name: "Mustard", category: "Condiments", price: 2.0, quantity_type: "Each", emoji: "🌭" },
+
+  // Fast Food Items
+  { name: "Cheeseburger", category: "Fast Food", price: 4.99, quantity_type: "Each", emoji: "🍔" },
+  { name: "Hamburger", category: "Fast Food", price: 3.99, quantity_type: "Each", emoji: "🍔" },
+  { name: "Chicken Burger", category: "Fast Food", price: 5.49, quantity_type: "Each", emoji: "🍗" },
+  { name: "Bacon Burger", category: "Fast Food", price: 6.99, quantity_type: "Each", emoji: "🥓" },
+  { name: "Fish Burger", category: "Fast Food", price: 5.99, quantity_type: "Each", emoji: "🐟" },
+  { name: "Veggie Burger", category: "Fast Food", price: 4.49, quantity_type: "Each", emoji: "🥬" },
+  
+  { name: "French Fries", category: "Fast Food", price: 2.99, quantity_type: "Each", emoji: "🍟" },
+  { name: "Sweet Potato Fries", category: "Fast Food", price: 3.49, quantity_type: "Each", emoji: "🍠" },
+  { name: "Onion Rings", category: "Fast Food", price: 3.99, quantity_type: "Each", emoji: "🧅" },
+  { name: "Mozzarella Sticks", category: "Fast Food", price: 4.49, quantity_type: "Each", emoji: "🧀" },
+  { name: "Chicken Nuggets", category: "Fast Food", price: 4.99, quantity_type: "Each", emoji: "🍗" },
+  { name: "Chicken Wings", category: "Fast Food", price: 6.99, quantity_type: "Each", emoji: "🍗" },
+  { name: "Chicken Tenders", category: "Fast Food", price: 5.49, quantity_type: "Each", emoji: "🍗" },
+  
+  { name: "Hot Dog", category: "Fast Food", price: 3.49, quantity_type: "Each", emoji: "🌭" },
+  { name: "Chili Dog", category: "Fast Food", price: 4.49, quantity_type: "Each", emoji: "🌭" },
+  { name: "Corn Dog", category: "Fast Food", price: 2.99, quantity_type: "Each", emoji: "🌽" },
+  
+  { name: "Pizza Slice", category: "Fast Food", price: 2.99, quantity_type: "Each", emoji: "🍕" },
+  { name: "Pepperoni Pizza", category: "Fast Food", price: 12.99, quantity_type: "Each", emoji: "🍕" },
+  { name: "Cheese Pizza", category: "Fast Food", price: 10.99, quantity_type: "Each", emoji: "🍕" },
+  { name: "Supreme Pizza", category: "Fast Food", price: 15.99, quantity_type: "Each", emoji: "🍕" },
+  
+  { name: "Chicken Sandwich", category: "Fast Food", price: 5.99, quantity_type: "Each", emoji: "🥪" },
+  { name: "BLT Sandwich", category: "Fast Food", price: 4.99, quantity_type: "Each", emoji: "🥪" },
+  { name: "Club Sandwich", category: "Fast Food", price: 6.49, quantity_type: "Each", emoji: "🥪" },
+  { name: "Grilled Cheese", category: "Fast Food", price: 3.99, quantity_type: "Each", emoji: "🧀" },
+  
+  { name: "Tacos", category: "Fast Food", price: 2.99, quantity_type: "Each", emoji: "🌮" },
+  { name: "Burrito", category: "Fast Food", price: 6.99, quantity_type: "Each", emoji: "🌯" },
+  { name: "Quesadilla", category: "Fast Food", price: 5.49, quantity_type: "Each", emoji: "🧀" },
+  { name: "Nachos", category: "Fast Food", price: 4.99, quantity_type: "Each", emoji: "🧀" },
+  
+  { name: "Fried Chicken", category: "Fast Food", price: 7.99, quantity_type: "Each", emoji: "🍗" },
+  { name: "Chicken Salad", category: "Fast Food", price: 6.99, quantity_type: "Each", emoji: "🥗" },
+  { name: "Caesar Salad", category: "Fast Food", price: 5.99, quantity_type: "Each", emoji: "🥗" },
+  { name: "Garden Salad", category: "Fast Food", price: 4.99, quantity_type: "Each", emoji: "🥗" },
+  
+  { name: "Milkshake", category: "Fast Food", price: 3.99, quantity_type: "Each", emoji: "🥤" },
+  { name: "Soft Drink", category: "Fast Food", price: 1.99, quantity_type: "Each", emoji: "🥤" },
+  { name: "Soda", category: "Fast Food", price: 1.99, quantity_type: "Each", emoji: "🥤" },
+  { name: "Coca Cola", category: "Fast Food", price: 1.99, quantity_type: "Each", emoji: "🥤" },
+  { name: "Pepsi", category: "Fast Food", price: 1.99, quantity_type: "Each", emoji: "🥤" },
+  { name: "Sprite", category: "Fast Food", price: 1.99, quantity_type: "Each", emoji: "🥤" },
+  { name: "Iced Tea", category: "Fast Food", price: 1.99, quantity_type: "Each", emoji: "🧊" },
+  { name: "Coffee", category: "Fast Food", price: 1.49, quantity_type: "Each", emoji: "☕" },
+  
+  { name: "Ice Cream Cone", category: "Fast Food", price: 2.49, quantity_type: "Each", emoji: "🍦" },
+  { name: "Ice Cream Sundae", category: "Fast Food", price: 3.99, quantity_type: "Each", emoji: "🍨" },
+  { name: "Apple Pie", category: "Fast Food", price: 1.99, quantity_type: "Each", emoji: "🥧" },
+  { name: "Chocolate Chip Cookie", category: "Fast Food", price: 1.49, quantity_type: "Each", emoji: "🍪" },
+  { name: "Donut", category: "Fast Food", price: 1.29, quantity_type: "Each", emoji: "🍩" },
+  { name: "Muffin", category: "Fast Food", price: 2.49, quantity_type: "Each", emoji: "🧁" },
 ];
 
 export default foodItems

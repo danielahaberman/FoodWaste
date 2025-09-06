@@ -103,10 +103,13 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
   const [tabIndex, setTabIndex] = useState(0); // 0: overall pie, 1: trend, 2: by category
   const [activeWeekOf, setActiveWeekOf] = useState(null);
   const [byCategory, setByCategory] = useState([]);
-  const [menuAnchor, setMenuAnchor] = useState(null);
-  const openMenu = Boolean(menuAnchor);
-  const handleMenuOpen = (e) => setMenuAnchor(e.currentTarget);
-  const handleMenuClose = () => setMenuAnchor(null);
+  const [showPreviousWeeks, setShowPreviousWeeks] = useState(false);
+
+  // Edit limit: 30 days back from today
+  const EDIT_LIMIT_DAYS = 30;
+  const getEditableDateLimit = () => {
+    return moment.tz('America/New_York').subtract(EDIT_LIMIT_DAYS, 'days').startOf('day');
+  };
 
   // Per-item action menu
   const [itemMenuAnchor, setItemMenuAnchor] = useState(null);
@@ -307,6 +310,9 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
     if (activeWeekOf) {
       await ensureWeekChart(activeWeekOf, true);
     }
+    
+    // Dispatch task completion event to update streak and task counts
+    window.dispatchEvent(new CustomEvent('taskCompleted'));
   };
 
   const markWeekAsWasted = async (weekOf) => {
@@ -315,6 +321,9 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
     const m = await fetchBatchSummaries();
     setSummaryMap(m);
     await ensureWeekChart(weekOf, true);
+    
+    // Dispatch task completion event to update streak and task counts
+    window.dispatchEvent(new CustomEvent('taskCompleted'));
   };
 
   const markWeekAsConsumed = async (weekOf) => {
@@ -323,6 +332,9 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
     const m = await fetchBatchSummaries();
     setSummaryMap(m);
     await ensureWeekChart(weekOf, true);
+    
+    // Dispatch task completion event to update streak and task counts
+    window.dispatchEvent(new CustomEvent('taskCompleted'));
   };
 
   if (loading)
@@ -381,8 +393,16 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
       )}
 
       {!activeWeekOf && (
-        <Box sx={{ backgroundColor: 'grey.50', borderRadius: 2, p: 1, mb: 2 }}>
-                {weeklySummary.map((week) => {
+        <Box>
+          {/* Editable Weeks Section */}
+          <Box sx={{ backgroundColor: 'grey.50', borderRadius: 2, p: 1, mb: 2 }}>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
+              Recent Weeks (Editable)
+            </Typography>
+            {weeklySummary.filter((week) => {
+              const weekDate = moment.tz(week.weekOf, 'MM/DD/YYYY', 'America/New_York');
+              return weekDate.isAfter(getEditableDateLimit());
+            }).map((week) => {
             // Calculate completion status for this week
             const ids = week.purchases.map(p => p.id);
             let totalItems = 0;
@@ -427,7 +447,13 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
             border: showCompletion ? 2 : 1,
             borderColor: showCompletion ? "success.main" : "divider",
             position: 'relative',
-            boxSizing:"border-box"
+            boxSizing:"border-box",
+            transition: 'all 0.2s ease-in-out',
+            '&:hover': {
+              elevation: 4,
+              transform: 'translateY(-2px)',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+            }
           }}
           onClick={() => openWeekDetails(week.weekOf)}
         >
@@ -461,15 +487,24 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
               </Box>
             )}
           </Box>
-            <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleMenuOpen(e); }}>
-              <MoreVertIcon />
-            </IconButton>
           </Stack>
-          <Menu anchorEl={menuAnchor} open={openMenu} onClose={handleMenuClose} onClick={(e)=>e.stopPropagation()}>
-            <MenuItem onClick={() => { handleMenuClose(); if(onGoToDate) onGoToDate(week.weekOf); }}>Go to week</MenuItem>
-            <MenuItem onClick={() => { handleMenuClose(); markWeekAsConsumed(week.weekOf); }}>Mark remaining as consumed</MenuItem>
-            <MenuItem onClick={() => { handleMenuClose(); markWeekAsWasted(week.weekOf); }}>Mark remaining as wasted</MenuItem>
-          </Menu>
+          
+          {/* Clear tap instruction */}
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 1, 
+            mb: 1,
+            p: 1,
+            backgroundColor: 'primary.50',
+            borderRadius: 1,
+            border: '1px solid',
+            borderColor: 'primary.200'
+          }}>
+            <Typography variant="body2" sx={{ color: 'primary.main', fontWeight: 500 }}>
+              👆 Tap to manage food waste/consumption
+            </Typography>
+          </Box>
           {/* Summary line with icons */}
           <Typography variant="body2" color="text.primary" display="flex" alignItems="center" gap={2}>
             <Box component="span" display="inline-flex" alignItems="center" gap={0.5}>
@@ -478,31 +513,373 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
             </Box>
             {(() => {
               const ids = week.purchases.map(p => p.id);
-              let c = 0, w = 0, cc = 0, wc = 0;
+              let c = 0, w = 0, cc = 0, wc = 0, unloggedCost = 0;
+              
               ids.forEach(id => {
                 const s = summaryMap[id] || {};
-                c += parseFloat(s.consumed_qty || 0);
-                w += parseFloat(s.wasted_qty || 0);
-                cc += parseFloat(s.consumed_cost || 0);
-                wc += parseFloat(s.wasted_cost || 0);
+                const purchase = week.purchases.find(p => p.id === id);
+                if (purchase) {
+                  c += parseFloat(s.consumed_qty || 0);
+                  w += parseFloat(s.wasted_qty || 0);
+                  cc += parseFloat(s.consumed_cost || 0);
+                  wc += parseFloat(s.wasted_cost || 0);
+                  
+                  // Calculate unlogged cost for this item
+                  const baseQty = parseFloat(purchase.quantity || 0);
+                  const price = parseFloat(purchase.price || 0);
+                  const unitCost = baseQty > 0 && price ? price / baseQty : 0;
+                  const consumedQty = parseFloat(s.consumed_qty || 0);
+                  const wastedQty = parseFloat(s.wasted_qty || 0);
+                  const remainingQty = Math.max(0, baseQty - consumedQty - wastedQty);
+                  unloggedCost += unitCost * remainingQty;
+                }
               });
-              return (
-                <>
+              
+              // Check if there's any consumption data
+              const hasConsumptionData = c > 0 || w > 0;
+              
+              if (hasConsumptionData) {
+                return (
+                  <>
+                    <Box component="span" display="inline-flex" alignItems="center" gap={0.5}>
+                      <RestaurantIcon sx={{ color: 'success.main', fontSize: 18 }} />
+                      {formatNum(c)} ({formatMoney(cc)})
+                    </Box>
+                    <Box component="span" display="inline-flex" alignItems="center" gap={0.5}>
+                      <DeleteForeverIcon sx={{ color: 'error.main', fontSize: 18 }} />
+                      {formatNum(w)} ({formatMoney(wc)})
+                    </Box>
+                  </>
+                );
+              } else {
+                return (
                   <Box component="span" display="inline-flex" alignItems="center" gap={0.5}>
-                    <RestaurantIcon sx={{ color: 'success.main', fontSize: 18 }} />
-                    {formatNum(c)} ({formatMoney(cc)})
+                    <FastfoodIcon sx={{ color: 'warning.main', fontSize: 18 }} />
+                    Unlogged: {formatMoney(unloggedCost)}
                   </Box>
-                  <Box component="span" display="inline-flex" alignItems="center" gap={0.5}>
-                    <DeleteForeverIcon sx={{ color: 'error.main', fontSize: 18 }} />
-                    {formatNum(w)} ({formatMoney(wc)})
-                  </Box>
-                </>
-              );
+                );
+              }
             })()}
           </Typography>
         </Paper>
         );
         })}
+        
+        {/* Upcoming Week Card */}
+        {(() => {
+          const nextWeek = moment.tz('America/New_York').add(1, 'week').startOf('week');
+          const nextWeekFormatted = nextWeek.format('MM/DD/YYYY');
+          
+          return (
+            <Paper
+              elevation={1}
+              sx={{
+                mb: 2,
+                p: { xs: 1.5, sm: 2 },
+                borderRadius: 2,
+                width: "100%",
+                maxWidth: "100%",
+                border: 1,
+                borderColor: "grey.300",
+                position: 'relative',
+                boxSizing: "border-box",
+                opacity: 0.6,
+                backgroundColor: 'grey.100'
+              }}
+            >
+              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography
+                    variant="h6"
+                    fontWeight={700}
+                    color="text.secondary"
+                    gutterBottom
+                    sx={{ borderBottom: 2, borderColor: "grey.400", pb: 0.5 }}
+                  >
+                    {nextWeekFormatted}
+                  </Typography>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 0.5,
+                    backgroundColor: 'grey.400',
+                    color: 'white',
+                    px: 1,
+                    py: 0.25,
+                    borderRadius: 1,
+                    fontSize: '0.75rem',
+                    fontWeight: 'bold',
+                    whiteSpace: "nowrap",
+                    position: "absolute", 
+                    top: "-10px"
+                  }}>
+                    Upcoming
+                  </Box>
+                </Box>
+              </Stack>
+              
+              {/* Greyed out instruction */}
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 1, 
+                mb: 1,
+                p: 1,
+                backgroundColor: 'grey.200',
+                borderRadius: 1,
+                border: '1px solid',
+                borderColor: 'grey.300'
+              }}>
+                <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                  📅 Next week - Add food to get started
+                </Typography>
+              </Box>
+              
+              {/* Greyed out summary */}
+              <Typography variant="body2" color="text.secondary" display="flex" alignItems="center" gap={2}>
+                <Box component="span" display="inline-flex" alignItems="center" gap={0.5}>
+                  <ShoppingCartIcon sx={{ color: 'grey.400', fontSize: 18 }} />
+                  0 items
+                </Box>
+                <Box component="span" display="inline-flex" alignItems="center" gap={0.5}>
+                  <RestaurantIcon sx={{ color: 'grey.400', fontSize: 18 }} />
+                  0 consumed
+                </Box>
+                <Box component="span" display="inline-flex" alignItems="center" gap={0.5}>
+                  <DeleteForeverIcon sx={{ color: 'grey.400', fontSize: 18 }} />
+                  0 wasted
+                </Box>
+              </Typography>
+            </Paper>
+          );
+        })()}
+        </Box>
+        
+        {/* Previous Weeks Toggle Button */}
+        <Box sx={{ mb: 2, textAlign: 'center' }}>
+          <Button
+            variant="outlined"
+            onClick={() => setShowPreviousWeeks(!showPreviousWeeks)}
+            sx={{ 
+              borderColor: 'grey.400',
+              color: 'text.secondary',
+              '&:hover': {
+                borderColor: 'primary.main',
+                color: 'primary.main'
+              }
+            }}
+          >
+            {showPreviousWeeks ? 'Hide' : 'View'} Previous Weeks (Read-Only)
+          </Button>
+        </Box>
+        
+        {/* Read-Only Previous Weeks Section */}
+        {showPreviousWeeks && (
+          <Box sx={{ backgroundColor: 'grey.100', borderRadius: 2, p: 1, mb: 2 }}>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'text.secondary' }}>
+              Previous Weeks (View Only)
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', fontStyle: 'italic' }}>
+              Weeks older than {EDIT_LIMIT_DAYS} days are read-only for data integrity
+            </Typography>
+            {(() => {
+              const previousWeeks = weeklySummary.filter((week) => {
+                const weekDate = moment.tz(week.weekOf, 'MM/DD/YYYY', 'America/New_York');
+                return weekDate.isSameOrBefore(getEditableDateLimit());
+              });
+              
+              if (previousWeeks.length === 0) {
+                return (
+                  <Box sx={{ textAlign: 'center', py: 4 }}>
+                    <Typography variant="body1" color="text.secondary">
+                      No previous weeks to display
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                      All your weeks are within the {EDIT_LIMIT_DAYS}-day editing window
+                    </Typography>
+                  </Box>
+                );
+              }
+              
+              return previousWeeks.map((week) => {
+              // Calculate completion status for this week
+              const ids = week.purchases.map(p => p.id);
+              let totalItems = 0;
+              let completedItems = 0;
+              let totalQuantity = 0;
+              let completedQuantity = 0;
+              
+              ids.forEach(id => {
+                const s = summaryMap[id] || {};
+                const purchase = week.purchases.find(p => p.id === id);
+                if (purchase) {
+                  const baseQty = parseFloat(purchase.quantity) || 0;
+                  const consumedQty = parseFloat(s.consumed_qty || 0);
+                  const wastedQty = parseFloat(s.wasted_qty || 0);
+                  const totalLogged = consumedQty + wastedQty;
+                  
+                  totalItems++;
+                  totalQuantity += baseQty;
+                  completedQuantity += totalLogged;
+                  
+                  if (totalLogged >= baseQty - 0.0001) { // Account for floating point precision
+                    completedItems++;
+                  }
+                }
+              });
+              
+              const isCompleted = totalItems > 0 && completedItems === totalItems;
+              const isPastWeek = moment.tz(week.weekOf, 'MM/DD/YYYY', 'America/New_York').isBefore(moment.tz('America/New_York').startOf('week'));
+              const showCompletion = isCompleted && isPastWeek;
+              
+              return (
+                <Paper
+                  key={week.weekOf}
+                  elevation={1}
+                  sx={{
+                    mb: 2,
+                    p: { xs: 1.5, sm: 2 },
+                    borderRadius: 2,
+                    width: "100%",
+                    maxWidth: "100%",
+                    border: showCompletion ? 2 : 1,
+                    borderColor: showCompletion ? "success.main" : "grey.300",
+                    position: 'relative',
+                    boxSizing: "border-box",
+                    opacity: 0.7,
+                    backgroundColor: 'grey.50'
+                  }}
+                >
+                  <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography
+                        variant="h6"
+                        fontWeight={700}
+                        color="text.secondary"
+                        gutterBottom
+                        sx={{ borderBottom: 2, borderColor: "grey.400", pb: 0.5 }}
+                      >
+                        {week.weekOf}
+                      </Typography>
+                      {showCompletion && (
+                        <Box sx={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 0.5,
+                          backgroundColor: 'success.main',
+                          color: 'white',
+                          px: 1,
+                          py: 0.25,
+                          borderRadius: 1,
+                          fontSize: '0.75rem',
+                          fontWeight: 'bold',
+                          whiteSpace: "nowrap",
+                          position: "absolute", 
+                          top: "-10px"
+                        }}>
+                          ✓ Complete
+                        </Box>
+                      )}
+                      <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: 0.5,
+                        backgroundColor: 'grey.400',
+                        color: 'white',
+                        px: 1,
+                        py: 0.25,
+                        borderRadius: 1,
+                        fontSize: '0.75rem',
+                        fontWeight: 'bold',
+                        whiteSpace: "nowrap",
+                        position: "absolute", 
+                        top: "-10px",
+                        right: "10px"
+                      }}>
+                        Read Only
+                      </Box>
+                    </Box>
+                  </Stack>
+                  
+                  {/* Read-only instruction */}
+                  <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 1, 
+                    mb: 1,
+                    p: 1,
+                    backgroundColor: 'grey.200',
+                    borderRadius: 1,
+                    border: '1px solid',
+                    borderColor: 'grey.300'
+                  }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+                      📖 View only - Cannot edit data older than {EDIT_LIMIT_DAYS} days
+                    </Typography>
+                  </Box>
+                  
+                  {/* Summary line with icons */}
+                  <Typography variant="body2" color="text.secondary" display="flex" alignItems="center" gap={2}>
+                    <Box component="span" display="inline-flex" alignItems="center" gap={0.5}>
+                      <ShoppingCartIcon sx={{ color: 'grey.400', fontSize: 18 }} />
+                      {week.purchases.length}
+                    </Box>
+                    {(() => {
+                      const ids = week.purchases.map(p => p.id);
+                      let c = 0, w = 0, cc = 0, wc = 0, unloggedCost = 0;
+                      
+                      ids.forEach(id => {
+                        const s = summaryMap[id] || {};
+                        const purchase = week.purchases.find(p => p.id === id);
+                        if (purchase) {
+                          c += parseFloat(s.consumed_qty || 0);
+                          w += parseFloat(s.wasted_qty || 0);
+                          cc += parseFloat(s.consumed_cost || 0);
+                          wc += parseFloat(s.wasted_cost || 0);
+                          
+                          // Calculate unlogged cost for this item
+                          const baseQty = parseFloat(purchase.quantity || 0);
+                          const price = parseFloat(purchase.price || 0);
+                          const unitCost = baseQty > 0 && price ? price / baseQty : 0;
+                          const consumedQty = parseFloat(s.consumed_qty || 0);
+                          const wastedQty = parseFloat(s.wasted_qty || 0);
+                          const remainingQty = Math.max(0, baseQty - consumedQty - wastedQty);
+                          unloggedCost += unitCost * remainingQty;
+                        }
+                      });
+                      
+                      // Check if there's any consumption data
+                      const hasConsumptionData = c > 0 || w > 0;
+                      
+                      if (hasConsumptionData) {
+                        return (
+                          <>
+                            <Box component="span" display="inline-flex" alignItems="center" gap={0.5}>
+                              <RestaurantIcon sx={{ color: 'grey.400', fontSize: 18 }} />
+                              {formatNum(c)} ({formatMoney(cc)})
+                            </Box>
+                            <Box component="span" display="inline-flex" alignItems="center" gap={0.5}>
+                              <DeleteForeverIcon sx={{ color: 'grey.400', fontSize: 18 }} />
+                              {formatNum(w)} ({formatMoney(wc)})
+                            </Box>
+                          </>
+                        );
+                      } else {
+                        return (
+                          <Box component="span" display="inline-flex" alignItems="center" gap={0.5}>
+                            <FastfoodIcon sx={{ color: 'grey.400', fontSize: 18 }} />
+                            Unlogged: {formatMoney(unloggedCost)}
+                          </Box>
+                        );
+                      }
+                    })()}
+                  </Typography>
+                </Paper>
+              );
+              });
+            })()}
+          </Box>
+        )}
         </Box>
       )}
 
@@ -510,7 +887,18 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
         const week = weeklySummary.find(w => w.weekOf === activeWeekOf);
         if (!week) return null;
         return (
-          <div  sx={{  borderRadius: 2 }}>
+          <Box sx={{ 
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'white',
+            zIndex: 1000,
+            overflow: 'auto',
+            borderRadius: 0,
+            p: 2
+          }}>
             <Legend />
             {weekCharts[activeWeekOf] && (() => {
               // Calculate pie chart data directly from summaryMap to ensure consistency
@@ -565,27 +953,26 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
               
               if (total > 0.0001 || hasConsumptionData) {
                 return (
-                  <Box sx={{ maxWidth: 180, mx: "auto", mb: 2, color:"black" }}>
-                    <Typography variant="subtitle2" sx={{ textAlign: "center", mb: 1 }}>This week: $ Consumed vs $ Wasted</Typography>
+                  <Box sx={{ maxWidth: 150, mx: "auto", mb: 1, color:"black", pt: 1, paddingTop: "20px" }}>
                     <Pie data={{
                       labels: ["Consumed $", "Wasted $", "Unmarked $"],
                       datasets: [{
                         data: [consumedCost, wastedCost, unmarkedCost],
                         backgroundColor: ["#4caf50", "#ef5350", "#42a5f5"]
                       }]
-                    }} options={{ responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } } }} />
-                    <Stack spacing={0.25} sx={{ mt: 1 }}>
-                      <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <Box sx={{ width: 10, height: 10, bgcolor: '#4caf50', borderRadius: '50%' }} /> Consumed: {formatMoney(consumedCost)}
+                    }} options={{ 
+                      responsive: true, 
+                      maintainAspectRatio: true, 
+                      plugins: { legend: { display: false } },
+                      aspectRatio: 1.1
+                    }} />
+                    <Stack direction="row" spacing={1.5} sx={{ mt: 1, justifyContent: 'center' }}>
+                      <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.8rem' }}>
+                        <Box sx={{ width: 8, height: 8, bgcolor: '#4caf50', borderRadius: '50%' }} /> {formatMoney(consumedCost)}
                       </Typography>
-                      <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <Box sx={{ width: 10, height: 10, bgcolor: '#ef5350', borderRadius: '50%' }} /> Wasted: {formatMoney(wastedCost)}
+                      <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.8rem' }}>
+                        <Box sx={{ width: 8, height: 8, bgcolor: '#ef5350', borderRadius: '50%' }} /> {formatMoney(wastedCost)}
                       </Typography>
-                      {unmarkedCost > 0.0001 && (
-                        <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <Box sx={{ width: 10, height: 10, bgcolor: '#42a5f5', borderRadius: '50%' }} /> Unmarked: {formatMoney(unmarkedCost)}
-                        </Typography>
-                      )}
                     </Stack>
                   </Box>
                 );
@@ -598,6 +985,77 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
                 </Box>
               );
             })()}
+            {/* Bulk Actions for the week */}
+            {(() => {
+              const currentWeek = weeklySummary.find(w => w.weekOf === activeWeekOf);
+              const isWeekEditable = currentWeek ? 
+                moment.tz(currentWeek.weekOf, 'MM/DD/YYYY', 'America/New_York').isAfter(getEditableDateLimit()) : 
+                false;
+              
+              // Calculate total remaining portions for this week
+              let totalRemaining = 0;
+              if (currentWeek) {
+                currentWeek.purchases.forEach(purchase => {
+                  const summary = summaryMap[purchase.id] || {};
+                  const baseQty = parseFloat(purchase.quantity || 0);
+                  const consumedQty = parseFloat(summary.consumed_qty || 0);
+                  const wastedQty = parseFloat(summary.wasted_qty || 0);
+                  const remaining = Math.max(0, baseQty - consumedQty - wastedQty);
+                  totalRemaining += remaining;
+                });
+              }
+              
+              const hasRemainingPortions = totalRemaining > 0.001; // Account for floating point precision
+              
+              return (
+                <Box sx={{ mb: 1, p: 1.5, backgroundColor: isWeekEditable ? 'grey.100' : 'grey.200', borderRadius: 1.5 }}>
+                  <Typography variant="body2" sx={{ mb: 0.5, fontWeight: 600, fontSize: '0.85rem' }}>
+                    Quick Actions for {activeWeekOf}
+                  </Typography>
+                  {!isWeekEditable && (
+                    <Typography variant="caption" sx={{ mb: 1, color: 'text.secondary', fontStyle: 'italic', fontSize: '0.7rem' }}>
+                      This week is read-only (older than {EDIT_LIMIT_DAYS} days)
+                    </Typography>
+                  )}
+                  {!hasRemainingPortions && isWeekEditable && (
+                    <Typography variant="caption" sx={{ mb: 1, color: 'text.secondary', fontStyle: 'italic', fontSize: '0.7rem' }}>
+                      All food items have been fully consumed or wasted
+                    </Typography>
+                  )}
+                  {hasRemainingPortions && (
+                    <Stack direction="row" spacing={0.5} sx={{ mb: 0.5 }}>
+                      <Button 
+                        variant="outlined" 
+                        size="small" 
+                        onClick={() => markWeekAsConsumed(activeWeekOf)}
+                        disabled={!isWeekEditable}
+                        sx={{ flex: 1, fontSize: '0.7rem', py: 0.5 }}
+                      >
+                        Mark remaining as consumed
+                      </Button>
+                      <Button 
+                        variant="outlined" 
+                        size="small" 
+                        onClick={() => markWeekAsWasted(activeWeekOf)}
+                        disabled={!isWeekEditable}
+                        sx={{ flex: 1, fontSize: '0.7rem', py: 0.5 }}
+                      >
+                        Mark remaining as wasted
+                      </Button>
+                    </Stack>
+                  )}
+                  <Button 
+                    variant="contained" 
+                    size="small" 
+                    onClick={() => { if(onGoToDate) onGoToDate(activeWeekOf); }}
+                    sx={{ width: '100%', fontSize: '0.8rem', py: 0.5 }}
+                  >
+                    Add more food
+                  </Button>
+                </Box>
+              );
+            })()}
+
             <Box sx={{ maxHeight: '50vh', overflow: 'auto', backgroundColor: 'grey.50', borderRadius: 2, p: 1 }}>
           <List disablePadding>
                 {(() => {
@@ -684,10 +1142,32 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
               </List>
             </Box>
             <Menu anchorEl={itemMenuAnchor} open={openItemMenu} onClose={handleItemMenuClose}>
-              <MenuItem onClick={()=>{ handleItemMenuClose(); if(itemMenuTarget) openLogDialog(itemMenuTarget,'consumed'); }}>Mark Consumed</MenuItem>
-              <MenuItem onClick={()=>{ handleItemMenuClose(); if(itemMenuTarget) openLogDialog(itemMenuTarget,'wasted'); }}>Mark Wasted</MenuItem>
+              {(() => {
+                // Check if the current week is editable
+                const currentWeek = weeklySummary.find(w => w.weekOf === activeWeekOf);
+                const isWeekEditable = currentWeek ? 
+                  moment.tz(currentWeek.weekOf, 'MM/DD/YYYY', 'America/New_York').isAfter(getEditableDateLimit()) : 
+                  false;
+                
+                if (!isWeekEditable) {
+                  return (
+                    <MenuItem disabled>
+                      <Typography variant="body2" color="text.secondary">
+                        Cannot edit items older than {EDIT_LIMIT_DAYS} days
+                      </Typography>
+                    </MenuItem>
+                  );
+                }
+                
+                return (
+                  <>
+                    <MenuItem onClick={()=>{ handleItemMenuClose(); if(itemMenuTarget) openLogDialog(itemMenuTarget,'consumed'); }}>Mark Consumed</MenuItem>
+                    <MenuItem onClick={()=>{ handleItemMenuClose(); if(itemMenuTarget) openLogDialog(itemMenuTarget,'wasted'); }}>Mark Wasted</MenuItem>
+                  </>
+                );
+              })()}
             </Menu>
-          </div>
+          </Box>
         );
       })()}
 

@@ -2,6 +2,7 @@
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import foodItems from './FoodItems.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,6 +20,69 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
 });
+
+const seedDatabase = async (client) => {
+  try {
+    console.log("Seeding database with initial data...");
+
+    // Get unique categories and quantity types from foodItems
+    const categories = [...new Set(foodItems.map(item => item.category))];
+    const quantityTypes = [...new Set(foodItems.map(item => item.quantity_type))];
+
+    // Insert categories
+    for (const category of categories) {
+      await client.query(
+        'INSERT INTO categories (name) VALUES ($1) ON CONFLICT (name) DO NOTHING',
+        [category]
+      );
+    }
+
+    // Insert quantity types
+    for (const quantityType of quantityTypes) {
+      await client.query(
+        'INSERT INTO quantity_types (name) VALUES ($1) ON CONFLICT (name) DO NOTHING',
+        [quantityType]
+      );
+    }
+
+    // Get category and quantity type IDs
+    const categoryResult = await client.query('SELECT id, name FROM categories');
+    const quantityTypeResult = await client.query('SELECT id, name FROM quantity_types');
+    
+    const categoryMap = {};
+    categoryResult.rows.forEach(row => {
+      categoryMap[row.name] = row.id;
+    });
+    
+    const quantityTypeMap = {};
+    quantityTypeResult.rows.forEach(row => {
+      quantityTypeMap[row.name] = row.id;
+    });
+
+    // Insert food items (with user_id = -1 to indicate they are global/default items)
+    for (const item of foodItems) {
+      await client.query(
+        `INSERT INTO food_items (name, category_id, price, quantity, quantity_type_id, user_id, emoji)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) 
+         ON CONFLICT (name, user_id) DO NOTHING`,
+        [
+          item.name,
+          categoryMap[item.category],
+          item.price,
+          0, // Default quantity
+          quantityTypeMap[item.quantity_type],
+          -1, // Global items have user_id = -1
+          item.emoji
+        ]
+      );
+    }
+
+    console.log("Database seeding completed successfully");
+  } catch (err) {
+    console.error("Error seeding database:", err);
+  }
+};
+
 const initDB = async () => {
   const client = await pool.connect();
   try {
@@ -54,6 +118,7 @@ const initDB = async () => {
         quantity INTEGER,
         quantity_type_id INTEGER REFERENCES quantity_types(id),
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        emoji TEXT,
         UNIQUE(name, user_id)
       );
     `);
@@ -108,12 +173,56 @@ const initDB = async () => {
         logged_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+    
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS daily_tasks (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        task_date DATE NOT NULL,
+        log_food_completed BOOLEAN DEFAULT FALSE,
+        log_food_completed_at TIMESTAMP,
+        complete_survey_completed BOOLEAN DEFAULT FALSE,
+        complete_survey_completed_at TIMESTAMP,
+        log_consume_waste_completed BOOLEAN DEFAULT FALSE,
+        log_consume_waste_completed_at TIMESTAMP,
+        all_tasks_completed BOOLEAN DEFAULT FALSE,
+        all_tasks_completed_at TIMESTAMP,
+        popup_shown_today BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, task_date)
+      );
+    `);
+    
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_streaks (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        current_streak INTEGER DEFAULT 0,
+        longest_streak INTEGER DEFAULT 0,
+        last_completion_date DATE,
+        total_completions INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id)
+      );
+    `);
+
+    // Create indexes for performance
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_daily_tasks_user_date ON daily_tasks(user_id, task_date);
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_daily_tasks_date ON daily_tasks(task_date);
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_user_streaks_streak ON user_streaks(current_streak DESC);
+    `);
 
     // Run migrations to add new columns
     await runMigrations(client);
 
-    // Insert default data (categories, quantity types, etc.) here...
-    // You can adapt your current insert loops using `await client.query(...)`
+    // Seed the database with initial data
+    await seedDatabase(client);
 
   } catch (err) {
     console.error("Database error:", err);
@@ -271,6 +380,22 @@ const runMigrations = async (client) => {
       console.log("✓ Updated existing survey completion status");
     } catch (err) {
       console.error("Error updating survey completion status:", err.message);
+    }
+    
+    // Force add emoji column to food_items table (will fail silently if already exists)
+    try {
+      console.log("Ensuring emoji column exists in food_items table...");
+      await client.query(`
+        ALTER TABLE food_items 
+        ADD COLUMN emoji TEXT
+      `);
+      console.log("✓ Added emoji column to food_items table");
+    } catch (err) {
+      if (err.code === '42701') { // Column already exists
+        console.log("✓ emoji column already exists in food_items table");
+      } else {
+        console.error("Error adding emoji column to food_items table:", err.message);
+      }
     }
     
     console.log("Database migrations completed successfully!");

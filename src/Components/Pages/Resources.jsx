@@ -158,7 +158,7 @@ const Resources = () => {
               startIcon={<ArrowBack />}
               sx={{ minWidth: 'auto', px: 1 }}
             >
-              Back
+              {/* Back */}
             </Button>
             <Typography 
               variant="h5" 

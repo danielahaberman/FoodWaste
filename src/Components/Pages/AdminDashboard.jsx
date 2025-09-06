@@ -44,6 +44,7 @@ import {
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { adminAPI } from '../../api.jsx';
+import UserSearchAutocomplete from '../UserSearchAutocomplete';
 
 // Register Chart.js components
 ChartJS.register(
@@ -104,7 +105,7 @@ function AdminDashboard({ onLogout }) {
   const [chartTimeframe, setChartTimeframe] = useState('daily');
   
   // Data management states
-  const [searchUserId, setSearchUserId] = useState('');
+  const [selectedUser, setSelectedUser] = useState(null);
   const [searchedUser, setSearchedUser] = useState(null);
   const [loadingUserSearch, setLoadingUserSearch] = useState(false);
   const [dataManagementMessage, setDataManagementMessage] = useState('');
@@ -273,9 +274,19 @@ function AdminDashboard({ onLogout }) {
     }
   };
 
-  const handleSearchUser = async () => {
-    if (!searchUserId.trim()) {
-      setDataManagementMessage('❌ Please enter a user ID');
+  const handleUserSelect = (user) => {
+    setSelectedUser(user);
+    if (user) {
+      handleSearchUser(user.id);
+    } else {
+      setSearchedUser(null);
+      setDataManagementMessage('');
+    }
+  };
+
+  const handleSearchUser = async (userId) => {
+    if (!userId) {
+      setDataManagementMessage('❌ Please select a user');
       return;
     }
 
@@ -284,7 +295,7 @@ function AdminDashboard({ onLogout }) {
     setSearchedUser(null);
 
     try {
-      const response = await adminAPI.searchUser(searchUserId.trim());
+      const response = await adminAPI.searchUser(userId);
       setSearchedUser(response.data);
       setDataManagementMessage('✅ User found');
     } catch (err) {
@@ -1679,8 +1690,8 @@ function AdminDashboard({ onLogout }) {
 
           {/* User Search and Management */}
           <Grid item xs={12}>
-            <Card>
-              <CardContent>
+            <Card sx={{ overflow: 'visible' }}>
+              <CardContent sx={{ overflow: 'visible' }}>
                 <Typography variant="h6" gutterBottom>
                   🔍 User Search & Management
                 </Typography>
@@ -1688,22 +1699,19 @@ function AdminDashboard({ onLogout }) {
                   Search for a specific user and manage their data or account.
                 </Typography>
                 
-                <Box display="flex" gap={2} sx={{ mb: 2 }}>
-                  <TextField
-                    label="User ID"
-                    type="number"
-                    value={searchUserId}
-                    onChange={(e) => setSearchUserId(e.target.value)}
-                    size="small"
-                    sx={{ minWidth: 120 }}
+                <Box sx={{ mb: 2, position: 'relative', zIndex: 1 }}>
+                  <UserSearchAutocomplete
+                    onUserSelect={handleUserSelect}
+                    placeholder="Search by User ID or Username..."
                   />
-                  <Button
-                    variant="outlined"
-                    onClick={handleSearchUser}
-                    disabled={loadingUserSearch}
-                  >
-                    {loadingUserSearch ? 'Searching...' : 'Search User'}
-                  </Button>
+                  {loadingUserSearch && (
+                    <Box display="flex" alignItems="center" sx={{ mt: 1 }}>
+                      <CircularProgress size={16} />
+                      <Typography variant="body2" sx={{ ml: 1 }}>
+                        Loading user details...
+                      </Typography>
+                    </Box>
+                  )}
                 </Box>
 
                 {searchedUser && (
@@ -1720,7 +1728,7 @@ function AdminDashboard({ onLogout }) {
                       </Grid>
                       <Grid item xs={6} sm={3}>
                         <Typography variant="body2">
-                          <strong>Name:</strong> {searchedUser.user.name || 'N/A'}
+                          <strong>Username:</strong> {searchedUser.user.username || 'N/A'}
                         </Typography>
                       </Grid>
                       <Grid item xs={6} sm={3}>

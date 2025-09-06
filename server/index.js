@@ -1528,7 +1528,12 @@ app.post("/admin/generate-fake-data", async (req, res) => {
         name: r.user.name,
         purchases: r.purchases.length,
         consumptionLogs: r.consumptionLogs.length,
-        surveyResponses: r.surveyResponses.length
+        surveyResponses: r.surveyResponses.length,
+        streakData: r.streakData ? {
+          currentStreak: r.streakData.current_streak,
+          longestStreak: r.streakData.longest_streak,
+          totalCompletions: r.streakData.total_completions
+        } : null
       }))
     });
   } catch (error) {
@@ -1585,6 +1590,8 @@ app.delete("/admin/delete-all-user-data", async (req, res) => {
     await pool.query('DELETE FROM survey_responses WHERE user_id > 0');
     await pool.query('DELETE FROM purchases WHERE user_id > 0');
     await pool.query('DELETE FROM food_items WHERE user_id > 0');
+    await pool.query('DELETE FROM daily_tasks WHERE user_id > 0');
+    await pool.query('DELETE FROM user_streaks WHERE user_id > 0');
     
     // Reset survey completion status
     await pool.query(`
@@ -1607,6 +1614,37 @@ app.delete("/admin/delete-all-user-data", async (req, res) => {
   }
 });
 
+// GET search users by partial ID or username (for autocomplete)
+app.get("/admin/search-users", async (req, res) => {
+  const { q = '', limit = 10 } = req.query;
+  
+  try {
+    if (!q || q.length < 1) {
+      return res.json([]);
+    }
+    
+    // Search by partial ID or username
+    const result = await pool.query(`
+      SELECT id, username, email, created_at
+      FROM users 
+      WHERE id::text LIKE $1 OR username ILIKE $2
+      ORDER BY 
+        CASE 
+          WHEN id::text = $1 THEN 1
+          WHEN username ILIKE $3 THEN 2
+          ELSE 3
+        END,
+        id
+      LIMIT $4
+    `, [`${q}%`, `%${q}%`, `${q}%`, parseInt(limit)]);
+    
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error searching users:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET search users by ID
 app.get("/admin/search-user/:userId", async (req, res) => {
   try {
@@ -1616,7 +1654,6 @@ app.get("/admin/search-user/:userId", async (req, res) => {
       SELECT 
         id, 
         username, 
-        name, 
         email,
         created_at,
         terms_accepted_at,
@@ -1708,6 +1745,8 @@ app.delete("/admin/delete-user-data/:userId", async (req, res) => {
     await pool.query('DELETE FROM survey_responses WHERE user_id = $1', [userId]);
     await pool.query('DELETE FROM purchases WHERE user_id = $1', [userId]);
     await pool.query('DELETE FROM food_items WHERE user_id = $1', [userId]);
+    await pool.query('DELETE FROM daily_tasks WHERE user_id = $1', [userId]);
+    await pool.query('DELETE FROM user_streaks WHERE user_id = $1', [userId]);
     
     // Reset survey completion status
     await pool.query(`
@@ -1726,6 +1765,289 @@ app.delete("/admin/delete-user-data/:userId", async (req, res) => {
     });
   } catch (err) {
     console.error("Error deleting user data:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ===== DAILY TASKS API ENDPOINTS =====
+
+// Helper function to update user streaks
+const updateUserStreak = async (userId, completedToday) => {
+  try {
+    const today = moment.tz('America/New_York').format('YYYY-MM-DD');
+    
+    // Get current streak
+    let streakResult = await pool.query(
+      `SELECT * FROM user_streaks WHERE user_id = $1`,
+      [userId]
+    );
+    
+    let streak = streakResult.rows[0];
+    
+    if (!streak) {
+      // Create new streak record
+      const insertResult = await pool.query(
+        `INSERT INTO user_streaks (user_id) VALUES ($1) RETURNING *`,
+        [userId]
+      );
+      streak = insertResult.rows[0];
+    }
+    
+    if (completedToday) {
+      // Check if this is a consecutive day
+      const lastCompletion = streak.last_completion_date;
+      const yesterday = moment.tz('America/New_York').subtract(1, 'day').format('YYYY-MM-DD');
+      
+      let newCurrentStreak = 1;
+      let newLongestStreak = streak.longest_streak;
+      
+      if (lastCompletion === yesterday) {
+        // Consecutive day - increment streak
+        newCurrentStreak = streak.current_streak + 1;
+      } else if (lastCompletion === today) {
+        // Already completed today - no change
+        return;
+      }
+      // If lastCompletion is not yesterday or today, streak resets to 1
+      
+      // Update longest streak if needed
+      if (newCurrentStreak > newLongestStreak) {
+        newLongestStreak = newCurrentStreak;
+      }
+      
+      // Update streak record
+      await pool.query(
+        `UPDATE user_streaks SET 
+         current_streak = $1,
+         longest_streak = $2,
+         last_completion_date = $3,
+         total_completions = total_completions + 1,
+         updated_at = CURRENT_TIMESTAMP
+         WHERE user_id = $4`,
+        [newCurrentStreak, newLongestStreak, today, userId]
+      );
+    } else {
+      // Not completed today - check if streak should break
+      const lastCompletion = streak.last_completion_date;
+      const yesterday = moment.tz('America/New_York').subtract(1, 'day').format('YYYY-MM-DD');
+      
+      if (lastCompletion && lastCompletion < yesterday) {
+        // Streak broken - reset current streak
+        await pool.query(
+          `UPDATE user_streaks SET 
+           current_streak = 0,
+           updated_at = CURRENT_TIMESTAMP
+           WHERE user_id = $1`,
+          [userId]
+        );
+      }
+    }
+  } catch (err) {
+    console.error("Error updating user streak:", err);
+  }
+};
+
+// GET today's daily tasks for user
+app.get("/api/daily-tasks/today", requireUserId, async (req, res) => {
+  const { user_id } = req.query;
+  const today = moment.tz('America/New_York').format('YYYY-MM-DD');
+  
+  try {
+    // Get or create today's daily tasks record
+    let result = await pool.query(
+      `SELECT * FROM daily_tasks WHERE user_id = $1 AND task_date = $2`,
+      [user_id, today]
+    );
+    
+    let dailyTask = result.rows[0];
+    
+    if (!dailyTask) {
+      // Create new daily task record
+      const insertResult = await pool.query(
+        `INSERT INTO daily_tasks (user_id, task_date) VALUES ($1, $2) RETURNING *`,
+        [user_id, today]
+      );
+      dailyTask = insertResult.rows[0];
+    }
+    
+    // Check actual completion status
+    const [logFoodCompleted, surveyCompleted, consumeWasteCompleted] = await Promise.all([
+      // Check if user logged food today
+      pool.query(
+        `SELECT COUNT(*) as count FROM purchases WHERE user_id = $1 AND DATE(purchase_date) = $2`,
+        [user_id, today]
+      ),
+      // Check if user completed survey today
+      pool.query(
+        `SELECT COUNT(*) as count FROM survey_responses sr 
+         JOIN survey_questions sq ON sr.question_id = sq.id 
+         WHERE sr.user_id = $1 AND DATE(sr.response_date) = $2`,
+        [user_id, today]
+      ),
+      // Check if user logged consumption/waste today
+      pool.query(
+        `SELECT COUNT(*) as count FROM consumption_logs WHERE user_id = $1 AND DATE(logged_at) = $2`,
+        [user_id, today]
+      )
+    ]);
+    
+    const logFoodCount = parseInt(logFoodCompleted.rows[0].count);
+    const surveyCount = parseInt(surveyCompleted.rows[0].count);
+    const consumeWasteCount = parseInt(consumeWasteCompleted.rows[0].count);
+    
+    // Update completion status
+    await pool.query(
+      `UPDATE daily_tasks SET 
+       log_food_completed = $1,
+       log_food_completed_at = CASE WHEN $1 AND log_food_completed_at IS NULL THEN CURRENT_TIMESTAMP ELSE log_food_completed_at END,
+       complete_survey_completed = $2,
+       complete_survey_completed_at = CASE WHEN $2 AND complete_survey_completed_at IS NULL THEN CURRENT_TIMESTAMP ELSE complete_survey_completed_at END,
+       log_consume_waste_completed = $3,
+       log_consume_waste_completed_at = CASE WHEN $3 AND log_consume_waste_completed_at IS NULL THEN CURRENT_TIMESTAMP ELSE log_consume_waste_completed_at END,
+       all_tasks_completed = $4,
+       all_tasks_completed_at = CASE WHEN $4 AND all_tasks_completed_at IS NULL THEN CURRENT_TIMESTAMP ELSE all_tasks_completed_at END
+       WHERE user_id = $5 AND task_date = $6`,
+      [
+        logFoodCount > 0,
+        surveyCount > 0,
+        consumeWasteCount > 0,
+        logFoodCount > 0 && surveyCount > 0 && consumeWasteCount > 0,
+        user_id,
+        today
+      ]
+    );
+    
+    // Get updated record
+    const updatedResult = await pool.query(
+      `SELECT * FROM daily_tasks WHERE user_id = $1 AND task_date = $2`,
+      [user_id, today]
+    );
+    
+    const updatedTask = updatedResult.rows[0];
+    
+    // Update user streak if all tasks completed
+    if (updatedTask.all_tasks_completed) {
+      await updateUserStreak(user_id, true);
+    } else {
+      await updateUserStreak(user_id, false);
+    }
+    
+    res.json(updatedTask);
+  } catch (err) {
+    console.error("Error getting daily tasks:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST mark popup as shown for today
+app.post("/api/daily-tasks/mark-popup-shown", requireUserId, async (req, res) => {
+  const { user_id } = req.body;
+  const today = moment.tz('America/New_York').format('YYYY-MM-DD');
+  
+  try {
+    await pool.query(
+      `UPDATE daily_tasks SET popup_shown_today = TRUE WHERE user_id = $1 AND task_date = $2`,
+      [user_id, today]
+    );
+    res.json({ message: "Popup marked as shown" });
+  } catch (err) {
+    console.error("Error marking popup as shown:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET user's streak information
+app.get("/api/daily-tasks/streak", requireUserId, async (req, res) => {
+  const { user_id } = req.query;
+  
+  try {
+    let result = await pool.query(
+      `SELECT * FROM user_streaks WHERE user_id = $1`,
+      [user_id]
+    );
+    
+    let streak = result.rows[0];
+    
+    if (!streak) {
+      // Create new streak record
+      const insertResult = await pool.query(
+        `INSERT INTO user_streaks (user_id) VALUES ($1) RETURNING *`,
+        [user_id]
+      );
+      streak = insertResult.rows[0];
+    }
+    
+    res.json(streak);
+  } catch (err) {
+    console.error("Error getting streak:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ===== LEADERBOARD API ENDPOINTS =====
+
+// GET current streaks leaderboard
+app.get("/api/leaderboard/current-streaks", async (req, res) => {
+  const { limit = 10 } = req.query;
+  
+  try {
+    const result = await pool.query(
+      `SELECT us.current_streak, u.username, u.id as user_id
+       FROM user_streaks us
+       JOIN users u ON us.user_id = u.id
+       WHERE u.id > 0
+       ORDER BY us.current_streak DESC, us.updated_at DESC
+       LIMIT $1`,
+      [parseInt(limit)]
+    );
+    
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error getting current streaks leaderboard:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET longest streaks leaderboard
+app.get("/api/leaderboard/longest-streaks", async (req, res) => {
+  const { limit = 10 } = req.query;
+  
+  try {
+    const result = await pool.query(
+      `SELECT us.longest_streak, u.username, u.id as user_id
+       FROM user_streaks us
+       JOIN users u ON us.user_id = u.id
+       WHERE u.id > 0
+       ORDER BY us.longest_streak DESC, us.updated_at DESC
+       LIMIT $1`,
+      [parseInt(limit)]
+    );
+    
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error getting longest streaks leaderboard:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET total completions leaderboard
+app.get("/api/leaderboard/total-completions", async (req, res) => {
+  const { limit = 10 } = req.query;
+  
+  try {
+    const result = await pool.query(
+      `SELECT us.total_completions, u.username, u.id as user_id
+       FROM user_streaks us
+       JOIN users u ON us.user_id = u.id
+       WHERE u.id > 0
+       ORDER BY us.total_completions DESC, us.updated_at DESC
+       LIMIT $1`,
+      [parseInt(limit)]
+    );
+    
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error getting total completions leaderboard:", err);
     res.status(500).json({ error: err.message });
   }
 });

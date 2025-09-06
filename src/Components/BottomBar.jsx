@@ -1,7 +1,7 @@
 // @ts-nocheck
 /* eslint-disable react/prop-types */
-import React from "react";
-import { Box, IconButton, Typography } from "@mui/material";
+import React, { useState, useEffect } from "react";
+import { Box, IconButton, Typography, Badge } from "@mui/material";
 import {
   Restaurant as RestaurantIcon,
   Delete as DeleteIcon,
@@ -9,22 +9,57 @@ import {
   Logout as LogoutIcon,
   Description as DescriptionIcon,
   MenuBook as MenuBookIcon,
+  Checklist as ChecklistIcon,
+  EmojiEvents as TrophyIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { logout } from "../utils/authUtils";
+import { dailyTasksAPI } from "../api";
 
-function BottomBar({ setShowConsumeWaste, setLoggingPurchase, setShowSurvey }) {
+function BottomBar({ setShowConsumeWaste, setLoggingPurchase, setShowSurvey, setShowTasksAndLeaderboard }) {
   const navigate = useNavigate();
+  const [taskCompletionStatus, setTaskCompletionStatus] = useState({ completed: 0, total: 3 });
+  const [showDailyTasksIndicator, setShowDailyTasksIndicator] = useState(false);
+
+  const userId = localStorage.getItem("userId");
+
+  const fetchTaskStatus = async () => {
+    try {
+      const response = await dailyTasksAPI.getTodayTasks({ user_id: userId });
+      const tasks = response.data;
+      
+      let completed = 0;
+      if (tasks.log_food_completed) completed++;
+      if (tasks.complete_survey_completed) completed++;
+      if (tasks.log_consume_waste_completed) completed++;
+      
+      setTaskCompletionStatus({ completed, total: 3 });
+      
+      // Show indicator if popup was already shown today OR user has incomplete tasks
+      const today = new Date().toDateString();
+      const popupShownToday = localStorage.getItem(`dailyTasksPopup_${today}`);
+      setShowDailyTasksIndicator(popupShownToday || completed < 3);
+    } catch (error) {
+      console.error("Error fetching task status:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchTaskStatus();
+    
+    // Listen for task completion events
+    const handleTaskUpdate = () => {
+      fetchTaskStatus();
+    };
+    
+    window.addEventListener('taskCompleted', handleTaskUpdate);
+    return () => window.removeEventListener('taskCompleted', handleTaskUpdate);
+  }, []);
 
   const NavItem = ({ icon, label, onClick, color }) => (
-    <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
-      <IconButton onClick={onClick} size="large" sx={{ color }} aria-label={label}>
-        {icon}
-      </IconButton>
-      <Typography variant="caption" sx={{ color: "text.secondary", lineHeight: 1 }}>
-        {label}
-      </Typography>
-    </Box>
+    <IconButton onClick={onClick} size="large" sx={{ color }} aria-label={label}>
+      {icon}
+    </IconButton>
   );
 
   return (
@@ -43,7 +78,7 @@ function BottomBar({ setShowConsumeWaste, setLoggingPurchase, setShowSurvey }) {
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        height: 68,
+        height: 56,
         backdropFilter: "blur(10px)",
         backgroundColor: "rgba(255, 255, 255, 0.9)",
         borderTop: 1,
@@ -76,6 +111,24 @@ function BottomBar({ setShowConsumeWaste, setLoggingPurchase, setShowSurvey }) {
         label="Resources"
         onClick={() => navigate("/resources")}
         color="primary.main"
+      />
+
+      <NavItem
+        icon={
+          showDailyTasksIndicator ? (
+            <Badge 
+              badgeContent={`${taskCompletionStatus.completed}/${taskCompletionStatus.total}`} 
+              color={taskCompletionStatus.completed === taskCompletionStatus.total ? "success" : "primary"}
+            >
+              <ChecklistIcon />
+            </Badge>
+          ) : (
+            <ChecklistIcon />
+          )
+        }
+        label="Tasks & Leaderboard"
+        onClick={() => setShowTasksAndLeaderboard(true)}
+        color={showDailyTasksIndicator && taskCompletionStatus.completed === taskCompletionStatus.total ? "success.main" : "primary.main"}
       />
 
       <NavItem

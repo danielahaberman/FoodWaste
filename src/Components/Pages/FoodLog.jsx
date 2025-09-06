@@ -21,6 +21,8 @@ import ConsumeWaste from "./ComsumeWaste";
 import QaPage from "./QaPage";
 import BottomBar from "../BottomBar";
 import FoodEmojiBackground from "../FoodEmojiBackground";
+import DailyTasksPopup from "../DailyTasksPopup";
+import TasksAndLeaderboard from "./TasksAndLeaderboard";
 const FoodLog = () => {
   const [foodPurchases, setFoodPurchases] = useState([]);
   const [foodItems, setFoodItems] = useState([]);
@@ -28,6 +30,8 @@ const FoodLog = () => {
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [showSurvey, setShowSurvey] = useState(false)
   const [showConsumeWaste, setShowConsumeWaste] = useState(false)
+  const [showDailyTasksPopup, setShowDailyTasksPopup] = useState(false)
+  const [showTasksAndLeaderboard, setShowTasksAndLeaderboard] = useState(false)
     const navigate = useNavigate();
   const fetchFoodItems = async () => {
     try {
@@ -65,6 +69,55 @@ const deletePurchase = async (purchaseId) => {
  
   useEffect(() => {
     fetchFoodPurchases();
+  }, []);
+
+  // Check for daily tasks popup
+  useEffect(() => {
+    const checkDailyTasksPopup = async () => {
+      const today = new Date().toDateString();
+      const popupShownToday = localStorage.getItem(`dailyTasksPopup_${today}`);
+      
+      if (!popupShownToday) {
+        // Check if user has incomplete tasks
+        try {
+          const response = await fetch(`${import.meta.env.VITE_API_URL}/api/daily-tasks/today?user_id=${localStorage.getItem("userId")}`);
+          const tasks = await response.json();
+          
+          const completed = (tasks.log_food_completed ? 1 : 0) + 
+                          (tasks.complete_survey_completed ? 1 : 0) + 
+                          (tasks.log_consume_waste_completed ? 1 : 0);
+          
+          if (completed < 3) {
+            setShowDailyTasksPopup(true);
+          }
+        } catch (error) {
+          console.error("Error checking daily tasks:", error);
+        }
+      }
+    };
+    
+    checkDailyTasksPopup();
+  }, []);
+
+  // Listen for consume/waste modal events
+  useEffect(() => {
+    const handleOpenConsumeWaste = () => {
+      setShowConsumeWaste(true);
+    };
+    
+    window.addEventListener('openConsumeWaste', handleOpenConsumeWaste);
+    return () => window.removeEventListener('openConsumeWaste', handleOpenConsumeWaste);
+  }, []);
+
+  // Listen for task completion events
+  useEffect(() => {
+    const handleTaskCompleted = () => {
+      // Refresh data and check if popup should be shown
+      fetchFoodPurchases();
+    };
+    
+    window.addEventListener('taskCompleted', handleTaskCompleted);
+    return () => window.removeEventListener('taskCompleted', handleTaskCompleted);
   }, []);
 
   const filteredPurchases = foodPurchases.filter((purchase) => {
@@ -136,7 +189,12 @@ const deletePurchase = async (purchaseId) => {
         )}
       </Box>
 
-      <BottomBar setLoggingPurchase={setLoggingPurchase} setShowConsumeWaste={setShowConsumeWaste} setShowSurvey={setShowSurvey}/>
+      <BottomBar 
+        setLoggingPurchase={setLoggingPurchase} 
+        setShowConsumeWaste={setShowConsumeWaste} 
+        setShowSurvey={setShowSurvey}
+        setShowTasksAndLeaderboard={setShowTasksAndLeaderboard}
+      />
 
       {loggingPurchase && (
         <Paper
@@ -173,6 +231,37 @@ const deletePurchase = async (purchaseId) => {
              setShowConsumeWaste(false);
            }}
          />
+       )}
+
+       {/* Daily Tasks Popup */}
+       {showDailyTasksPopup && (
+         <DailyTasksPopup
+           open={showDailyTasksPopup}
+           onClose={() => setShowDailyTasksPopup(false)}
+           onViewAllTasks={() => {
+             setShowDailyTasksPopup(false);
+             setShowTasksAndLeaderboard(true);
+           }}
+         />
+       )}
+
+       {/* Tasks and Leaderboard Full View */}
+       {showTasksAndLeaderboard && (
+         <Paper
+           style={{
+             position: "absolute",
+             height: "100vh",
+             top: "0vh",
+             width: "100vw",
+             maxWidth: "600px",
+             zIndex: 10,
+             boxSizing: "border-box",
+             left: "0",
+             overflow: "auto"
+           }}
+         >
+           <TasksAndLeaderboard onClose={() => setShowTasksAndLeaderboard(false)} />
+         </Paper>
        )}
       </Box>
     </FoodEmojiBackground>

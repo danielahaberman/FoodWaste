@@ -118,6 +118,9 @@ function AddNewPurchase({
       console.log(response.data);
       fetchFoodPurchases();
       setLoggingPurchase(false);
+      
+      // Dispatch task completion event to update streak and task counts
+      window.dispatchEvent(new CustomEvent('taskCompleted'));
     } catch (error) {
       console.error("Error adding purchase:", error);
     }

@@ -78,18 +78,20 @@ const FoodPurchaseList = ({ purchases, deletePurchase, canModify = true }) => {
             >
               <ListItemText
                 primary={
-                  <Typography
-                    variant="subtitle2"
-                    fontWeight="bold"
-                    color="text.primary"
-                    sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                  >
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     {/* Emoji or category fallback */}
                     <Box component="span" aria-label="emoji" role="img" sx={{ fontSize: "1.3em", display:'inline-flex', alignItems:'center' }}>
                       {displayEmoji}
                     </Box>
-                    {name}
-                  </Typography>
+                    <Typography
+                      variant="subtitle2"
+                      fontWeight="bold"
+                      color="text.primary"
+                      component="span"
+                    >
+                      {name}
+                    </Typography>
+                  </Box>
                 }
                 secondary={
                   <Box display="flex" gap={2} flexWrap="wrap" mt={0.5}>
