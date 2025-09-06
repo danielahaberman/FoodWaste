@@ -88,7 +88,13 @@ function QaPage({ setShowSurvey }) {
     >
       <Container maxWidth="sm">
         {/* Top Bar */}
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <Box 
+          display="flex" 
+          justifyContent="space-between" 
+          alignItems="center" 
+          mb={2}
+          sx={{ px: { xs: 2, sm: 0 } }}
+        >
           <Typography variant="h6">Survey</Typography>
           <Button 
             variant="outlined" 

@@ -137,32 +137,70 @@ const Survey = ({ questions }) => {
       case "rating":
         return (
           <Stack spacing={2}>
-            <Typography variant="h6" sx={{ color: 'black', fontWeight: 'bold', mb: 2 }}>
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                color: 'black', 
+                fontWeight: 'bold', 
+                mb: 2,
+                fontSize: { xs: "1.1rem", sm: "1.25rem" },
+                lineHeight: 1.3
+              }}
+            >
               {question.question || question.question_text || 'Question text not available'}
             </Typography>
-            {question.options.map((option, idx) => {
-              // Handle both string options and object options with {id, text}
-              const optionText = typeof option === 'string' ? option : option.text;
-              const optionValue = typeof option === 'string' ? option : option.text;
-              const isSelected = currentResponse === optionValue;
-              return (
-                <Button
-                  key={idx}
-                  variant={isSelected ? "contained" : "outlined"}
-                  color={isSelected ? "primary" : "inherit"}
-                  onClick={() => handleResponse(optionValue)}
-                >
-                  {optionText}
-                </Button>
-              );
-            })}
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: { 
+                  xs: "repeat(auto-fit, minmax(120px, 1fr))", 
+                  sm: "repeat(auto-fit, minmax(150px, 1fr))" 
+                },
+                gap: { xs: 1.5, sm: 2 },
+                width: "100%"
+              }}
+            >
+              {question.options.map((option, idx) => {
+                // Handle both string options and object options with {id, text}
+                const optionText = typeof option === 'string' ? option : option.text;
+                const optionValue = typeof option === 'string' ? option : option.text;
+                const isSelected = currentResponse === optionValue;
+                return (
+                  <Button
+                    key={idx}
+                    variant={isSelected ? "contained" : "outlined"}
+                    color={isSelected ? "primary" : "inherit"}
+                    onClick={() => handleResponse(optionValue)}
+                    sx={{
+                      minHeight: { xs: 48, sm: 56 },
+                      fontSize: { xs: "0.9rem", sm: "1rem" },
+                      padding: { xs: "8px 12px", sm: "12px 16px" },
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis"
+                    }}
+                  >
+                    {optionText}
+                  </Button>
+                );
+              })}
+            </Box>
           </Stack>
         );
       case "number":
       case "text":
         return (
           <Stack spacing={2}>
-            <Typography variant="h6" sx={{ color: 'black', fontWeight: 'bold', mb: 2 }}>
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                color: 'black', 
+                fontWeight: 'bold', 
+                mb: 2,
+                fontSize: { xs: "1.1rem", sm: "1.25rem" },
+                lineHeight: 1.3
+              }}
+            >
               {question.question || question.question_text || 'Question text not available'}
             </Typography>
             <TextField
@@ -179,13 +217,28 @@ const Survey = ({ questions }) => {
                 min: 0,
                 step: question.question?.toLowerCase().includes("spend") ? 0.01 : 1,
               } : undefined}
+              sx={{
+                '& .MuiInputBase-input': {
+                  fontSize: { xs: "1rem", sm: "1.1rem" },
+                  padding: { xs: "12px 14px", sm: "16px 14px" }
+                }
+              }}
             />
           </Stack>
         );
       case "money":
         return (
           <Stack spacing={2}>
-            <Typography variant="h6" sx={{ color: 'black', fontWeight: 'bold', mb: 2 }}>
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                color: 'black', 
+                fontWeight: 'bold', 
+                mb: 2,
+                fontSize: { xs: "1.1rem", sm: "1.25rem" },
+                lineHeight: 1.3
+              }}
+            >
               {question.question || question.question_text || 'Question text not available'}
             </Typography>
             <TextField
@@ -202,6 +255,12 @@ const Survey = ({ questions }) => {
                 min: 0,
                 step: 0.01,
               }}
+              sx={{
+                '& .MuiInputBase-input': {
+                  fontSize: { xs: "1rem", sm: "1.1rem" },
+                  padding: { xs: "12px 14px", sm: "16px 14px" }
+                }
+              }}
             />
           </Stack>
         );
@@ -214,18 +273,45 @@ const Survey = ({ questions }) => {
   if (!questions || questions.length === 0) {
     return (
       <Box
-        maxWidth={600}
-        margin="auto"
-        padding={4}
-        display="flex"
-        flexDirection="column"
-        alignItems="center"
+        sx={{
+          maxWidth: { xs: "100%", sm: 600 },
+          margin: "auto",
+          padding: { xs: 2, sm: 4 },
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          minHeight: "100vh",
+          boxSizing: "border-box"
+        }}
       >
-        <Typography variant="h4" gutterBottom>
+        <Typography 
+          variant="h4" 
+          gutterBottom
+          sx={{ 
+            fontSize: { xs: "1.5rem", sm: "2rem" },
+            textAlign: "center"
+          }}
+        >
           📝 Survey
         </Typography>
-        <Paper elevation={3} sx={{ padding: 4, width: "100%", color: "black" }}>
-          <Typography variant="body1">No questions available for this survey.</Typography>
+        <Paper 
+          elevation={3} 
+          sx={{ 
+            padding: { xs: 2, sm: 4 }, 
+            width: "100%", 
+            color: "black",
+            boxSizing: "border-box"
+          }}
+        >
+          <Typography 
+            variant="body1"
+            sx={{ 
+              fontSize: { xs: "1rem", sm: "1.1rem" },
+              textAlign: "center"
+            }}
+          >
+            No questions available for this survey.
+          </Typography>
         </Paper>
       </Box>
     );
@@ -234,40 +320,79 @@ const Survey = ({ questions }) => {
   return (
     <>
       <Box
-        maxWidth={600}
-        margin="auto"
-        padding={4}
-        display="flex"
-        flexDirection="column"
-        alignItems="center"
+        sx={{
+          maxWidth: { xs: "100%", sm: 600 },
+          margin: "auto",
+          padding: { xs: 2, sm: 4 },
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          minHeight: "100vh",
+          boxSizing: "border-box"
+        }}
       >
-        <Typography variant="h4" gutterBottom>
+        <Typography 
+          variant="h4" 
+          gutterBottom
+          sx={{ 
+            fontSize: { xs: "1.5rem", sm: "2rem" },
+            textAlign: "center",
+            mb: { xs: 2, sm: 3 }
+          }}
+        >
           📝 {surveyTitle} survey
         </Typography>
 
-        <Paper elevation={3} sx={{ padding: 4, width: "100%", color:"black" }}>
+        <Paper 
+          elevation={3} 
+          sx={{ 
+            padding: { xs: 2, sm: 4 }, 
+            width: "100%", 
+            color: "black",
+            boxSizing: "border-box"
+          }}
+        >
           {currentQuestion && renderQuestion(currentQuestion)}
 
           <Box
-            display="flex"
-            justifyContent="space-between"
-            alignItems="center"
-            mt={4}
+            sx={{
+              display: "flex",
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 2,
+              mt: { xs: 3, sm: 4 }
+            }}
           >
             <Button
               variant="outlined"
               onClick={handleBack}
               disabled={currentIndex === 0}
+              sx={{ 
+                flex: 1,
+                maxWidth: "120px"
+              }}
             >
               ⬅ Back
             </Button>
-            <Typography variant="body2">
+            <Typography 
+              variant="body2"
+              sx={{ 
+                textAlign: "center",
+                flex: 1,
+                fontSize: { xs: "0.9rem", sm: "1rem" }
+              }}
+            >
               Question {currentIndex + 1} of {questions.length}
             </Typography>
             <Button
               variant="contained"
               onClick={handleNext}
               disabled={isEmptyResponse}
+              sx={{ 
+                flex: 1,
+                maxWidth: "120px"
+              }}
             >
               {currentIndex < questions.length - 1 ? "Next ➡" : "Finish ✅"}
             </Button>
@@ -281,32 +406,81 @@ const Survey = ({ questions }) => {
          onClose={() => setShowCompletionModal(false)}
          maxWidth="sm"
          fullWidth
+         sx={{
+           '& .MuiDialog-paper': {
+             margin: { xs: 2, sm: 4 },
+             maxHeight: { xs: 'calc(100% - 16px)', sm: 'calc(100% - 32px)' }
+           }
+         }}
        >
-         <DialogTitle sx={{ textAlign: 'center', color: 'primary.main' }}>
+         <DialogTitle 
+           sx={{ 
+             textAlign: 'center', 
+             color: 'primary.main',
+             fontSize: { xs: "1.3rem", sm: "1.5rem" },
+             pb: 2
+           }}
+         >
            {getCompletionMessage().title}
          </DialogTitle>
-         <DialogContent>
-           <Typography variant="body1" sx={{ mb: 2, textAlign: 'center' }}>
+         <DialogContent sx={{ px: { xs: 2, sm: 3 } }}>
+           <Typography 
+             variant="body1" 
+             sx={{ 
+               mb: 2, 
+               textAlign: 'center',
+               fontSize: { xs: "1rem", sm: "1.1rem" }
+             }}
+           >
              {getCompletionMessage().message}
            </Typography>
-           <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+           <Typography 
+             variant="body2" 
+             sx={{ 
+               mb: 2, 
+               color: 'text.secondary',
+               fontSize: { xs: "0.95rem", sm: "1rem" }
+             }}
+           >
              <strong>What's next?</strong>
            </Typography>
            {getCompletionMessage().nextSteps.map((step, index) => (
-             <Typography key={index} variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
+             <Typography 
+               key={index} 
+               variant="body2" 
+               sx={{ 
+                 mb: 1, 
+                 color: 'text.secondary',
+                 fontSize: { xs: "0.9rem", sm: "0.95rem" },
+                 lineHeight: 1.4
+               }}
+             >
                • {step}
              </Typography>
            ))}
-           <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic', mt: 2 }}>
+           <Typography 
+             variant="body2" 
+             sx={{ 
+               color: 'text.secondary', 
+               fontStyle: 'italic', 
+               mt: 2,
+               fontSize: { xs: "0.9rem", sm: "0.95rem" },
+               lineHeight: 1.4
+             }}
+           >
              Your responses help us understand food waste patterns and improve our recommendations.
            </Typography>
          </DialogContent>
-         <DialogActions sx={{ justifyContent: 'center', pb: 3 }}>
+         <DialogActions sx={{ justifyContent: 'center', pb: 3, px: { xs: 2, sm: 3 } }}>
            <Button
              variant="contained"
              onClick={handleGoHome}
              size="large"
-             sx={{ minWidth: 120 }}
+             sx={{ 
+               minWidth: { xs: 140, sm: 120 },
+               fontSize: { xs: "1rem", sm: "1.1rem" },
+               py: { xs: 1.5, sm: 1 }
+             }}
            >
              Go to Home
            </Button>

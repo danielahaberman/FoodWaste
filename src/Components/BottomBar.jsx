@@ -8,6 +8,7 @@ import {
   Assignment as AssignmentIcon,
   Logout as LogoutIcon,
   Description as DescriptionIcon,
+  MenuBook as MenuBookIcon,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { logout } from "../utils/authUtils";
@@ -70,7 +71,12 @@ function BottomBar({ setShowConsumeWaste, setLoggingPurchase, setShowSurvey }) {
         color="primary.main"
       />
 
-      {/* Terms link removed from bottom bar to de-emphasize */}
+      <NavItem
+        icon={<MenuBookIcon />}
+        label="Resources"
+        onClick={() => navigate("/resources")}
+        color="primary.main"
+      />
 
       <NavItem
         icon={<LogoutIcon />}

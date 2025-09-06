@@ -1570,6 +1570,166 @@ app.delete("/admin/cleanup-fake-data", async (req, res) => {
   }
 });
 
+// DELETE all user data but keep user accounts
+app.delete("/admin/delete-all-user-data", async (req, res) => {
+  try {
+    const { confirm } = req.body;
+    
+    if (confirm !== 'DELETE_ALL_DATA') {
+      return res.status(400).json({ error: 'Confirmation required' });
+    }
+
+    // Delete all user data but keep user accounts
+    // Order matters due to foreign key constraints
+    await pool.query('DELETE FROM consumption_logs WHERE user_id > 0');
+    await pool.query('DELETE FROM survey_responses WHERE user_id > 0');
+    await pool.query('DELETE FROM purchases WHERE user_id > 0');
+    await pool.query('DELETE FROM food_items WHERE user_id > 0');
+    
+    // Reset survey completion status
+    await pool.query(`
+      UPDATE users 
+      SET 
+        initial_survey_completed_at = NULL,
+        last_weekly_survey_date = NULL,
+        final_survey_triggered = NULL,
+        final_survey_triggered_at = NULL,
+        final_survey_completed_at = NULL
+      WHERE id > 0
+    `);
+
+    res.json({ 
+      message: "All user data deleted successfully. User accounts preserved." 
+    });
+  } catch (err) {
+    console.error("Error deleting all user data:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET search users by ID
+app.get("/admin/search-user/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    const userQuery = `
+      SELECT 
+        id, 
+        username, 
+        name, 
+        email,
+        created_at,
+        terms_accepted_at,
+        initial_survey_completed_at,
+        last_weekly_survey_date,
+        final_survey_triggered,
+        final_survey_completed_at
+      FROM users 
+      WHERE id = $1
+    `;
+    const userResult = await pool.query(userQuery, [userId]);
+    
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = userResult.rows[0];
+
+    // Get user's data counts
+    const dataCountsQuery = `
+      SELECT 
+        (SELECT COUNT(*) FROM purchases WHERE user_id = $1) as purchases_count,
+        (SELECT COUNT(*) FROM consumption_logs WHERE user_id = $1) as consumption_logs_count,
+        (SELECT COUNT(*) FROM survey_responses WHERE user_id = $1) as survey_responses_count,
+        (SELECT COUNT(*) FROM food_items WHERE user_id = $1) as food_items_count
+    `;
+    const countsResult = await pool.query(dataCountsQuery, [userId]);
+    
+    res.json({
+      user,
+      dataCounts: countsResult.rows[0]
+    });
+  } catch (err) {
+    console.error("Error searching user:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE specific user and all data
+app.delete("/admin/delete-user/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { confirm } = req.body;
+    
+    if (confirm !== 'DELETE_USER_AND_DATA') {
+      return res.status(400).json({ error: 'Confirmation required' });
+    }
+
+    // Check if user exists
+    const userCheck = await pool.query('SELECT username FROM users WHERE id = $1', [userId]);
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const username = userCheck.rows[0].username;
+
+    // Delete user (CASCADE will delete all associated data)
+    await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+
+    res.json({ 
+      message: `User ${username} and all associated data deleted successfully` 
+    });
+  } catch (err) {
+    console.error("Error deleting user:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE only data for specific user (keep user account)
+app.delete("/admin/delete-user-data/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { confirm } = req.body;
+    
+    if (confirm !== 'DELETE_USER_DATA_ONLY') {
+      return res.status(400).json({ error: 'Confirmation required' });
+    }
+
+    // Check if user exists
+    const userCheck = await pool.query('SELECT username FROM users WHERE id = $1', [userId]);
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const username = userCheck.rows[0].username;
+
+    // Delete user data but keep user account
+    await pool.query('DELETE FROM consumption_logs WHERE user_id = $1', [userId]);
+    await pool.query('DELETE FROM survey_responses WHERE user_id = $1', [userId]);
+    await pool.query('DELETE FROM purchases WHERE user_id = $1', [userId]);
+    await pool.query('DELETE FROM food_items WHERE user_id = $1', [userId]);
+    
+    // Reset survey completion status
+    await pool.query(`
+      UPDATE users 
+      SET 
+        initial_survey_completed_at = NULL,
+        last_weekly_survey_date = NULL,
+        final_survey_triggered = NULL,
+        final_survey_triggered_at = NULL,
+        final_survey_completed_at = NULL
+      WHERE id = $1
+    `, [userId]);
+
+    res.json({ 
+      message: `Data for user ${username} deleted successfully. User account preserved.` 
+    });
+  } catch (err) {
+    console.error("Error deleting user data:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Catch-all for 404
 app.use((req, res) => {
   res.status(404).json({ error: "Endpoint not found" });

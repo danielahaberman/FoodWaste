@@ -461,16 +461,12 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
               </Box>
             )}
           </Box>
-            <Stack direction="row" spacing={0.5}>
-              <Button size="small" variant="text" onClick={(e)=>{ e.stopPropagation(); if(onGoToDate) onGoToDate(week.weekOf); }}>
-                Go to week
-              </Button>
-              <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleMenuOpen(e); }}>
-                <MoreVertIcon />
-              </IconButton>
-            </Stack>
+            <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleMenuOpen(e); }}>
+              <MoreVertIcon />
+            </IconButton>
           </Stack>
           <Menu anchorEl={menuAnchor} open={openMenu} onClose={handleMenuClose} onClick={(e)=>e.stopPropagation()}>
+            <MenuItem onClick={() => { handleMenuClose(); if(onGoToDate) onGoToDate(week.weekOf); }}>Go to week</MenuItem>
             <MenuItem onClick={() => { handleMenuClose(); markWeekAsConsumed(week.weekOf); }}>Mark remaining as consumed</MenuItem>
             <MenuItem onClick={() => { handleMenuClose(); markWeekAsWasted(week.weekOf); }}>Mark remaining as wasted</MenuItem>
           </Menu>

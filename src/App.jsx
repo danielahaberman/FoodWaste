@@ -12,6 +12,7 @@ import RegisterPage from './Components/Pages/RegisterPage'; // Import RegisterPa
 import FoodLog from './Components/Pages/FoodLog';
 import QaPage from './Components/Pages/QaPage';
 import TermsAndConditions from './Components/Pages/TermsAndConditions';
+import Resources from './Components/Pages/Resources';
 import TermsGuard from './Components/TermsGuard';
 import AuthGuard from './Components/AuthGuard';
 import SurveyGuard from './Components/SurveyGuard';
@@ -36,6 +37,7 @@ function App() {
                 {/* <Route path="/users" element={<Users />} /> */}
                 <Route path="/home" element={<FoodLog/>} />
                 <Route path="/survey" element={<QaPage />} />
+                <Route path="/resources" element={<Resources />} />
               </Route>
               
               {/* Admin routes (no sidebar) */}

@@ -88,7 +88,13 @@ export const adminAPI = {
   // Fake Data Management endpoints
   generateFakeData: (count) => api.post("/admin/generate-fake-data", { count }),
   getFakeUsersCount: () => api.get("/admin/fake-users-count"),
-  cleanupFakeData: () => api.delete("/admin/cleanup-fake-data")
+  cleanupFakeData: () => api.delete("/admin/cleanup-fake-data"),
+  
+  // User Data Management endpoints
+  deleteAllUserData: (confirm) => api.delete("/admin/delete-all-user-data", { confirm }),
+  searchUser: (userId) => api.get(`/admin/search-user/${userId}`),
+  deleteUser: (userId, confirm) => api.delete(`/admin/delete-user/${userId}`, { confirm }),
+  deleteUserData: (userId, confirm) => api.delete(`/admin/delete-user-data/${userId}`, { confirm })
 };
 
 export default api;

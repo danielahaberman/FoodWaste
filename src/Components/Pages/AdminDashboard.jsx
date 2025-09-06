@@ -28,7 +28,8 @@ import {
   ListItemText,
   Accordion,
   AccordionSummary,
-  AccordionDetails
+  AccordionDetails,
+  TextField
 } from '@mui/material';
 import { Lock } from '@mui/icons-material';
 import {
@@ -101,6 +102,13 @@ function AdminDashboard({ onLogout }) {
   const [loadingFakeData, setLoadingFakeData] = useState(false);
   const [fakeDataMessage, setFakeDataMessage] = useState('');
   const [chartTimeframe, setChartTimeframe] = useState('daily');
+  
+  // Data management states
+  const [searchUserId, setSearchUserId] = useState('');
+  const [searchedUser, setSearchedUser] = useState(null);
+  const [loadingUserSearch, setLoadingUserSearch] = useState(false);
+  const [dataManagementMessage, setDataManagementMessage] = useState('');
+  const [loadingDataOperation, setLoadingDataOperation] = useState(false);
 
   useEffect(() => {
     loadOverviewData();
@@ -235,6 +243,114 @@ function AdminDashboard({ onLogout }) {
       setFakeDataMessage(`❌ Error: ${err.response?.data?.error || err.message}`);
     } finally {
       setLoadingFakeData(false);
+    }
+  };
+
+  // Data Management Functions
+  const handleDeleteAllUserData = async () => {
+    const confirmText = 'DELETE_ALL_DATA';
+    const userInput = window.prompt(
+      `⚠️ WARNING: This will delete ALL user data (purchases, logs, surveys) but keep user accounts.\n\nType "${confirmText}" to confirm this irreversible action:`
+    );
+    
+    if (userInput !== confirmText) {
+      setDataManagementMessage('❌ Operation cancelled - confirmation text did not match');
+      return;
+    }
+
+    setLoadingDataOperation(true);
+    setDataManagementMessage('');
+
+    try {
+      const response = await adminAPI.deleteAllUserData(confirmText);
+      setDataManagementMessage(`✅ ${response.data.message}`);
+      loadOverviewData(); // Refresh overview
+    } catch (err) {
+      console.error('Error deleting all user data:', err);
+      setDataManagementMessage('❌ Failed to delete user data');
+    } finally {
+      setLoadingDataOperation(false);
+    }
+  };
+
+  const handleSearchUser = async () => {
+    if (!searchUserId.trim()) {
+      setDataManagementMessage('❌ Please enter a user ID');
+      return;
+    }
+
+    setLoadingUserSearch(true);
+    setDataManagementMessage('');
+    setSearchedUser(null);
+
+    try {
+      const response = await adminAPI.searchUser(searchUserId.trim());
+      setSearchedUser(response.data);
+      setDataManagementMessage('✅ User found');
+    } catch (err) {
+      console.error('Error searching user:', err);
+      if (err.response?.status === 404) {
+        setDataManagementMessage('❌ User not found');
+      } else {
+        setDataManagementMessage('❌ Failed to search user');
+      }
+    } finally {
+      setLoadingUserSearch(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId, username) => {
+    const confirmText = 'DELETE_USER_AND_DATA';
+    const userInput = window.prompt(
+      `⚠️ WARNING: This will permanently delete user "${username}" and ALL their data.\n\nType "${confirmText}" to confirm this irreversible action:`
+    );
+    
+    if (userInput !== confirmText) {
+      setDataManagementMessage('❌ Operation cancelled - confirmation text did not match');
+      return;
+    }
+
+    setLoadingDataOperation(true);
+    setDataManagementMessage('');
+
+    try {
+      const response = await adminAPI.deleteUser(userId, confirmText);
+      setDataManagementMessage(`✅ ${response.data.message}`);
+      setSearchedUser(null); // Clear search results
+      loadOverviewData(); // Refresh overview
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      setDataManagementMessage('❌ Failed to delete user');
+    } finally {
+      setLoadingDataOperation(false);
+    }
+  };
+
+  const handleDeleteUserDataOnly = async (userId, username) => {
+    const confirmText = 'DELETE_USER_DATA_ONLY';
+    const userInput = window.prompt(
+      `⚠️ WARNING: This will delete ALL data for user "${username}" but keep their account.\n\nType "${confirmText}" to confirm this irreversible action:`
+    );
+    
+    if (userInput !== confirmText) {
+      setDataManagementMessage('❌ Operation cancelled - confirmation text did not match');
+      return;
+    }
+
+    setLoadingDataOperation(true);
+    setDataManagementMessage('');
+
+    try {
+      const response = await adminAPI.deleteUserData(userId, confirmText);
+      setDataManagementMessage(`✅ ${response.data.message}`);
+      // Refresh user search to show updated counts
+      await handleSearchUser();
+      loadOverviewData(); // Refresh overview
+    } catch (err) {
+      console.error('Error deleting user data:', err);
+      setDataManagementMessage('❌ Failed to delete user data');
+    } finally {
+      setLoadingDataOperation(false);
     }
   };
 
@@ -726,6 +842,7 @@ function AdminDashboard({ onLogout }) {
           <Tab label="Purchase Trends" />
           <Tab label="Data Export" />
           <Tab label="Fake Data Management" />
+        <Tab label="Data Management" />
         </Tabs>
       </Box>
 
@@ -1524,6 +1641,170 @@ function AdminDashboard({ onLogout }) {
             Always clean up fake data before deploying to production or sharing with real users.
           </Typography>
         </Alert>
+      </TabPanel>
+
+      {/* Data Management Tab */}
+      <TabPanel value={tabValue} index={6}>
+        <Typography variant="h6" gutterBottom>
+          User Data Management
+        </Typography>
+        <Typography variant="body2" color="textSecondary" sx={{ mb: 3 }}>
+          Powerful admin tools for managing user data. Use with extreme caution.
+        </Typography>
+
+        <Grid container spacing={3}>
+          {/* Bulk Data Deletion */}
+          <Grid item xs={12}>
+            <Card sx={{ border: '2px solid', borderColor: 'error.main' }}>
+              <CardContent>
+                <Typography variant="h6" color="error.main" gutterBottom>
+                  ⚠️ Bulk Data Deletion
+                </Typography>
+                <Typography variant="body2" sx={{ mb: 2 }}>
+                  Delete ALL user data (purchases, consumption logs, surveys) while preserving user accounts.
+                  Users can continue to log in but will start fresh.
+                </Typography>
+                <Button
+                  variant="contained"
+                  color="error"
+                  onClick={handleDeleteAllUserData}
+                  disabled={loadingDataOperation}
+                  sx={{ mb: 1 }}
+                >
+                  Delete All User Data
+                </Button>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* User Search and Management */}
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  🔍 User Search & Management
+                </Typography>
+                <Typography variant="body2" sx={{ mb: 2 }}>
+                  Search for a specific user and manage their data or account.
+                </Typography>
+                
+                <Box display="flex" gap={2} sx={{ mb: 2 }}>
+                  <TextField
+                    label="User ID"
+                    type="number"
+                    value={searchUserId}
+                    onChange={(e) => setSearchUserId(e.target.value)}
+                    size="small"
+                    sx={{ minWidth: 120 }}
+                  />
+                  <Button
+                    variant="outlined"
+                    onClick={handleSearchUser}
+                    disabled={loadingUserSearch}
+                  >
+                    {loadingUserSearch ? 'Searching...' : 'Search User'}
+                  </Button>
+                </Box>
+
+                {searchedUser && (
+                  <Card variant="outlined" sx={{ mt: 2, p: 2 }}>
+                    <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                      User Found: {searchedUser.user.username}
+                    </Typography>
+                    
+                    <Grid container spacing={2} sx={{ mb: 2 }}>
+                      <Grid item xs={6} sm={3}>
+                        <Typography variant="body2">
+                          <strong>ID:</strong> {searchedUser.user.id}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={6} sm={3}>
+                        <Typography variant="body2">
+                          <strong>Name:</strong> {searchedUser.user.name || 'N/A'}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={6} sm={3}>
+                        <Typography variant="body2">
+                          <strong>Email:</strong> {searchedUser.user.email || 'N/A'}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={6} sm={3}>
+                        <Typography variant="body2">
+                          <strong>Created:</strong> {new Date(searchedUser.user.created_at).toLocaleDateString()}
+                        </Typography>
+                      </Grid>
+                    </Grid>
+
+                    <Typography variant="subtitle2" gutterBottom>
+                      Data Summary:
+                    </Typography>
+                    <Grid container spacing={2} sx={{ mb: 2 }}>
+                      <Grid item xs={6} sm={3}>
+                        <Chip 
+                          label={`${searchedUser.dataCounts.purchases_count} Purchases`} 
+                          color="primary" 
+                          size="small" 
+                        />
+                      </Grid>
+                      <Grid item xs={6} sm={3}>
+                        <Chip 
+                          label={`${searchedUser.dataCounts.consumption_logs_count} Logs`} 
+                          color="secondary" 
+                          size="small" 
+                        />
+                      </Grid>
+                      <Grid item xs={6} sm={3}>
+                        <Chip 
+                          label={`${searchedUser.dataCounts.survey_responses_count} Surveys`} 
+                          color="info" 
+                          size="small" 
+                        />
+                      </Grid>
+                      <Grid item xs={6} sm={3}>
+                        <Chip 
+                          label={`${searchedUser.dataCounts.food_items_count} Food Items`} 
+                          color="success" 
+                          size="small" 
+                        />
+                      </Grid>
+                    </Grid>
+
+                    <Box display="flex" gap={2} flexWrap="wrap">
+                      <Button
+                        variant="outlined"
+                        color="warning"
+                        onClick={() => handleDeleteUserDataOnly(searchedUser.user.id, searchedUser.user.username)}
+                        disabled={loadingDataOperation}
+                        size="small"
+                      >
+                        Delete Data Only
+                      </Button>
+                      <Button
+                        variant="contained"
+                        color="error"
+                        onClick={() => handleDeleteUser(searchedUser.user.id, searchedUser.user.username)}
+                        disabled={loadingDataOperation}
+                        size="small"
+                      >
+                        Delete User & Data
+                      </Button>
+                    </Box>
+                  </Card>
+                )}
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+
+        {/* Status Message */}
+        {dataManagementMessage && (
+          <Alert 
+            severity={dataManagementMessage.includes('✅') ? 'success' : 'error'} 
+            sx={{ mt: 2 }}
+          >
+            {dataManagementMessage}
+          </Alert>
+        )}
       </TabPanel>
     </Box>
   );
