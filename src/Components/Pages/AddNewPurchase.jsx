@@ -84,23 +84,13 @@ function AddNewPurchase({
   };
 
   const handleAddToPurchase = async (foodItem) => {
-    console.log("🍎 handleAddToPurchase called with:", foodItem);
-    console.log("📅 Selected date:", selectedDate.format('YYYY-MM-DD'));
     
     // Check if selected date is in the past (not today)
     const today = dayjs();
     const isSelectedDateInPast = selectedDate.isBefore(today, 'day');
     
-    console.log("📅 Date comparison:", {
-      selectedDate: selectedDate.format('YYYY-MM-DD'),
-      today: today.format('YYYY-MM-DD'),
-      isSelectedDateInPast,
-      isSameDay: selectedDate.isSame(today, 'day')
-    });
-    
     if (isSelectedDateInPast) {
       // Show confirmation modal for past dates
-      console.log("⚠️ Showing date confirmation modal for past date");
       setPendingFoodItem(foodItem);
       setShowDateConfirmation(true);
       return;
@@ -113,8 +103,6 @@ function AddNewPurchase({
   const addFoodToDate = async (foodItem, date) => {
     try {
       const purchaseDate = date.format('YYYY-MM-DD');
-      console.log("🚀 About to add purchase:", { foodItem: foodItem.name, purchaseDate });
-      
       const response = await foodPurchaseAPI.addPurchase({
         user_id: localStorage.getItem("userId"),
         name: foodItem.name,
@@ -127,10 +115,8 @@ function AddNewPurchase({
         purchase_date: purchaseDate,
       });
 
-      console.log("✅ Purchase added successfully:", response.data);
-      console.log("🔄 Calling fetchFoodPurchases to refresh list...");
-      await fetchFoodPurchases();
-      console.log("🏠 Closing add purchase modal...");
+      console.log(response.data);
+      fetchFoodPurchases();
       setLoggingPurchase(false);
     } catch (error) {
       console.error("Error adding purchase:", error);

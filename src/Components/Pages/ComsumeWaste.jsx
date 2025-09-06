@@ -344,22 +344,26 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
 
   return (
     <Box sx={{
-      
-      backgroundColor:"white", zIndex:"999",
-   mx: "auto",
-      
-      
-   px: 2, padding:"0px",
+      backgroundColor:"white", 
+      zIndex:"999",
+      mx: "auto",
+      px: { xs: 1, sm: 2 }, // Responsive padding
       position:"absolute",
       top:"0px",
       height:"100vh",
-      boxSizing:"border-box", left:"0px", width:"100vw",
-      maxWidth:"580px"
-      
-       }}>
+      boxSizing:"border-box", 
+      left:"0px", 
+      width:"100vw",
+      maxWidth: { xs: "100vw", sm: "580px" } // Full width on mobile
+    }}>
       {/* Header Bar with Trends */}
-      <AppBar position="sticky" color="primary" sx={{ mb: 2, bgcolor: 'var(--color-primary)' }}>
-        <Toolbar>
+      <AppBar position="sticky" color="primary" sx={{ 
+        mb: 2, 
+        bgcolor: 'var(--color-primary)',
+        mx: { xs: -1, sm: 0 }, // Negative margin on mobile to counteract container padding
+        width: { xs: 'calc(100% + 16px)', sm: '100%' } // Extend full width on mobile
+      }}>
+        <Toolbar sx={{ px: { xs: 1, sm: 3 } }}> {/* Reduced padding on mobile */}
           <IconButton edge="start" color="inherit" onClick={() => activeWeekOf ? setActiveWeekOf(null) : handleBack()} aria-label="back">
             <ArrowBackIcon />
           </IconButton>
@@ -415,11 +419,10 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
           elevation={2}
           sx={{
             mb: 2,
-            p: 2,
+            p: { xs: 1.5, sm: 2 }, // Responsive padding
             borderRadius: 2,
-            width:"100vw",
-            maxWidth:"580px",
-            // backgroundColor: showCompletion ? "success.light" : "background.paper",
+            width: "100%", // Use percentage instead of viewport units
+            maxWidth: "100%", // Ensure it doesn't overflow
             cursor: 'pointer',
             border: showCompletion ? 2 : 1,
             borderColor: showCompletion ? "success.main" : "divider",
