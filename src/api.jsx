@@ -105,11 +105,11 @@ export const adminAPI = {
   cleanupFakeData: () => api.delete("/admin/cleanup-fake-data"),
   
   // User Data Management endpoints
-  deleteAllUserData: (confirm) => api.delete("/admin/delete-all-user-data", { confirm }),
+  deleteAllUserData: (confirm) => api.delete("/admin/delete-all-user-data", { data: { confirm } }),
   searchUsers: (query, limit = 10) => api.get("/admin/search-users", { params: { q: query, limit } }),
   searchUser: (userId) => api.get(`/admin/search-user/${userId}`),
-  deleteUser: (userId, confirm) => api.delete(`/admin/delete-user/${userId}`, { confirm }),
-  deleteUserData: (userId, confirm) => api.delete(`/admin/delete-user-data/${userId}`, { confirm })
+  deleteUser: (userId, confirm) => api.delete(`/admin/delete-user/${userId}`, { data: { confirm } }),
+  deleteUserData: (userId, confirm) => api.delete(`/admin/delete-user-data/${userId}`, { data: { confirm } })
 };
 
 export default api;

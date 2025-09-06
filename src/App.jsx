@@ -23,31 +23,35 @@ function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
-        <TermsGuard>
-          <AuthGuard>
-            <SurveyGuard>
-              <Routes>
-              {/* Pages that don't require SidebarLayout */}
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/auth/login" element={<LoginPage />} />
-              <Route path="/auth/register" element={<RegisterPage />} /> {/* RegisterPage outside SidebarLayout */}
-              <Route path="/terms" element={<TermsAndConditions />} />
-             
-              {/* SidebarLayout wrapped routes */}
-              <Route element={<SidebarLayout />}>
-                {/* <Route path="/users" element={<Users />} /> */}
-                <Route path="/home" element={<FoodLog/>} />
-                <Route path="/survey" element={<QaPage />} />
-                <Route path="/resources" element={<Resources />} />
-                <Route path="/tasks-leaderboard" element={<TasksAndLeaderboard />} />
-              </Route>
-              
-              {/* Admin routes (no sidebar) */}
-              <Route path="/admin" element={<AdminGuard />} />
-            </Routes>
-            </SurveyGuard>
-          </AuthGuard>
-        </TermsGuard>
+        <Routes>
+          {/* Admin routes (completely separate from user auth) */}
+          <Route path="/admin" element={<AdminGuard />} />
+          
+          {/* User routes with guards */}
+          <Route path="/*" element={
+            <TermsGuard>
+              <AuthGuard>
+                <SurveyGuard>
+                  <Routes>
+                    {/* Pages that don't require SidebarLayout */}
+                    <Route path="/" element={<LandingPage />} />
+                    <Route path="/auth/login" element={<LoginPage />} />
+                    <Route path="/auth/register" element={<RegisterPage />} />
+                    <Route path="/terms" element={<TermsAndConditions />} />
+                   
+                    {/* SidebarLayout wrapped routes */}
+                    <Route element={<SidebarLayout />}>
+                      <Route path="/home" element={<FoodLog/>} />
+                      <Route path="/survey" element={<QaPage />} />
+                      <Route path="/resources" element={<Resources />} />
+                      <Route path="/tasks-leaderboard" element={<TasksAndLeaderboard />} />
+                    </Route>
+                  </Routes>
+                </SurveyGuard>
+              </AuthGuard>
+            </TermsGuard>
+          } />
+        </Routes>
       </BrowserRouter>
     </ErrorBoundary>
   );
