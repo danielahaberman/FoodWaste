@@ -84,15 +84,23 @@ function AddNewPurchase({
   };
 
   const handleAddToPurchase = async (foodItem) => {
-    console.log("fooditem", foodItem);
+    console.log("🍎 handleAddToPurchase called with:", foodItem);
+    console.log("📅 Selected date:", selectedDate.format('YYYY-MM-DD'));
     
     // Check if selected date is in the past (not today)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const selectedDateOnly = new Date(selectedDate.format('YYYY-MM-DD'));
+    const today = dayjs();
+    const isSelectedDateInPast = selectedDate.isBefore(today, 'day');
     
-    if (selectedDateOnly < today) {
+    console.log("📅 Date comparison:", {
+      selectedDate: selectedDate.format('YYYY-MM-DD'),
+      today: today.format('YYYY-MM-DD'),
+      isSelectedDateInPast,
+      isSameDay: selectedDate.isSame(today, 'day')
+    });
+    
+    if (isSelectedDateInPast) {
       // Show confirmation modal for past dates
+      console.log("⚠️ Showing date confirmation modal for past date");
       setPendingFoodItem(foodItem);
       setShowDateConfirmation(true);
       return;
@@ -105,6 +113,7 @@ function AddNewPurchase({
   const addFoodToDate = async (foodItem, date) => {
     try {
       const purchaseDate = date.format('YYYY-MM-DD');
+      console.log("🚀 About to add purchase:", { foodItem: foodItem.name, purchaseDate });
       
       const response = await foodPurchaseAPI.addPurchase({
         user_id: localStorage.getItem("userId"),
@@ -118,8 +127,10 @@ function AddNewPurchase({
         purchase_date: purchaseDate,
       });
 
-      console.log(response.data);
-      fetchFoodPurchases();
+      console.log("✅ Purchase added successfully:", response.data);
+      console.log("🔄 Calling fetchFoodPurchases to refresh list...");
+      await fetchFoodPurchases();
+      console.log("🏠 Closing add purchase modal...");
       setLoggingPurchase(false);
     } catch (error) {
       console.error("Error adding purchase:", error);
@@ -199,10 +210,7 @@ function AddNewPurchase({
           setHideNew={setHideNew}
           foodItems={foodItems}
           open={true}
-          handleAddToPurchase={(purchase) => {
-            handleAddToPurchase(purchase);
-            setLoggingPurchase(false);
-          }}
+          handleAddToPurchase={handleAddToPurchase}
         />
       </Box>
 

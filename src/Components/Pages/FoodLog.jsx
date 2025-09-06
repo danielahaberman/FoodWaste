@@ -20,6 +20,7 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import ConsumeWaste from "./ComsumeWaste";
 import QaPage from "./QaPage";
 import BottomBar from "../BottomBar";
+import FoodEmojiBackground from "../FoodEmojiBackground";
 const FoodLog = () => {
   const [foodPurchases, setFoodPurchases] = useState([]);
   const [foodItems, setFoodItems] = useState([]);
@@ -66,9 +67,13 @@ const deletePurchase = async (purchaseId) => {
     fetchFoodPurchases();
   }, []);
 
-  const filteredPurchases = foodPurchases.filter((purchase) =>
-    dayjs(purchase.purchase_date).isSame(selectedDate, "day")
-  );
+  const filteredPurchases = foodPurchases.filter((purchase) => {
+    // Parse the UTC date and compare with selected date in local timezone
+    const purchaseDate = dayjs(purchase.purchase_date);
+    return purchaseDate.isSame(selectedDate, "day");
+  });
+
+  // Debug logging can be removed once everything is working
 
   // Check if selected date is within 7 days (can add/delete)
   const isWithin7Days = dayjs().subtract(7, 'day').isSameOrBefore(selectedDate, 'day');
@@ -79,9 +84,17 @@ const deletePurchase = async (purchaseId) => {
   const canModify = isWithin7Days && !isDateInFuture;
 
   return (
-    <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+    <FoodEmojiBackground>
+      <Box sx={{ height: "100%", display: "flex", flexDirection: "column", }}>
       <LocalizationProvider dateAdapter={AdapterDayjs}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between', 
+          gap: 1,
+          px: 2, // Add horizontal padding
+          py: 1.5, // Add vertical padding
+        }}>
           <DateNavigator value={selectedDate} onChange={setSelectedDate} />
           <Button 
             variant="contained" 
@@ -108,7 +121,7 @@ const deletePurchase = async (purchaseId) => {
         )}
       </LocalizationProvider>
 
-      <Box sx={{ flex: 1, overflow: "auto", pb: '88px' }}>
+      <Box sx={{ flex: 1, overflow: "auto", pb: '88px', mt: 2 }}>
         {filteredPurchases.length > 0 ? (
           <FoodPurchaseList 
             deletePurchase={deletePurchase} 
@@ -161,7 +174,8 @@ const deletePurchase = async (purchaseId) => {
            }}
          />
        )}
-    </Box>
+      </Box>
+    </FoodEmojiBackground>
   );
 };
 

@@ -16,7 +16,7 @@ import TermsGuard from './Components/TermsGuard';
 import AuthGuard from './Components/AuthGuard';
 import SurveyGuard from './Components/SurveyGuard';
 import ErrorBoundary from './Components/ErrorBoundary';
-import AdminDashboard from './Components/Pages/AdminDashboard';
+import AdminGuard from './Components/AdminGuard';
 function App() {
   return (
     <ErrorBoundary>
@@ -39,7 +39,7 @@ function App() {
               </Route>
               
               {/* Admin routes (no sidebar) */}
-              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin" element={<AdminGuard />} />
             </Routes>
             </SurveyGuard>
           </AuthGuard>

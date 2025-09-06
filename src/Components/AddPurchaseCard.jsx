@@ -26,13 +26,19 @@ function AddPurchaseCard({ item, handleAddPurchase, setSelectedItem }) {
   }, [item.price]);
 
   const handleAdd = () => {
+    console.log("🔴 AddPurchaseCard handleAdd clicked!");
+    console.log("📦 Item data:", item);
+    console.log("📊 Form data:", { quantity, cost });
+    
     setError("");
     if (quantity <= 0) {
       setError("Quantity must be at least 1");
+      console.log("❌ Error: Quantity must be at least 1");
       return;
     }
     if (cost < 0) {
       setError("Price cannot be negative");
+      console.log("❌ Error: Price cannot be negative");
       return;
     }
 
@@ -45,6 +51,7 @@ function AddPurchaseCard({ item, handleAddPurchase, setSelectedItem }) {
       category_id: item.category_id,
     };
 
+    console.log("🚀 About to call handleAddPurchase with:", purchaseData);
     handleAddPurchase(purchaseData);
   };
 

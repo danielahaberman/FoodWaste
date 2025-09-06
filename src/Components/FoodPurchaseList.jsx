@@ -65,13 +65,15 @@ const FoodPurchaseList = ({ purchases, deletePurchase, canModify = true }) => {
             <ListItemButton
               onClick={() => setActiveId(isActive ? null : id)}
               sx={{
-                bgcolor: isActive ? "action.selected" : "background.paper",
+                bgcolor: isActive ? "action.selected" : "rgba(255, 255, 255, 0.95)",
                 py: 1.5,
                 px: 2,
                 position: "relative",
-                "&:hover": { bgcolor: "action.hover" },
+                "&:hover": { bgcolor: "rgba(255, 255, 255, 0.98)" },
                 borderRadius: 1,
                 mb: 1,
+                mx: 2, // Add horizontal margin to show background
+                backdropFilter: "blur(10px)",
               }}
             >
               <ListItemText
@@ -130,7 +132,6 @@ const FoodPurchaseList = ({ purchases, deletePurchase, canModify = true }) => {
                 </IconButton>
               )}
             </ListItemButton>
-            <Divider component="li" sx={{ margin: 0 }} />
           </React.Fragment>
         );
       })}

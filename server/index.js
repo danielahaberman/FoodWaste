@@ -23,6 +23,11 @@ import moment from "moment-timezone";
 import questions from "./SurveyQuestions.js";
 import foodItems from "./FoodItems.js";
 import query from "./TableQuery.js";
+import { 
+  generateFakeUsersWithData, 
+  cleanupFakeUsers, 
+  getFakeUsersCount 
+} from "./fakeDataGenerator.js";
 
 // Initialize database and start server
 async function startServer() {
@@ -1251,11 +1256,13 @@ app.get("/admin/analytics/waste-patterns", async (req, res) => {
         COUNT(*) as count,
         SUM(cl.cost_value) as total_cost,
         AVG(cl.cost_value) as avg_cost,
-        DATE_TRUNC('week', cl.logged_at) as week_start
+        DATE_TRUNC('week', cl.logged_at) as week_start,
+        DATE_TRUNC('day', cl.logged_at) as day_start,
+        DATE_TRUNC('month', cl.logged_at) as month_start
       FROM consumption_logs cl
       JOIN purchases p ON cl.purchase_id = p.id
       WHERE cl.user_id > 0
-      GROUP BY cl.action, p.category, DATE_TRUNC('week', cl.logged_at)
+      GROUP BY cl.action, p.category, DATE_TRUNC('week', cl.logged_at), DATE_TRUNC('day', cl.logged_at), DATE_TRUNC('month', cl.logged_at)
       ORDER BY week_start DESC, total_cost DESC
     `;
     const detailedResult = await pool.query(detailedQuery);
@@ -1494,6 +1501,72 @@ app.get("/admin/export/waste-patterns", async (req, res) => {
   } catch (err) {
     console.error("Error exporting waste patterns:", err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ===== FAKE DATA GENERATION ENDPOINTS =====
+
+// Generate fake users with data
+app.post("/admin/generate-fake-data", async (req, res) => {
+  try {
+    const { count = 5 } = req.body;
+    
+    if (count < 1 || count > 20) {
+      return res.status(400).json({ 
+        error: "Count must be between 1 and 20" 
+      });
+    }
+    
+    console.log(`Generating ${count} fake users with data...`);
+    const results = await generateFakeUsersWithData(count);
+    
+    res.status(200).json({
+      message: `Successfully generated ${results.length} fake users with complete data`,
+      users: results.map(r => ({
+        id: r.user.id,
+        username: r.user.username,
+        name: r.user.name,
+        purchases: r.purchases.length,
+        consumptionLogs: r.consumptionLogs.length,
+        surveyResponses: r.surveyResponses.length
+      }))
+    });
+  } catch (error) {
+    console.error("Error generating fake data:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get count of fake users
+app.get("/admin/fake-users-count", async (req, res) => {
+  try {
+    const count = await getFakeUsersCount();
+    res.status(200).json({ 
+      count,
+      message: `Found ${count} fake users in the database`
+    });
+  } catch (error) {
+    console.error("Error getting fake users count:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Clean up all fake users and their data
+app.delete("/admin/cleanup-fake-data", async (req, res) => {
+  try {
+    console.log("Cleaning up all fake users and their data...");
+    const deletedUsers = await cleanupFakeUsers();
+    
+    res.status(200).json({
+      message: `Successfully deleted ${deletedUsers.length} fake users and all their associated data`,
+      deletedUsers: deletedUsers.map(user => ({
+        id: user.id,
+        username: user.username
+      }))
+    });
+  } catch (error) {
+    console.error("Error cleaning up fake data:", error);
+    res.status(500).json({ error: error.message });
   }
 });
 

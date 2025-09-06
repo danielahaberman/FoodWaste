@@ -1,7 +1,6 @@
 // @ts-nocheck
 /* eslint-disable no-unused-vars */
 import React, { useState } from "react";
-import PageLayout from "../PageLayout";
 import { 
   TextField, 
   Button, 
@@ -16,6 +15,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { setAuthenticated, getIntendedDestination, clearIntendedDestination } from "../../utils/authUtils";
 import { authAPI } from "../../api";
+import FoodEmojiBackground from "../FoodEmojiBackground";
 
 function LoginPage() {
   const [email, setEmail] = useState("");
@@ -75,7 +75,7 @@ function LoginPage() {
   };
 
   return (
-    <PageLayout backgroundColor="#f5f5f5">
+    <FoodEmojiBackground>
       <Container 
         maxWidth="sm" 
         sx={{ 
@@ -101,15 +101,17 @@ function LoginPage() {
         </Typography>
 
         <Paper 
-          elevation={3}
+          elevation={8}
           sx={{ 
             width: '100%', 
             maxWidth: 400,
             borderRadius: 2,
-            overflow: 'hidden'
+            overflow: 'hidden',
+            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(10px)'
           }}
         >
-          <Card sx={{ backgroundColor: 'white' }}>
+          <Card sx={{ backgroundColor: 'transparent' }}>
             <CardContent sx={{ p: 4 }}>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                 <TextField
@@ -190,7 +192,7 @@ function LoginPage() {
           </Card>
         </Paper>
       </Container>
-    </PageLayout>
+    </FoodEmojiBackground>
   );
 }
 

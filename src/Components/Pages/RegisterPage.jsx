@@ -1,7 +1,6 @@
 // @ts-nocheck
 /* eslint-disable no-unused-vars */
 import React, { useState } from "react";
-import PageLayout from "../PageLayout";
 import { 
   TextField, 
   Button, 
@@ -15,6 +14,7 @@ import {
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { authAPI } from "../../api";
+import FoodEmojiBackground from "../FoodEmojiBackground";
 
 function RegisterPage() {
   const [username, setUsername] = useState("");
@@ -62,7 +62,7 @@ function RegisterPage() {
   };
 
   return (
-    <PageLayout backgroundColor="#f5f5f5">
+    <FoodEmojiBackground>
       <Container 
         maxWidth="sm" 
         sx={{ 
@@ -208,7 +208,7 @@ function RegisterPage() {
           </Card>
         </Paper>
       </Container>
-    </PageLayout>
+    </FoodEmojiBackground>
   );
 }
 

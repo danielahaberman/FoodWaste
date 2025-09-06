@@ -23,10 +23,10 @@ const DateNavigator = ({ value, onChange }) => {
   const handlePrev = () => onChange(dayjs(value).subtract(1, "day"));
   const handleNext = () => {
     const nextDate = dayjs(value).add(1, "day");
-    // Don't allow selecting future dates
-    if (nextDate.isAfter(dayjs(), "day")) {
-      return;
-    }
+    // TEMPORARILY ALLOW FUTURE DATES FOR DEBUGGING
+    // if (nextDate.isAfter(dayjs(), "day")) {
+    //   return;
+    // }
     onChange(nextDate);
   };
   const handleOpenCalendar = (e) => setAnchorEl(e.currentTarget);
@@ -73,7 +73,8 @@ const DateNavigator = ({ value, onChange }) => {
         onClick={handleNext} 
         size="small" 
         color="primary"
-        disabled={dayjs(value).isSame(dayjs(), "day")}
+        // TEMPORARILY REMOVE DISABLED STATE FOR DEBUGGING
+        // disabled={dayjs(value).isSame(dayjs(), "day")}
       >
         <ArrowForwardIos fontSize="small" />
       </IconButton>
@@ -103,14 +104,15 @@ const DateNavigator = ({ value, onChange }) => {
           displayStaticWrapperAs="desktop"
           value={value}
           onChange={(newValue) => {
-            // Don't allow selecting future dates
-            if (dayjs(newValue).isAfter(dayjs(), "day")) {
-              return;
-            }
+            // TEMPORARILY ALLOW FUTURE DATES FOR DEBUGGING
+            // if (dayjs(newValue).isAfter(dayjs(), "day")) {
+            //   return;
+            // }
             onChange(newValue);
             handleCloseCalendar();
           }}
-          maxDate={dayjs()}
+          // TEMPORARILY REMOVE MAX DATE RESTRICTION
+          // maxDate={dayjs()}
         />
       </Popover>
     </Box>

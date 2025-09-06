@@ -30,7 +30,30 @@ import {
   AccordionSummary,
   AccordionDetails
 } from '@mui/material';
+import { Lock } from '@mui/icons-material';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
 import { adminAPI } from '../../api.jsx';
+
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 function TabPanel({ children, value, index, ...other }) {
   return (
@@ -46,7 +69,7 @@ function TabPanel({ children, value, index, ...other }) {
   );
 }
 
-function AdminDashboard() {
+function AdminDashboard({ onLogout }) {
   const [tabValue, setTabValue] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -72,9 +95,16 @@ function AdminDashboard() {
   const [selectedQuestion, setSelectedQuestion] = useState('');
   const [questionResponses, setQuestionResponses] = useState(null);
   const [loadingQuestionResponses, setLoadingQuestionResponses] = useState(false);
+  
+  // Fake data management states
+  const [fakeUsersCount, setFakeUsersCount] = useState(0);
+  const [loadingFakeData, setLoadingFakeData] = useState(false);
+  const [fakeDataMessage, setFakeDataMessage] = useState('');
+  const [chartTimeframe, setChartTimeframe] = useState('daily');
 
   useEffect(() => {
     loadOverviewData();
+    loadFakeUsersCount();
   }, []);
 
   const loadOverviewData = async () => {
@@ -163,6 +193,51 @@ function AdminDashboard() {
     }
   };
 
+  const loadFakeUsersCount = async () => {
+    try {
+      const response = await adminAPI.getFakeUsersCount();
+      setFakeUsersCount(response.data.count);
+    } catch (err) {
+      console.error('Error loading fake users count:', err);
+    }
+  };
+
+  const handleGenerateFakeData = async (count) => {
+    try {
+      setLoadingFakeData(true);
+      setFakeDataMessage('');
+      const response = await adminAPI.generateFakeData(count);
+      setFakeDataMessage(`✅ ${response.data.message}`);
+      await loadFakeUsersCount();
+      await loadOverviewData(); // Refresh overview to show new users
+    } catch (err) {
+      console.error('Error generating fake data:', err);
+      setFakeDataMessage(`❌ Error: ${err.response?.data?.error || err.message}`);
+    } finally {
+      setLoadingFakeData(false);
+    }
+  };
+
+  const handleCleanupFakeData = async () => {
+    if (!window.confirm('Are you sure you want to delete ALL fake users and their data? This action cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      setLoadingFakeData(true);
+      setFakeDataMessage('');
+      const response = await adminAPI.cleanupFakeData();
+      setFakeDataMessage(`✅ ${response.data.message}`);
+      await loadFakeUsersCount();
+      await loadOverviewData(); // Refresh overview to show updated counts
+    } catch (err) {
+      console.error('Error cleaning up fake data:', err);
+      setFakeDataMessage(`❌ Error: ${err.response?.data?.error || err.message}`);
+    } finally {
+      setLoadingFakeData(false);
+    }
+  };
+
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
     
@@ -173,6 +248,9 @@ function AdminDashboard() {
       loadWastePatterns();
     } else if (newValue === 3 && !purchaseTrends) {
       loadPurchaseTrends();
+    } else if (newValue === 5) {
+      // Fake Data Management tab - refresh count
+      loadFakeUsersCount();
     }
   };
 
@@ -194,6 +272,186 @@ function AdminDashboard() {
       console.error('Export error:', err);
       setError('Failed to export data');
     }
+  };
+
+  // Process waste patterns data for the line chart
+  const processWasteTrendsData = (wastePatterns, timeframe = 'weekly') => {
+    if (!wastePatterns?.detailed) return null;
+
+    // The detailed data now contains day_start, week_start, and month_start
+    const sortedDetailed = [...wastePatterns.detailed].sort((a, b) => {
+      // Sort by the appropriate date field based on timeframe
+      let dateA, dateB;
+      switch (timeframe) {
+        case 'daily':
+          dateA = new Date(a.day_start);
+          dateB = new Date(b.day_start);
+          break;
+        case 'weekly':
+          dateA = new Date(a.week_start);
+          dateB = new Date(b.week_start);
+          break;
+        case 'monthly':
+          dateA = new Date(a.month_start);
+          dateB = new Date(b.month_start);
+          break;
+        default:
+          dateA = new Date(a.week_start);
+          dateB = new Date(b.week_start);
+      }
+      return dateA - dateB;
+    });
+
+    // Group by timeframe and sum up consumed/wasted
+    const timeframeData = {};
+    sortedDetailed.forEach(item => {
+      let timeKey;
+      let dateLabel;
+      let date;
+      
+      switch (timeframe) {
+        case 'daily':
+          timeKey = item.day_start;
+          date = new Date(item.day_start);
+          dateLabel = date.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric' 
+          });
+          break;
+        case 'weekly':
+          timeKey = item.week_start;
+          date = new Date(item.week_start);
+          dateLabel = date.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric' 
+          });
+          break;
+        case 'monthly':
+          timeKey = item.month_start;
+          date = new Date(item.month_start);
+          dateLabel = date.toLocaleDateString('en-US', { 
+            month: 'short', 
+            year: 'numeric' 
+          });
+          break;
+        default:
+          timeKey = item.week_start;
+          date = new Date(item.week_start);
+          dateLabel = date.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric' 
+          });
+      }
+      
+      if (!timeframeData[timeKey]) {
+        timeframeData[timeKey] = { 
+          consumed: 0, 
+          wasted: 0, 
+          timeKey: timeKey,
+          dateLabel: dateLabel 
+        };
+      }
+      
+      if (item.action === 'consumed') {
+        timeframeData[timeKey].consumed += parseInt(item.count);
+      } else if (item.action === 'wasted') {
+        timeframeData[timeKey].wasted += parseInt(item.count);
+      }
+    });
+
+    // Convert to arrays for chart
+    const chartLabels = [];
+    const chartConsumedData = [];
+    const chartWastedData = [];
+
+    Object.values(timeframeData).forEach(period => {
+      chartLabels.push(period.dateLabel);
+      chartConsumedData.push(period.consumed);
+      chartWastedData.push(period.wasted);
+    });
+
+    // If no data, return null
+    if (chartLabels.length === 0) return null;
+
+    return {
+      labels: chartLabels,
+      datasets: [
+        {
+          label: 'Consumed',
+          data: chartConsumedData,
+          borderColor: 'rgb(59, 130, 246)', // Blue color for consumed (user preference)
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          tension: 0.1,
+          fill: false,
+        },
+        {
+          label: 'Wasted',
+          data: chartWastedData,
+          borderColor: 'rgb(156, 163, 175)', // Gray color for wasted (avoiding orange)
+          backgroundColor: 'rgba(156, 163, 175, 0.1)',
+          tension: 0.1,
+          fill: false,
+        },
+      ],
+    };
+  };
+
+  // Chart options for the waste trends line graph
+  const getChartOptions = (timeframe) => {
+    const timeframeLabels = {
+      daily: 'Day',
+      weekly: 'Week', 
+      monthly: 'Month'
+    };
+    
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'top',
+        },
+        title: {
+          display: true,
+          text: `Consumption vs Waste Trends (${timeframeLabels[timeframe]}ly View)`,
+          font: {
+            size: 16,
+            weight: 'bold'
+          }
+        },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            label: function(context) {
+              return `${context.dataset.label}: ${context.parsed.y} items`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          display: true,
+          title: {
+            display: true,
+            text: timeframeLabels[timeframe]
+          }
+        },
+        y: {
+          display: true,
+          title: {
+            display: true,
+            text: 'Number of Items'
+          },
+          beginAtZero: true
+        }
+      },
+      interaction: {
+        mode: 'nearest',
+        axis: 'x',
+        intersect: false
+      }
+    };
   };
 
   const renderQuestionVisualization = (question, responses) => {
@@ -379,9 +637,19 @@ function AdminDashboard() {
       backgroundColor: '#f5f5f5',
       zIndex: 1000
     }}>
-      <Typography variant="h4" gutterBottom>
-        Admin Analytics Dashboard
-      </Typography>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <Typography variant="h4">
+          Admin Analytics Dashboard
+        </Typography>
+        <Button
+          variant="outlined"
+          color="error"
+          onClick={onLogout}
+          startIcon={<Lock />}
+        >
+          Logout
+        </Button>
+      </Box>
       
       {/* Overview Cards */}
       {overview && (
@@ -457,6 +725,7 @@ function AdminDashboard() {
           <Tab label="Waste Patterns" />
           <Tab label="Purchase Trends" />
           <Tab label="Data Export" />
+          <Tab label="Fake Data Management" />
         </Tabs>
       </Box>
 
@@ -679,6 +948,90 @@ function AdminDashboard() {
             </Box>
           ) : wastePatterns ? (
             <Grid container spacing={3}>
+              {/* Consumption vs Waste Trends Line Graph */}
+              <Grid item xs={12}>
+                <Card>
+                  <CardContent>
+                    <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                      <Typography variant="h6">
+                        Consumption vs Waste Trends Over Time
+                      </Typography>
+                      <FormControl size="small" sx={{ minWidth: 120 }}>
+                        <InputLabel>Timeframe</InputLabel>
+                        <Select
+                          value={chartTimeframe}
+                          label="Timeframe"
+                          onChange={(e) => setChartTimeframe(e.target.value)}
+                        >
+                          <MenuItem value="daily">Daily</MenuItem>
+                          <MenuItem value="weekly">Weekly</MenuItem>
+                          <MenuItem value="monthly">Monthly</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Box>
+                    <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                      Track whether users are improving their habits - ideally seeing consumption increase and waste decrease over time
+                    </Typography>
+                    {(() => {
+                      const chartData = processWasteTrendsData(wastePatterns, chartTimeframe);
+                      if (!chartData || chartData.datasets[0].data.length < 2) return null;
+                      
+                      const consumedData = chartData.datasets[0].data;
+                      const wastedData = chartData.datasets[1].data;
+                      
+                      // Calculate trends (simple linear regression slope)
+                      const calculateTrend = (data) => {
+                        const n = data.length;
+                        const x = Array.from({length: n}, (_, i) => i);
+                        const sumX = x.reduce((a, b) => a + b, 0);
+                        const sumY = data.reduce((a, b) => a + b, 0);
+                        const sumXY = x.reduce((sum, xi, i) => sum + xi * data[i], 0);
+                        const sumXX = x.reduce((sum, xi) => sum + xi * xi, 0);
+                        return (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+                      };
+                      
+                      const consumedTrend = calculateTrend(consumedData);
+                      const wastedTrend = calculateTrend(wastedData);
+                      
+                      const isImproving = consumedTrend > 0 && wastedTrend < 0;
+                      const trendColor = isImproving ? 'success.main' : 'warning.main';
+                      const trendText = isImproving ? 'Improving' : 'Needs Attention';
+                      
+                      return (
+                        <Box sx={{ mb: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                          <Typography variant="subtitle2" sx={{ color: trendColor, fontWeight: 'bold' }}>
+                            Trend Analysis: {trendText}
+                          </Typography>
+                          <Typography variant="body2" color="textSecondary">
+                            Consumed items: {consumedTrend > 0 ? '↗️ Increasing' : '↘️ Decreasing'} 
+                            {' • '}
+                            Wasted items: {wastedTrend < 0 ? '↘️ Decreasing' : '↗️ Increasing'}
+                          </Typography>
+                        </Box>
+                      );
+                    })()}
+                    <Box sx={{ height: '400px', width: '100%' }}>
+                      {processWasteTrendsData(wastePatterns, chartTimeframe) ? (
+                        <Line 
+                          data={processWasteTrendsData(wastePatterns, chartTimeframe)} 
+                          options={getChartOptions(chartTimeframe)}
+                        />
+                      ) : (
+                        <Box 
+                          display="flex" 
+                          justifyContent="center" 
+                          alignItems="center" 
+                          height="100%"
+                          color="text.secondary"
+                        >
+                          <Typography>No trend data available</Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+
               {/* Overall Summary */}
               <Grid item xs={12} md={6}>
                 <Card>
@@ -986,6 +1339,191 @@ function AdminDashboard() {
             💡 Tip: Click any export button to download CSV files that can be directly imported into Google Sheets.
           </Typography>
         </Box>
+      </TabPanel>
+
+      {/* Fake Data Management Tab */}
+      <TabPanel value={tabValue} index={5}>
+        <Typography variant="h6" gutterBottom>
+          Fake Data Management
+        </Typography>
+        
+        <Typography variant="body2" color="textSecondary" sx={{ mb: 3 }}>
+          Generate fake users with realistic test data for development and testing purposes. 
+          All fake users are easily identifiable (DummyUser1, DummyUser2, etc.) and can be safely deleted.
+        </Typography>
+
+        {/* Current Status */}
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Current Status
+            </Typography>
+            <Typography variant="h4" color="primary">
+              {fakeUsersCount} Fake Users
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              Currently in the database
+            </Typography>
+          </CardContent>
+        </Card>
+
+        {/* Action Buttons */}
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={12} sm={6} md={3}>
+            <Button
+              variant="contained"
+              color="primary"
+              fullWidth
+              onClick={() => handleGenerateFakeData(3)}
+              disabled={loadingFakeData}
+              sx={{ mb: 1 }}
+            >
+              Generate 3 Users
+            </Button>
+          </Grid>
+          
+          <Grid item xs={12} sm={6} md={3}>
+            <Button
+              variant="contained"
+              color="primary"
+              fullWidth
+              onClick={() => handleGenerateFakeData(5)}
+              disabled={loadingFakeData}
+              sx={{ mb: 1 }}
+            >
+              Generate 5 Users
+            </Button>
+          </Grid>
+          
+          <Grid item xs={12} sm={6} md={3}>
+            <Button
+              variant="contained"
+              color="primary"
+              fullWidth
+              onClick={() => handleGenerateFakeData(10)}
+              disabled={loadingFakeData}
+              sx={{ mb: 1 }}
+            >
+              Generate 10 Users
+            </Button>
+          </Grid>
+          
+          <Grid item xs={12} sm={6} md={3}>
+            <Button
+              variant="contained"
+              color="error"
+              fullWidth
+              onClick={handleCleanupFakeData}
+              disabled={loadingFakeData || fakeUsersCount === 0}
+              sx={{ mb: 1 }}
+            >
+              Delete All Fake Data
+            </Button>
+          </Grid>
+        </Grid>
+
+        {/* Status Message */}
+        {fakeDataMessage && (
+          <Alert 
+            severity={fakeDataMessage.includes('✅') ? 'success' : 'error'} 
+            sx={{ mb: 3 }}
+          >
+            {fakeDataMessage}
+          </Alert>
+        )}
+
+        {/* Loading Indicator */}
+        {loadingFakeData && (
+          <Box display="flex" justifyContent="center" alignItems="center" sx={{ mb: 3 }}>
+            <CircularProgress />
+            <Typography variant="body2" sx={{ ml: 2 }}>
+              Processing fake data...
+            </Typography>
+          </Box>
+        )}
+
+        {/* Information Cards */}
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={6}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  What Gets Generated
+                </Typography>
+                <List dense>
+                  <ListItem>
+                    <ListItemText 
+                      primary="User Accounts" 
+                      secondary="DummyUser1, DummyUser2, etc. with hashed passwords"
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText 
+                      primary="Food Purchases" 
+                      secondary="5-15 purchases per week over 4 weeks with realistic prices and quantities"
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText 
+                      primary="Consumption Logs" 
+                      secondary="2-5 events per purchase with varied waste ratios based on food type"
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText 
+                      primary="Survey Responses" 
+                      secondary="Complete initial, weekly, and final survey answers"
+                    />
+                  </ListItem>
+                </List>
+              </CardContent>
+            </Card>
+          </Grid>
+          
+          <Grid item xs={12} md={6}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Safety Features
+                </Typography>
+                <List dense>
+                  <ListItem>
+                    <ListItemText 
+                      primary="Easy Identification" 
+                      secondary="All fake users have 'DummyUser' prefix"
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText 
+                      primary="Complete Cleanup" 
+                      secondary="Deleting fake users removes ALL associated data"
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText 
+                      primary="Cascade Delete" 
+                      secondary="Database constraints ensure no orphaned data"
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText 
+                      primary="Confirmation Required" 
+                      secondary="Delete action requires confirmation"
+                    />
+                  </ListItem>
+                </List>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+
+        {/* Warning */}
+        <Alert severity="warning" sx={{ mt: 3 }}>
+          <Typography variant="body2">
+            <strong>Warning:</strong> Fake data is for development and testing only. 
+            Always clean up fake data before deploying to production or sharing with real users.
+          </Typography>
+        </Alert>
       </TabPanel>
     </Box>
   );

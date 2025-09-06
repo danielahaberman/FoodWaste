@@ -83,7 +83,12 @@ export const adminAPI = {
   exportRawData: () => api.get("/admin/export/raw-data"),
   exportSurveyResponses: (stage) => api.get(`/admin/export/survey-responses${stage ? `?stage=${stage}` : ''}`),
   exportUserDemographics: () => api.get("/admin/export/user-demographics"),
-  exportWastePatterns: () => api.get("/admin/export/waste-patterns")
+  exportWastePatterns: () => api.get("/admin/export/waste-patterns"),
+  
+  // Fake Data Management endpoints
+  generateFakeData: (count) => api.post("/admin/generate-fake-data", { count }),
+  getFakeUsersCount: () => api.get("/admin/fake-users-count"),
+  cleanupFakeData: () => api.delete("/admin/cleanup-fake-data")
 };
 
 export default api;
