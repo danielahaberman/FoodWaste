@@ -19,40 +19,43 @@ import AuthGuard from './Components/AuthGuard';
 import SurveyGuard from './Components/SurveyGuard';
 import ErrorBoundary from './Components/ErrorBoundary';
 import AdminGuard from './Components/AdminGuard';
+import PWAProvider from './Components/PWAProvider';
 function App() {
   return (
     <ErrorBoundary>
-      <BrowserRouter>
-        <Routes>
-          {/* Admin routes (completely separate from user auth) */}
-          <Route path="/admin" element={<AdminGuard />} />
-          
-          {/* User routes with guards */}
-          <Route path="/*" element={
-            <TermsGuard>
-              <AuthGuard>
-                <SurveyGuard>
-                  <Routes>
-                    {/* Pages that don't require SidebarLayout */}
-                    <Route path="/" element={<LandingPage />} />
-                    <Route path="/auth/login" element={<LoginPage />} />
-                    <Route path="/auth/register" element={<RegisterPage />} />
-                    <Route path="/terms" element={<TermsAndConditions />} />
-                   
-                    {/* SidebarLayout wrapped routes */}
-                    <Route element={<SidebarLayout />}>
-                      <Route path="/home" element={<FoodLog/>} />
-                      <Route path="/survey" element={<QaPage />} />
-                      <Route path="/resources" element={<Resources />} />
-                      <Route path="/tasks-leaderboard" element={<TasksAndLeaderboard />} />
-                    </Route>
-                  </Routes>
-                </SurveyGuard>
-              </AuthGuard>
-            </TermsGuard>
-          } />
-        </Routes>
-      </BrowserRouter>
+      <PWAProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* Admin routes (completely separate from user auth) */}
+            <Route path="/admin" element={<AdminGuard />} />
+            
+            {/* User routes with guards */}
+            <Route path="/*" element={
+              <TermsGuard>
+                <AuthGuard>
+                  <SurveyGuard>
+                    <Routes>
+                      {/* Pages that don't require SidebarLayout */}
+                      <Route path="/" element={<LandingPage />} />
+                      <Route path="/auth/login" element={<LoginPage />} />
+                      <Route path="/auth/register" element={<RegisterPage />} />
+                      <Route path="/terms" element={<TermsAndConditions />} />
+                     
+                      {/* SidebarLayout wrapped routes */}
+                      <Route element={<SidebarLayout />}>
+                        <Route path="/home" element={<FoodLog/>} />
+                        <Route path="/survey" element={<QaPage />} />
+                        <Route path="/resources" element={<Resources />} />
+                        <Route path="/tasks-leaderboard" element={<TasksAndLeaderboard />} />
+                      </Route>
+                    </Routes>
+                  </SurveyGuard>
+                </AuthGuard>
+              </TermsGuard>
+            } />
+          </Routes>
+        </BrowserRouter>
+      </PWAProvider>
     </ErrorBoundary>
   );
 }

@@ -1,22 +1,36 @@
 /* eslint-disable no-unused-vars */
-import React from "react";
-import { Button, Box, Typography, Paper } from "@mui/material";
+import React, { useState } from "react";
+import { Button, Box, Typography, Paper, Divider } from "@mui/material";
+import { GetApp as InstallIcon } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
-import FoodEmojiBackground from "../FoodEmojiBackground";
+import PWAInstallPrompt from "../PWAInstallPrompt";
+// import FoodEmojiBackground from "../FoodEmojiBackground";
 
 function LandingPage() {
   const navigate = useNavigate();
+  const [showPWAPrompt, setShowPWAPrompt] = useState(false);
+  
   return (
-    <FoodEmojiBackground
-      sx={{
-        display: "flex", 
-        flexDirection: "column", 
-        alignItems: "center", 
-        justifyContent: "center", 
-        textAlign: "center", 
-        padding: "24px"
-      }}
-    >
+    // <FoodEmojiBackground
+    //   sx={{
+    //     display: "flex", 
+    //     flexDirection: "column", 
+    //     alignItems: "center", 
+    //     justifyContent: "center", 
+    //     textAlign: "center", 
+    //     padding: "24px"
+    //   }}
+    // >
+    <Box sx={{
+      display: "flex", 
+      flexDirection: "column", 
+      alignItems: "center", 
+      justifyContent: "center", 
+      textAlign: "center", 
+      padding: "24px",
+      minHeight: "100vh",
+      backgroundColor: "#f5f5f5"
+    }}>
       {/* Main Content */}
       <Box sx={{ 
         width: '100%', 
@@ -77,6 +91,32 @@ function LandingPage() {
           >
             Register
           </Button>
+
+          <Divider sx={{ my: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              OR
+            </Typography>
+          </Divider>
+
+          <Button
+            variant="contained"
+            size="large"
+            fullWidth
+            startIcon={<InstallIcon />}
+            onClick={() => setShowPWAPrompt(true)}
+            sx={{
+              backgroundColor: '#1976d2',
+              color: 'white',
+              py: 1.5,
+              fontSize: '1rem',
+              fontWeight: 'bold',
+              '&:hover': {
+                backgroundColor: '#1565c0'
+              }
+            }}
+          >
+            Install App
+          </Button>
           
           <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
             <Button
@@ -96,7 +136,14 @@ function LandingPage() {
           </Box>
         </Paper>
       </Box>
-    </FoodEmojiBackground>
+
+      {/* PWA Install Prompt */}
+      <PWAInstallPrompt 
+        open={showPWAPrompt} 
+        onClose={() => setShowPWAPrompt(false)} 
+      />
+    </Box>
+    // </FoodEmojiBackground>
   );
 }
 

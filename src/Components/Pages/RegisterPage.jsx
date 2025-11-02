@@ -14,7 +14,7 @@ import {
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { authAPI } from "../../api";
-import FoodEmojiBackground from "../FoodEmojiBackground";
+// import FoodEmojiBackground from "../FoodEmojiBackground";
 
 function RegisterPage() {
   const [username, setUsername] = useState("");
@@ -62,7 +62,7 @@ function RegisterPage() {
   };
 
   return (
-    <FoodEmojiBackground>
+    // <FoodEmojiBackground>
       <Container 
         maxWidth="sm" 
         sx={{ 
@@ -208,7 +208,7 @@ function RegisterPage() {
           </Card>
         </Paper>
       </Container>
-    </FoodEmojiBackground>
+    // </FoodEmojiBackground>
   );
 }
 

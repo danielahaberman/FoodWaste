@@ -1774,6 +1774,36 @@ app.delete("/admin/delete-user-data/:userId", async (req, res) => {
   }
 });
 
+// DELETE only streak data for specific user
+app.delete("/admin/delete-user-streak/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { confirm } = req.body;
+    
+    if (confirm !== 'DELETE_USER_STREAK') {
+      return res.status(400).json({ error: 'Confirmation required' });
+    }
+
+    // Check if user exists
+    const userCheck = await pool.query('SELECT username FROM users WHERE id = $1', [userId]);
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const username = userCheck.rows[0].username;
+
+    // Delete streak data
+    await pool.query('DELETE FROM user_streaks WHERE user_id = $1', [userId]);
+
+    res.json({ 
+      message: `Streak data for user ${username} deleted successfully` 
+    });
+  } catch (err) {
+    console.error("Error deleting user streak data:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ===== DAILY TASKS API ENDPOINTS =====
 
 // Helper function to update user streaks

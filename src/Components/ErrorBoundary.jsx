@@ -80,7 +80,7 @@ function ErrorFallback() {
             sx={{ 
               fontSize: 80, 
               color: '#ff6b6b',
-              animation: 'bounce 2s infinite'
+              // animation: 'bounce 2s infinite'
             }} 
           />
           
@@ -119,7 +119,7 @@ function ErrorFallback() {
         </Stack>
       </Paper>
       
-      <style>
+      {/* <style>
         {`
           @keyframes bounce {
             0%, 20%, 50%, 80%, 100% {
@@ -133,7 +133,7 @@ function ErrorFallback() {
             }
           }
         `}
-      </style>
+      </style> */}
     </Box>
   );
 }

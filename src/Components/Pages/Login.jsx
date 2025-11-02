@@ -15,7 +15,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { setAuthenticated, getIntendedDestination, clearIntendedDestination } from "../../utils/authUtils";
 import { authAPI } from "../../api";
-import FoodEmojiBackground from "../FoodEmojiBackground";
+// import FoodEmojiBackground from "../FoodEmojiBackground";
 
 function LoginPage() {
   const [email, setEmail] = useState("");
@@ -75,7 +75,7 @@ function LoginPage() {
   };
 
   return (
-    <FoodEmojiBackground>
+    // <FoodEmojiBackground>
       <Container 
         maxWidth="sm" 
         sx={{ 
@@ -192,7 +192,7 @@ function LoginPage() {
           </Card>
         </Paper>
       </Container>
-    </FoodEmojiBackground>
+    // </FoodEmojiBackground>
   );
 }
 

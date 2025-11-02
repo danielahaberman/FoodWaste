@@ -20,7 +20,7 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import ConsumeWaste from "./ComsumeWaste";
 import QaPage from "./QaPage";
 import BottomBar from "../BottomBar";
-import FoodEmojiBackground from "../FoodEmojiBackground";
+// import FoodEmojiBackground from "../FoodEmojiBackground";
 import DailyTasksPopup from "../DailyTasksPopup";
 import TasksAndLeaderboard from "./TasksAndLeaderboard";
 const FoodLog = () => {
@@ -137,7 +137,7 @@ const deletePurchase = async (purchaseId) => {
   const canModify = isWithin7Days && !isDateInFuture;
 
   return (
-    <FoodEmojiBackground>
+    // <FoodEmojiBackground>
       <Box sx={{ height: "100%", display: "flex", flexDirection: "column", }}>
       <LocalizationProvider dateAdapter={AdapterDayjs}>
         <Box sx={{ 
@@ -264,7 +264,7 @@ const deletePurchase = async (purchaseId) => {
          </Paper>
        )}
       </Box>
-    </FoodEmojiBackground>
+    // </FoodEmojiBackground>
   );
 };
 

@@ -1,0 +1,39 @@
+{
+  "name": "Food Waste Tracker",
+  "short_name": "FoodWaste",
+  "description": "Track and reduce food waste with gamification features",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1976d2",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/appIcon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/appIcon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/appIcon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/appIcon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["food", "lifestyle", "productivity"],
+  "lang": "en",
+  "dir": "ltr"
+}

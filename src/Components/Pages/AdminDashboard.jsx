@@ -365,6 +365,34 @@ function AdminDashboard({ onLogout }) {
     }
   };
 
+  const handleDeleteUserStreak = async (userId, username) => {
+    const confirmText = 'DELETE_USER_STREAK';
+    const userInput = window.prompt(
+      `⚠️ WARNING: This will delete streak data for user "${username}" (current streak, longest streak, total completions).\n\nType "${confirmText}" to confirm this action:`
+    );
+    
+    if (userInput !== confirmText) {
+      setDataManagementMessage('❌ Operation cancelled - confirmation text did not match');
+      return;
+    }
+
+    setLoadingDataOperation(true);
+    setDataManagementMessage('');
+
+    try {
+      const response = await adminAPI.deleteUserStreak(userId, confirmText);
+      setDataManagementMessage(`✅ ${response.data.message}`);
+      // Refresh user search to show updated counts
+      await handleSearchUser();
+      loadOverviewData(); // Refresh overview
+    } catch (err) {
+      console.error('Error deleting user streak:', err);
+      setDataManagementMessage('❌ Failed to delete user streak data');
+    } finally {
+      setLoadingDataOperation(false);
+    }
+  };
+
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
     
@@ -1778,6 +1806,15 @@ function AdminDashboard({ onLogout }) {
                     </Grid>
 
                     <Box display="flex" gap={2} flexWrap="wrap">
+                      <Button
+                        variant="outlined"
+                        color="info"
+                        onClick={() => handleDeleteUserStreak(searchedUser.user.id, searchedUser.user.username)}
+                        disabled={loadingDataOperation}
+                        size="small"
+                      >
+                        Delete Streak Data
+                      </Button>
                       <Button
                         variant="outlined"
                         color="warning"

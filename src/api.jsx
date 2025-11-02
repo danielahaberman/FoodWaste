@@ -109,7 +109,8 @@ export const adminAPI = {
   searchUsers: (query, limit = 10) => api.get("/admin/search-users", { params: { q: query, limit } }),
   searchUser: (userId) => api.get(`/admin/search-user/${userId}`),
   deleteUser: (userId, confirm) => api.delete(`/admin/delete-user/${userId}`, { data: { confirm } }),
-  deleteUserData: (userId, confirm) => api.delete(`/admin/delete-user-data/${userId}`, { data: { confirm } })
+  deleteUserData: (userId, confirm) => api.delete(`/admin/delete-user-data/${userId}`, { data: { confirm } }),
+  deleteUserStreak: (userId, confirm) => api.delete(`/admin/delete-user-streak/${userId}`, { data: { confirm } })
 };
 
 export default api;
