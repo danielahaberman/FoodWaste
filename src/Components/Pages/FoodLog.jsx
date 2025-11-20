@@ -32,7 +32,12 @@ const FoodLog = () => {
   const [showConsumeWaste, setShowConsumeWaste] = useState(false)
   const [showDailyTasksPopup, setShowDailyTasksPopup] = useState(false)
   const [showTasksAndLeaderboard, setShowTasksAndLeaderboard] = useState(false)
-    const navigate = useNavigate();
+  const navigate = useNavigate();
+
+  // Extract unique dates with food purchases
+  const datesWithFood = [...new Set(
+    foodPurchases.map(purchase => dayjs(purchase.purchase_date).format('YYYY-MM-DD'))
+  )];
   const fetchFoodItems = async () => {
     try {
       const params = { user_id: localStorage.getItem("userId") };
@@ -148,7 +153,7 @@ const deletePurchase = async (purchaseId) => {
           px: 2, // Add horizontal padding
           py: 1.5, // Add vertical padding
         }}>
-          <DateNavigator value={selectedDate} onChange={setSelectedDate} />
+          <DateNavigator value={selectedDate} onChange={setSelectedDate} datesWithFood={datesWithFood} />
           <Button 
             variant="contained" 
             size="small" 

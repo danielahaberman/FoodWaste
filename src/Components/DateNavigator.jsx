@@ -5,16 +5,18 @@ import {
   Typography,
   Popover,
   Box,
-  Paper
+  Paper,
+  Badge
 } from "@mui/material";
 import {
   ArrowBackIosNew as ArrowBackIos,
   ArrowForwardIos
 } from "@mui/icons-material";
 import { StaticDatePicker } from "@mui/x-date-pickers/StaticDatePicker";
+import { PickersDay } from "@mui/x-date-pickers/PickersDay";
 import dayjs from "dayjs";
 
-const DateNavigator = ({ value, onChange }) => {
+const DateNavigator = ({ value, onChange, datesWithFood = [] }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
 
@@ -31,6 +33,40 @@ const DateNavigator = ({ value, onChange }) => {
   };
   const handleOpenCalendar = (e) => setAnchorEl(e.currentTarget);
   const handleCloseCalendar = () => setAnchorEl(null);
+
+  // Custom day renderer to show blue dots on days with food purchases
+  const ServerDay = (props) => {
+    const { day, outsideCurrentMonth, ...other } = props;
+    const dateStr = dayjs(day).format('YYYY-MM-DD');
+    const hasFood = datesWithFood.includes(dateStr);
+
+    return (
+      <Badge
+        key={day.toString()}
+        overlap="circular"
+        badgeContent={hasFood ? '●' : undefined}
+        sx={{
+          '& .MuiBadge-badge': {
+            backgroundColor: 'transparent',
+            color: '#1976d2',
+            fontSize: '8px',
+            height: '6px',
+            minWidth: '6px',
+            padding: 0,
+            top: '85%',
+            right: '50%',
+            transform: 'translate(50%, -50%)'
+          }
+        }}
+      >
+        <PickersDay
+          {...other}
+          outsideCurrentMonth={outsideCurrentMonth}
+          day={day}
+        />
+      </Badge>
+    );
+  };
 
   return (
     <Box display="flex" alignItems="center" gap={1}>
@@ -111,6 +147,9 @@ const DateNavigator = ({ value, onChange }) => {
             handleCloseCalendar();
           }}
           maxDate={dayjs()}
+          slots={{
+            day: ServerDay
+          }}
         />
       </Popover>
     </Box>

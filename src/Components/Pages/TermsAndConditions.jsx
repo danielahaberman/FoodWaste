@@ -116,7 +116,7 @@ function TermsAndConditions({ onTermsAccepted }) {
               
               <strong>1. Acceptance of Terms</strong>
               <br />
-              By accessing and using this Food Waste Management application, you accept and agree to be bound by the terms and provision of this agreement.
+              By accessing and using Food Hero, you accept and agree to be bound by the terms and provision of this agreement.
               <br /><br />
               
               <strong>2. Use License</strong>

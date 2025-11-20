@@ -51,7 +51,7 @@ function LandingPage() {
             marginBottom: "24px" 
           }}
         >
-          Manage Your Food Waste
+          Food Hero
         </Typography>
         
         <Paper 

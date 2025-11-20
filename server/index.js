@@ -917,7 +917,7 @@ app.post("/survey-response", async (req, res) => {
         COUNT(DISTINCT sr.question_id) as answered_questions
       FROM survey_questions sq
       LEFT JOIN survey_responses sr ON sq.id = sr.question_id AND sr.user_id = $1
-      WHERE sq.stage IN ('initial', 'final')
+      WHERE sq.stage IN ('initial', 'weekly', 'final')
       GROUP BY sq.stage
     `;
     
@@ -929,6 +929,11 @@ app.post("/survey-response", async (req, res) => {
         if (row.stage === 'initial') {
           await pool.query(
             "UPDATE users SET initial_survey_completed_at = CURRENT_TIMESTAMP WHERE id = $1",
+            [userId]
+          );
+        } else if (row.stage === 'weekly') {
+          await pool.query(
+            "UPDATE users SET last_weekly_survey_date = CURRENT_DATE WHERE id = $1",
             [userId]
           );
         } else if (row.stage === 'final') {
@@ -985,11 +990,34 @@ app.get("/api/surveys/status/:userId", async (req, res) => {
       LIMIT 1
     `;
     const weeklyResult = await pool.query(lastWeeklyCompletionQuery, [userId, weekly_count]);
+    
+    const lastWeeklyCompletion = weeklyResult.rows.length > 0 ? weeklyResult.rows[0].last_response_date : null;
+    
+    // Check if weekly survey is due (7 days since last completion or never completed)
+    let weeklyDue = false;
+    let daysSinceLastWeekly = null;
+    
+    if (initialCompleted) { // Only check for weekly surveys if initial is completed
+      if (!lastWeeklyCompletion) {
+        // Never completed a weekly survey - it's due
+        weeklyDue = true;
+      } else {
+        // Calculate days since last weekly survey
+        const lastDate = moment.tz(lastWeeklyCompletion, 'America/New_York');
+        const today = moment.tz('America/New_York');
+        daysSinceLastWeekly = today.diff(lastDate, 'days');
+        
+        // Weekly survey is due if 7 or more days have passed
+        weeklyDue = daysSinceLastWeekly >= 7;
+      }
+    }
 
     res.json({
       userId,
       initialCompleted,
-      lastWeeklyCompletion: weeklyResult.rows.length > 0 ? weeklyResult.rows[0].last_response_date : null
+      lastWeeklyCompletion,
+      weeklyDue,
+      daysSinceLastWeekly
     });
 
   } catch (err) {

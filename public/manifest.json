@@ -1,6 +1,6 @@
 {
-  "name": "Food Waste Tracker",
-  "short_name": "FoodWaste",
+  "name": "Food Hero",
+  "short_name": "FoodHero",
   "description": "Track and reduce food waste with gamification features",
   "start_url": "/",
   "display": "standalone",

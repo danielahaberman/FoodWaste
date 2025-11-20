@@ -70,8 +70,8 @@ const PWAInstallPrompt = ({ open, onClose }) => {
   const handleShareClick = () => {
     if (navigator.share) {
       navigator.share({
-        title: 'Food Waste Tracker',
-        text: 'Check out this food waste tracking app!',
+        title: 'Food Hero',
+        text: 'Check out Food Hero - track and reduce food waste!',
         url: window.location.href,
       });
     }

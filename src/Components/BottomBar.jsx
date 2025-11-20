@@ -119,6 +119,11 @@ function BottomBar({ setShowConsumeWaste, setLoggingPurchase, setShowSurvey, set
             <Badge 
               badgeContent={`${taskCompletionStatus.completed}/${taskCompletionStatus.total}`} 
               color={taskCompletionStatus.completed === taskCompletionStatus.total ? "success" : "primary"}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
             >
               <ChecklistIcon />
             </Badge>
