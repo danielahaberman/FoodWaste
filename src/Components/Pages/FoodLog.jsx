@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect } from "react";
 import dayjs from "dayjs";
-import { foodPurchaseAPI } from "../../api";
+import { foodPurchaseAPI, surveyAPI } from "../../api";
 // MUI components
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
@@ -83,9 +83,18 @@ const deletePurchase = async (purchaseId) => {
       const popupShownToday = localStorage.getItem(`dailyTasksPopup_${today}`);
       
       if (!popupShownToday) {
-        // Check if user has incomplete tasks
         try {
-          const response = await fetch(`${import.meta.env.VITE_API_URL}/api/daily-tasks/today?user_id=${localStorage.getItem("userId")}`);
+          const userId = localStorage.getItem("userId");
+          
+          // First check if weekly survey is due - if so, don't show daily tasks popup
+          const surveyResponse = await surveyAPI.getSurveyStatus(userId);
+          if (surveyResponse.data.weeklyDue) {
+            // Weekly survey is required, don't show daily tasks popup
+            return;
+          }
+          
+          // Check if user has incomplete tasks
+          const response = await fetch(`${import.meta.env.VITE_API_URL}/api/daily-tasks/today?user_id=${userId}`);
           const tasks = await response.json();
           
           const completed = (tasks.log_food_completed ? 1 : 0) + 
