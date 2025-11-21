@@ -10,18 +10,9 @@ function AuthGuard({ children }) {
 
   useEffect(() => {
     // Check if user is logged in (this will also check expiration)
-    const authenticated = isAuthenticated();
-    setIsUserAuthenticated(authenticated);
+    setIsUserAuthenticated(isAuthenticated());
     setIsLoading(false);
-
-    // Define public pages that don't require authentication
-    const publicPages = ["/", "/auth/login", "/auth/register", "/terms"];
-    
-    // If authenticated and on login/landing pages, redirect to home
-    if (authenticated && (location.pathname === "/" || location.pathname === "/auth/login" || location.pathname === "/auth/register")) {
-      navigate("/home", { replace: true });
-    }
-  }, [location.pathname, navigate]); // Re-check on route changes
+  }, [location.pathname]); // Re-check on route changes
 
   // If still loading, show nothing
   if (isLoading) {
@@ -35,16 +26,11 @@ function AuthGuard({ children }) {
   if (!isUserAuthenticated && !publicPages.includes(location.pathname)) {
     // Store the intended destination for after login
     setIntendedDestination(location.pathname);
-    navigate("/auth/login", { replace: true });
+    navigate("/auth/login");
     return null;
   }
 
-  // If authenticated and on login/landing pages, show nothing (redirect happening)
-  if (isUserAuthenticated && (location.pathname === "/" || location.pathname === "/auth/login" || location.pathname === "/auth/register")) {
-    return null;
-  }
-
-  // Otherwise, render the children (normal app content)
+  // If authenticated, render the children (normal app content)
   return children;
 }
 

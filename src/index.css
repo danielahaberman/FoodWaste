@@ -45,23 +45,26 @@ html, body {
   width: 100vw;
   overflow: hidden;
   box-sizing: border-box;
+  /* iOS safe area support */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 #root {
+  height: 100vh;
   width: 100vw;
   max-width: 600px;
   margin: 0 auto;
   overflow: hidden;
   box-sizing: border-box;
   position: relative;
-  /* iOS safe area support - add padding to prevent content from being hidden */
-  padding-top: max(env(safe-area-inset-top), 20px); /* Minimum 20px for status bar, or safe area if larger */
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  padding-left: env(safe-area-inset-left, 0px);
-  padding-right: env(safe-area-inset-right, 0px);
-  /* Adjust height to account for safe areas */
-  min-height: 100vh;
-  height: 100vh;
+  /* iOS safe area support */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 /* Remove margin on mobile devices */

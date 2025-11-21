@@ -11,12 +11,6 @@ import {
   Box,
 } from "@mui/material";
 
-// Helper function to check if a page is public
-const isPublicPage = (pathname) => {
-  const publicPages = ["/", "/auth/login", "/auth/register", "/terms", "/survey"];
-  return publicPages.includes(pathname);
-};
-
 function SurveyGuard({ children }) {
   const [surveyStatus, setSurveyStatus] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -27,14 +21,12 @@ function SurveyGuard({ children }) {
 
   useEffect(() => {
     checkSurveyStatus();
-  }, [location.pathname]);
+  }, []);
 
   const checkSurveyStatus = async () => {
     try {
       const userId = localStorage.getItem("userId");
-      
-      // If public page or no userId, skip check
-      if (!userId || isPublicPage(location.pathname)) {
+      if (!userId) {
         setIsLoading(false);
         return;
       }
@@ -68,6 +60,11 @@ function SurveyGuard({ children }) {
     }
   };
 
+  const isPublicPage = (pathname) => {
+    const publicPages = ["/", "/auth/login", "/auth/register", "/terms", "/survey"];
+    return publicPages.includes(pathname);
+  };
+
   const handleStartSurvey = () => {
     setShowWelcomeModal(false);
     navigate("/survey?stage=initial");
@@ -96,11 +93,6 @@ function SurveyGuard({ children }) {
   };
 
 
-
-  // If public page, immediately render children (no loading delay)
-  if (isPublicPage(location.pathname)) {
-    return children;
-  }
 
   // If still loading, show nothing
   if (isLoading) {
