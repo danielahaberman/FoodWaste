@@ -11,6 +11,12 @@ import {
   Box,
 } from "@mui/material";
 
+// Helper function to check if a page is public
+const isPublicPage = (pathname) => {
+  const publicPages = ["/", "/auth/login", "/auth/register", "/terms", "/survey"];
+  return publicPages.includes(pathname);
+};
+
 function SurveyGuard({ children }) {
   const [surveyStatus, setSurveyStatus] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -18,11 +24,6 @@ function SurveyGuard({ children }) {
   const [showWeeklyModal, setShowWeeklyModal] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-
-  const isPublicPage = (pathname) => {
-    const publicPages = ["/", "/auth/login", "/auth/register", "/terms", "/survey"];
-    return publicPages.includes(pathname);
-  };
 
   useEffect(() => {
     checkSurveyStatus();
