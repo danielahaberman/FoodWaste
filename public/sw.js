@@ -1,5 +1,5 @@
 // Simple service worker for PWA functionality
-const CACHE_NAME = 'food-waste-v1';
+const CACHE_NAME = 'food-hero-v3';
 const urlsToCache = [
   '/',
   '/static/js/bundle.js',
