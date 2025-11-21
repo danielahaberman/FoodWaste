@@ -279,23 +279,7 @@ const Leaderboard = () => {
       </Box>
 
       {/* Description */}
-      <Paper sx={{ 
-        p: { xs: 1, sm: 1.5 }, 
-        mb: 2, 
-        backgroundColor: "#f5f5f5" 
-      }}>
-        <Typography 
-          variant="body2" 
-          color="text.secondary"
-          sx={{ 
-            fontSize: { xs: "0.8rem", sm: "0.875rem" },
-            lineHeight: 1.4
-          }}
-        >
-          Compete with other users to see who can maintain the longest streaks and complete the most daily tasks!
-        </Typography>
-      </Paper>
-
+    
       {/* Tabs */}
       <Paper sx={{ mb: 1.5 }}>
         <Tabs
