@@ -33,9 +33,15 @@ const PWAInstallPrompt = ({ open, onClose }) => {
   useEffect(() => {
     // Check if running on iOS
     const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    // Check if it's Chrome on iOS (which doesn't support PWA installation)
+    const isChromeOnIOS = iOS && /CriOS|FxiOS|OPiOS/.test(navigator.userAgent);
+    // Only Safari on iOS supports PWA installation
+    const isSafariOnIOS = iOS && !isChromeOnIOS && /Safari/.test(navigator.userAgent) && !/Chrome|CriOS|FxiOS|OPiOS/.test(navigator.userAgent);
+    
     setDetectedIOS(iOS);
     // Set initial platform based on detection
-    setSelectedPlatform(iOS ? 'ios' : 'android');
+    // If Chrome on iOS, treat as Android (but won't be able to install)
+    setSelectedPlatform(iOS && !isChromeOnIOS ? 'ios' : 'android');
 
     // Check if already installed (standalone mode)
     const standalone = window.matchMedia('(display-mode: standalone)').matches || 
@@ -73,13 +79,10 @@ const PWAInstallPrompt = ({ open, onClose }) => {
   };
 
   const handleShareClick = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: 'Food Hero',
-        text: 'Check out Food Hero - track and reduce food waste!',
-        url: window.location.href,
-      });
-    }
+    // Note: navigator.share() doesn't show "Add to Home Screen" on iOS
+    // Users need to use Safari's native share button in the toolbar
+    // This button is just informational - the instructions explain the actual steps
+    alert('Please use Safari\'s share button (square with arrow) in the browser toolbar, not this button. Then scroll down to find "Add to Home Screen".');
   };
 
   // Don't show if already installed
@@ -190,6 +193,19 @@ const PWAInstallPrompt = ({ open, onClose }) => {
         {selectedPlatform === 'ios' ? (
           // iOS Instructions
           <Box>
+            <Typography variant="body2" sx={{ 
+              mb: { xs: 1, sm: 1.5 }, 
+              color: '#666',
+              fontSize: { xs: '0.75rem', sm: '0.8rem' },
+              textAlign: 'center',
+              p: 1,
+              backgroundColor: '#fff3e0',
+              borderRadius: 1,
+              border: '1px solid #ffcc02'
+            }}>
+              ⚠️ Make sure you're using Safari (not Chrome). If "Add to Home Screen" doesn't appear, try: 1) Scroll down in share menu 2) Check if icon loads at /appIcon2.png 3) Clear Safari cache
+            </Typography>
+            
             <Typography variant="h6" sx={{ 
               mb: { xs: 1, sm: 1.5 }, 
               color: '#1976d2',
@@ -231,7 +247,7 @@ const PWAInstallPrompt = ({ open, onClose }) => {
                 </StepLabel>
                 <StepContent>
                   <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, lineHeight: 1.3 }}>
-                    Look for the share icon in your browser's toolbar
+                    Tap the share icon (square with arrow ↑) in Safari's toolbar at the bottom of the screen
                   </Typography>
                 </StepContent>
               </Step>
@@ -245,47 +261,68 @@ const PWAInstallPrompt = ({ open, onClose }) => {
                   }}>
                     <AddIcon color="primary" sx={{ fontSize: { xs: '1.1rem', sm: '1.5rem' } }} />
                     <Typography variant="body1" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-                      Add to Home Screen
+                      Scroll down and find "Add to Home Screen"
                     </Typography>
                   </Box>
                 </StepLabel>
                 <StepContent>
                   <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, lineHeight: 1.3 }}>
-                    Scroll down and tap "Add to Home Screen"
+                    In the share menu, scroll down past the app icons to find "Add to Home Screen" option. It may be in the second row or require scrolling.
                   </Typography>
                 </StepContent>
               </Step>
             </Stepper>
           </Box>
         ) : (
-          // Android Instructions
+          // Android Instructions (or Chrome on iOS)
           <Box>
-            {deferredPrompt ? (
-              <Typography variant="body2" sx={{ 
-                mb: { xs: 1, sm: 1.5 }, 
-                color: '#1976d2',
-                fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                fontStyle: 'italic',
-                textAlign: 'center',
-                p: 1,
-                backgroundColor: 'rgba(25, 118, 210, 0.08)',
-                borderRadius: 1
-              }}>
-                💡 Quick install: Tap "Install App" below, or follow the manual steps if needed.
-              </Typography>
-            ) : (
-              <Typography variant="body2" sx={{ 
-                mb: { xs: 1, sm: 1.5 }, 
-                color: '#666',
-                fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                textAlign: 'center',
-                p: 1,
-                backgroundColor: '#f5f5f5',
-                borderRadius: 1
-              }}>
-                Follow these steps to install the app manually:
-              </Typography>
-            )}
+            {(() => {
+              const isChromeOnIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && /CriOS|FxiOS|OPiOS/.test(navigator.userAgent);
+              
+              if (isChromeOnIOS) {
+                return (
+                  <Typography variant="body2" sx={{ 
+                    mb: { xs: 1, sm: 1.5 }, 
+                    color: '#d32f2f',
+                    fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                    textAlign: 'center',
+                    p: 1.5,
+                    backgroundColor: '#ffebee',
+                    borderRadius: 1,
+                    border: '1px solid #ffcdd2'
+                  }}>
+                    ⚠️ Chrome on iOS doesn't support PWA installation. Please use Safari to install this app.
+                  </Typography>
+                );
+              }
+              
+              return deferredPrompt ? (
+                <Typography variant="body2" sx={{ 
+                  mb: { xs: 1, sm: 1.5 }, 
+                  color: '#1976d2',
+                  fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                  fontStyle: 'italic',
+                  textAlign: 'center',
+                  p: 1,
+                  backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                  borderRadius: 1
+                }}>
+                  💡 Quick install: Tap "Install App" below, or follow the manual steps if needed.
+                </Typography>
+              ) : (
+                <Typography variant="body2" sx={{ 
+                  mb: { xs: 1, sm: 1.5 }, 
+                  color: '#666',
+                  fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                  textAlign: 'center',
+                  p: 1,
+                  backgroundColor: '#f5f5f5',
+                  borderRadius: 1
+                }}>
+                  Follow these steps to install the app manually:
+                </Typography>
+              );
+            })()}
             
             <Typography variant="h6" sx={{ 
               mb: { xs: 1, sm: 1.5 }, 
@@ -413,17 +450,21 @@ const PWAInstallPrompt = ({ open, onClose }) => {
         {selectedPlatform === 'ios' ? (
           <Button 
             onClick={handleShareClick}
-            variant="contained"
+            variant="outlined"
             startIcon={<ShareIcon sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }} />}
             sx={{
-              backgroundColor: '#1976d2',
-              '&:hover': { backgroundColor: '#1565c0' },
+              borderColor: '#1976d2',
+              color: '#1976d2',
+              '&:hover': { 
+                borderColor: '#1565c0',
+                backgroundColor: 'rgba(25, 118, 210, 0.04)'
+              },
               fontSize: { xs: '0.875rem', sm: '1rem' },
               py: { xs: 1, sm: 0.75 },
               px: { xs: 2, sm: 2 }
             }}
           >
-            Open Share Menu
+            Need Help?
           </Button>
         ) : (
           deferredPrompt ? (

@@ -3,11 +3,18 @@
   "short_name": "FoodHero",
   "description": "Track and reduce food waste with gamification features",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#1976d2",
   "orientation": "portrait-primary",
   "icons": [
+    {
+      "src": "/appIcon2.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
     {
       "src": "/appIcon2.png",
       "sizes": "192x192",
