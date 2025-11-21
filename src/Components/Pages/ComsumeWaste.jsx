@@ -10,8 +10,6 @@ import {
   ListItemText,
   IconButton,
   CircularProgress,
-  AppBar,
-  Toolbar,
   Button,
   Slider,
   Dialog,
@@ -26,15 +24,18 @@ import {
   MenuItem,
   Tabs,
   Tab,
+  Container,
 } from "@mui/material";
+import PageWrapper from "../PageWrapper";
+import { useNavigate } from "react-router-dom";
 import SwipeableViews from 'react-swipeable-views';
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import RestaurantIcon from "@mui/icons-material/Restaurant";
 import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
 import FastfoodIcon from "@mui/icons-material/Fastfood";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import CloseIcon from "@mui/icons-material/Close";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import { Pie, Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -48,7 +49,8 @@ import {
 
 ChartJS.register(ArcElement, ChartTooltip, CategoryScale, LinearScale, PointElement, LineElement);
 
-function ConsumeWaste({ handleBack, onGoToDate }) {
+function ConsumeWaste({ onGoToDate }) {
+  const navigate = useNavigate();
   const [weeklySummary, setWeeklySummary] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -137,20 +139,35 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
   const formatMoney = (n) => `$${formatNum(n)}`;
 
   const Legend = () => (
-    <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1, color:"black" }}>
-      <Box display="inline-flex" alignItems="center" gap={0.5}>
-        <ShoppingCartIcon sx={{ color: 'primary.main', fontSize: 18 }} />
-        <Typography variant="caption">Purchased</Typography>
-      </Box>
-      <Box display="inline-flex" alignItems="center" gap={0.5}>
-        <RestaurantIcon sx={{ color: 'success.main', fontSize: 18 }} />
-        <Typography variant="caption">Consumed</Typography>
-      </Box>
-      <Box display="inline-flex" alignItems="center" gap={0.5}>
-        <DeleteForeverIcon sx={{ color: 'error.main', fontSize: 18 }} />
-        <Typography variant="caption">Wasted</Typography>
-      </Box>
-    </Stack>
+    <Box
+      sx={{
+        position: 'sticky',
+        top: { xs: '-48px', sm: '-52px' }, // Negative top to account for header height
+        zIndex: 999,
+        backgroundColor: 'rgba(255, 255, 255, 0.6)',
+        backdropFilter: 'blur(40px) saturate(200%)',
+        WebkitBackdropFilter: 'blur(40px) saturate(200%)',
+        borderBottom: '0.5px solid rgba(0, 0, 0, 0.06)',
+        py: 0.5,
+        px: { xs: 2, sm: 2.5 },
+        mb: 1,
+      }}
+    >
+      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ color: "black" }}>
+        <Box display="inline-flex" alignItems="center" gap={0.25}>
+          <ShoppingCartIcon sx={{ color: 'primary.main', fontSize: 14 }} />
+          <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>Purchased</Typography>
+        </Box>
+        <Box display="inline-flex" alignItems="center" gap={0.25}>
+          <RestaurantIcon sx={{ color: 'success.main', fontSize: 14 }} />
+          <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>Consumed</Typography>
+        </Box>
+        <Box display="inline-flex" alignItems="center" gap={0.25}>
+          <DeleteForeverIcon sx={{ color: 'error.main', fontSize: 14 }} />
+          <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>Wasted</Typography>
+        </Box>
+      </Stack>
+    </Box>
   );
   useEffect(() => {
     (async () => {
@@ -372,82 +389,66 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
     }
   };
 
+  const pageTitle = activeWeekOf ? formatWeekRange(activeWeekOf) : 'Weekly Summary';
+
   if (loading)
     return (
-      <Box textAlign="center" py={4}>
-        <CircularProgress />
-        <Typography variant="body2" mt={2} fontStyle="italic">
-          Loading weekly purchase summary...
-        </Typography>
-      </Box>
+      <PageWrapper title={pageTitle} maxWidth="sm">
+        <Container maxWidth="sm" sx={{ py: 4, textAlign: 'center' }}>
+          <CircularProgress />
+          <Typography variant="body2" mt={2} fontStyle="italic">
+            Loading weekly purchase summary...
+          </Typography>
+        </Container>
+      </PageWrapper>
     );
 
   if (error)
     return (
-      <Typography color="error" textAlign="center" py={4}>
-        {error}
-      </Typography>
+      <PageWrapper title={pageTitle} maxWidth="sm">
+        <Container maxWidth="sm" sx={{ py: 4 }}>
+          <Typography color="error" textAlign="center">
+            {error}
+          </Typography>
+        </Container>
+      </PageWrapper>
     );
 
+  const trendsButton = !activeWeekOf ? (
+    <Button 
+      variant="outlined" 
+      size="small"
+      startIcon={<TrendingUpIcon />}
+      onClick={() => setOverallOpen(true)}
+      sx={{
+        borderRadius: 2,
+        textTransform: 'none',
+        fontWeight: 500,
+        fontSize: { xs: '0.75rem', sm: '0.875rem' },
+        py: 0.5,
+        px: 1.5
+      }}
+    >
+      View Trends
+    </Button>
+  ) : null;
+
   return (
-    <Box sx={{
-      backgroundColor:"white", 
-      zIndex:"999",
-      mx: "auto",
-      px: { xs: 1, sm: 2 }, // Responsive padding
-      position:"absolute",
-      top:"0px",
-      height:"100vh",
-      boxSizing:"border-box", 
-      left:"0px", 
-      width:"100vw",
-      maxWidth: { xs: "100vw", sm: "580px" }, // Full width on mobile
-      overflow: "hidden", /* Prevent page-level scrolling */
-      display: "flex",
-      flexDirection: "column",
-      /* iOS safe area support */
-      paddingTop: 'env(safe-area-inset-top, 0)',
-      paddingBottom: 'env(safe-area-inset-bottom, 0)',
-      paddingLeft: 'env(safe-area-inset-left, 0)',
-      paddingRight: 'env(safe-area-inset-right, 0)'
-    }}>
-      {/* Header Bar with Trends */}
-      <AppBar position="sticky" color="primary" sx={{ 
-        mb: 2, 
-        bgcolor: 'var(--color-primary)',
-        mx: { xs: -1, sm: 0 }, // Negative margin on mobile to counteract container padding
-        width: { xs: 'calc(100% + 16px)', sm: '100%' }, // Extend full width on mobile
-        /* iOS safe area support for header */
-        top: { xs: 'env(safe-area-inset-top, 0)', sm: 0 },
-        marginTop: { xs: `calc(env(safe-area-inset-top, 0) * -1)`, sm: 0 },
-        zIndex: 10,
-        flexShrink: 0 /* Prevent header from shrinking */
-      }}>
-        <Toolbar sx={{ px: { xs: 1, sm: 3 } }}> {/* Reduced padding on mobile */}
-          <IconButton edge="start" color="inherit" onClick={() => activeWeekOf ? setActiveWeekOf(null) : handleBack()} aria-label="back">
-            <ArrowBackIcon />
-          </IconButton>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            {activeWeekOf ? formatWeekRange(activeWeekOf) : 'Weekly Summary'}
-          </Typography>
-          {!activeWeekOf && (
-            <Button color="inherit" onClick={() => setOverallOpen(true)}>Trends</Button>
-          )}
-        </Toolbar>
-      </AppBar>
+    <PageWrapper title={pageTitle} maxWidth="sm" headerAction={trendsButton}>
+      <Container 
+        maxWidth="sm"
+        sx={{ 
+          maxWidth: { xs: '100%', sm: '600px' },
+          px: { xs: 2, sm: 2.5 },
+          py: { xs: 2.5, sm: 3 },
+          pb: 0 // PageWrapper handles bottom padding for nav bar
+        }}
+      >
 
-      {!activeWeekOf && (
-        <Legend />
-      )}
+        {!activeWeekOf && <Legend />}
 
-      {!activeWeekOf && (
-        <Box sx={{ 
-          flex: 1, 
-          overflow: 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-          pb: `calc(16px + env(safe-area-inset-bottom, 0))`
-        }}>
+        {!activeWeekOf && (
+          <Box>
           {/* Editable Weeks Section */}
           <Box sx={{ backgroundColor: 'grey.50', borderRadius: 2, p: 1, mb: 2 }}>
             <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
@@ -519,7 +520,7 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
             return (
         <Paper
           key={week.weekOf}
-          elevation={2}
+          elevation={0}
           sx={{
             mb: 2,
             p: { xs: 1.5, sm: 2 }, // Responsive padding
@@ -531,43 +532,19 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
             borderColor: showCompletion ? "success.main" : "divider",
             position: 'relative',
             boxSizing:"border-box",
+            boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
             transition: 'all 0.2s ease-in-out',
             '&:hover': {
-              elevation: 4,
-              transform: 'translateY(-2px)',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+              transform: 'translateY(-1px)',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.12)'
             }
           }}
           onClick={() => {
-            if (isEmpty) {
-              // For empty weeks, navigate to the first day within the week that's still within 7 days
-              if (onGoToDate) {
-                const weekStart = moment.tz(week.weekOf, 'MM/DD/YYYY', 'America/New_York');
-                const weekEnd = weekStart.clone().add(6, 'days');
-                const today = moment.tz('America/New_York');
-                const sevenDaysAgo = today.clone().subtract(7, 'days');
-                
-                // Find the first day in the week range that's still within 7 days
-                let targetDate = weekStart;
-                for (let i = 0; i < 7; i++) {
-                  const dayInWeek = weekStart.clone().add(i, 'days');
-                  if (dayInWeek.isSameOrAfter(sevenDaysAgo) && dayInWeek.isSameOrBefore(today)) {
-                    targetDate = dayInWeek;
-                    break;
-                  }
-                }
-                
-                // If no day in the week is within 7 days, use the last day of the week
-                if (!targetDate.isSameOrAfter(sevenDaysAgo)) {
-                  targetDate = weekEnd;
-                }
-                
-                onGoToDate(targetDate.format('MM/DD/YYYY'));
-              }
-            } else {
-              // For weeks with data, open the week details
-              openWeekDetails(week.weekOf);
-            }
+            // Navigate to log page with the week's start date
+            const weekStart = moment.tz(week.weekOf, 'MM/DD/YYYY', 'America/New_York');
+            // Format date as YYYY-MM-DD for URL parameter
+            const dateParam = weekStart.format('YYYY-MM-DD');
+            navigate(`/log?date=${dateParam}`);
           }}
         >
           <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
@@ -1169,14 +1146,35 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
 
 		{/* Overall trends dialog */}
 		<Dialog open={overallOpen} onClose={() => setOverallOpen(false)} fullScreen>
-			<AppBar position="sticky" color="primary">
-				<Toolbar>
-					<Typography variant="h6" sx={{ flexGrow: 1 }}>All-time Trends</Typography>
-					<IconButton edge="end" color="inherit" onClick={() => setOverallOpen(false)} aria-label="close">
-						<CloseIcon />
-					</IconButton>
-				</Toolbar>
-			</AppBar>
+			<Box sx={{ 
+				position: 'sticky', 
+				top: 0, 
+				zIndex: 1000,
+				backgroundColor: 'primary.main',
+				color: 'white',
+				px: { xs: 2, sm: 3 },
+				py: 2,
+				display: 'flex',
+				alignItems: 'center',
+				justifyContent: 'space-between',
+				borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+			}}>
+				<Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 600 }}>All-time Trends</Typography>
+				<IconButton 
+					edge="end" 
+					color="inherit" 
+					onClick={() => setOverallOpen(false)} 
+					aria-label="close"
+					sx={{
+						backgroundColor: 'rgba(255, 255, 255, 0.15)',
+						'&:hover': {
+							backgroundColor: 'rgba(255, 255, 255, 0.25)'
+						}
+					}}
+				>
+					<CloseIcon />
+				</IconButton>
+			</Box>
 			<Box sx={{ display:'flex', flexDirection:'column', height:'100vh' }}>
 				<Tabs value={tabIndex} onChange={(_, v)=>setTabIndex(v)} variant="fullWidth">
 					<Tab label="Overall" />
@@ -1337,7 +1335,8 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
 				</Box>
 			</Box>
 		</Dialog>
-    </Box>
+      </Container>
+    </PageWrapper>
   );
 }
 

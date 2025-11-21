@@ -122,7 +122,6 @@ const Resources = () => {
   return (
     <PageWrapper 
       title="🌱 Food Waste Resources"
-      onClose={() => navigate('/home')}
       maxWidth="sm"
     >
       <Container 
@@ -131,7 +130,7 @@ const Resources = () => {
           maxWidth: { xs: '100%', sm: '600px' },
           px: { xs: 2, sm: 2.5 },
           py: { xs: 2.5, sm: 3 },
-          pb: `calc(32px + env(safe-area-inset-bottom, 0))`
+          pb: 0 // PageWrapper handles bottom padding for nav bar
         }}
       >
         {/* Introduction */}
@@ -593,7 +592,7 @@ const Resources = () => {
             variant="contained" 
             color="secondary"
             size="large"
-            onClick={() => navigate('/home')}
+            onClick={() => navigate('/log')}
             sx={{ 
               mt: 1,
               fontSize: { xs: '0.9rem', sm: '1rem' },

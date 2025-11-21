@@ -21,7 +21,7 @@ function TermsAndConditions({ onTermsAccepted }) {
         if (window.history.length > 1) {
           navigate(-1);
         } else {
-          navigate("/home");
+          navigate("/log");
         }
       }
     } else {
@@ -49,7 +49,7 @@ function TermsAndConditions({ onTermsAccepted }) {
         return;
       }
       // If user is logged in, go to home, otherwise go to landing
-      navigate(userId ? "/home" : "/");
+      navigate(userId ? "/log" : "/");
     } catch (error) {
       console.error("Error accepting terms:", error);
       alert("Failed to accept terms. Please try again.");

@@ -69,7 +69,7 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
   const handleTaskNavigation = (taskType) => {
     switch (taskType) {
       case "food":
-        navigate("/home");
+        navigate("/log");
         onClose();
         break;
       case "survey":
@@ -152,7 +152,24 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
 
   if (loading) {
     return (
-      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <Dialog 
+        open={open} 
+        onClose={onClose} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            zIndex: 1501, // Higher than backdrop to ensure dialog content appears above
+          }
+        }}
+        sx={{
+          zIndex: 1500, // Higher than bottom nav (1400) to ensure it appears above
+          '& .MuiBackdrop-root': {
+            zIndex: 1499, // Backdrop should be below the dialog content
+            backgroundColor: 'rgba(0, 0, 0, 0.3)', // Reduced opacity for less opaque background
+          }
+        }}
+      >
         <DialogContent sx={{ textAlign: "center", py: 4 }}>
           <Typography>Loading daily tasks...</Typography>
         </DialogContent>
@@ -164,7 +181,24 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
   const completedCount = getTaskCompletionCount();
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      maxWidth="sm" 
+      fullWidth
+      PaperProps={{
+        sx: {
+          zIndex: 1501, // Higher than backdrop to ensure dialog content appears above
+        }
+      }}
+      sx={{
+        zIndex: 1500, // Higher than bottom nav (1400) to ensure it appears above
+        '& .MuiBackdrop-root': {
+          zIndex: 1499, // Backdrop should be below the dialog content
+          backgroundColor: 'rgba(0, 0, 0, 0.3)', // Reduced opacity for less opaque background
+        }
+      }}
+    >
       <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <FireIcon sx={{ color: "#ff6b35" }} />
@@ -179,7 +213,7 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
       
       <DialogContent>
         {/* Streak Display */}
-        <Box sx={{ mb: 2, p: 2, backgroundColor: "#fff3e0", borderRadius: 2, border: "1px solid #ffb74d" }}>
+        <Box sx={{ mb: 2, py: 1, px: 2, backgroundColor: "#fff3e0", borderRadius: 2, border: "1px solid #ffb74d" }}>
           <Stack direction="row" alignItems="center" spacing={1}>
             <FireIcon sx={{ color: "#ff6b35" }} />
             <Typography variant="body1" sx={{ fontWeight: "bold" }}>

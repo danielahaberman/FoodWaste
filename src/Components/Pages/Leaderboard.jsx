@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Box,
   Typography,
@@ -34,6 +34,10 @@ const Leaderboard = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isPulling, setIsPulling] = useState(false);
+  const [startY, setStartY] = useState(0);
+  const scrollContainerRef = useRef(null);
 
   const userId = localStorage.getItem("userId");
 
@@ -65,6 +69,34 @@ const Leaderboard = () => {
     setRefreshing(true);
     await fetchLeaderboardData();
     setRefreshing(false);
+  };
+
+  const handleTouchStart = (e) => {
+    const container = scrollContainerRef.current;
+    if (container && container.scrollTop === 0) {
+      setStartY(e.touches[0].clientY);
+      setIsPulling(true);
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isPulling) return;
+    
+    const container = scrollContainerRef.current;
+    if (container && container.scrollTop === 0) {
+      const currentY = e.touches[0].clientY;
+      const distance = Math.max(0, currentY - startY);
+      setPullDistance(Math.min(distance, 80)); // Cap at 80px
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (pullDistance > 50 && !refreshing) {
+      handleRefresh();
+    }
+    setPullDistance(0);
+    setIsPulling(false);
+    setStartY(0);
   };
 
   useEffect(() => {
@@ -254,32 +286,6 @@ const Leaderboard = () => {
       mx: "auto",
       width: "100%"
     }}>
-      {/* Header */}
-      <Box sx={{ 
-        display: "flex", 
-        alignItems: "center", 
-        justifyContent: "space-between", 
-        mb: 3 
-      }}>
-        <Typography 
-          variant="h4" 
-          sx={{ 
-            fontWeight: "bold", 
-            color: "primary.main",
-            fontSize: { xs: "1.5rem", sm: "2rem" }
-          }}
-        >
-          🏆 Leaderboard
-        </Typography>
-        <Tooltip title="Refresh">
-          <IconButton onClick={handleRefresh} disabled={refreshing}>
-            <RefreshIcon />
-          </IconButton>
-        </Tooltip>
-      </Box>
-
-      {/* Description */}
-    
       {/* Tabs */}
       <Paper sx={{ mb: 1.5 }}>
         <Tabs
@@ -325,22 +331,79 @@ const Leaderboard = () => {
       </Paper>
 
       {/* Tab Content */}
-      <Paper sx={{ 
-        minHeight: { xs: 250, sm: 350 },
-        maxHeight: { xs: "60vh", sm: "70vh" },
-        overflow: "auto"
-      }}>
-        {tabPanels.map((tab, index) => (
+      <Paper 
+        ref={scrollContainerRef}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        sx={{ 
+          minHeight: { xs: 250, sm: 350 },
+          maxHeight: { xs: "45vh", sm: "55vh" },
+          overflow: "auto",
+          position: "relative"
+        }}
+      >
+        {/* Pull to refresh indicator */}
+        {pullDistance > 0 && (
           <Box
-            key={index}
-            sx={{ 
-              display: tabValue === index ? "block" : "none", 
-              p: { xs: 0.5, sm: 1 } 
+            sx={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: `${pullDistance}px`,
+              backgroundColor: "rgba(25, 118, 210, 0.05)",
+              transition: pullDistance > 50 ? "none" : "all 0.2s ease",
             }}
           >
-            {renderLeaderboardList(tab.data, tab.valueKey, tab.icon, tab.unit)}
+            {pullDistance > 50 ? (
+              <Typography variant="caption" color="primary" sx={{ fontWeight: 600 }}>
+                Release to refresh
+              </Typography>
+            ) : (
+              <Typography variant="caption" color="text.secondary">
+                Pull to refresh
+              </Typography>
+            )}
           </Box>
-        ))}
+        )}
+        
+        {/* Loading indicator when refreshing */}
+        {refreshing && (
+          <Box
+            sx={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "60px",
+              backgroundColor: "rgba(25, 118, 210, 0.05)",
+              zIndex: 1
+            }}
+          >
+            <CircularProgress size={24} />
+          </Box>
+        )}
+
+        <Box sx={{ pt: refreshing ? "60px" : 0 }}>
+          {tabPanels.map((tab, index) => (
+            <Box
+              key={index}
+              sx={{ 
+                display: tabValue === index ? "block" : "none", 
+                p: { xs: 0.5, sm: 1 } 
+              }}
+            >
+              {renderLeaderboardList(tab.data, tab.valueKey, tab.icon, tab.unit)}
+            </Box>
+          ))}
+        </Box>
       </Paper>
 
       {/* Footer */}

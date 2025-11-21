@@ -75,7 +75,7 @@ const DailyTasks = ({ onClose, showCloseButton = true }) => {
   const handleTaskNavigation = (taskType) => {
     switch (taskType) {
       case "food":
-        navigate("/home");
+        navigate("/log");
         break;
       case "survey":
         navigate("/survey");

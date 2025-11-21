@@ -11,6 +11,9 @@ const AUTO_LOGIN_DAYS = 3; // Auto-login if logged in within 3 days
 // Routes that shouldn't be persisted (public/auth pages)
 const EXCLUDED_ROUTES = ["/", "/auth/login", "/auth/register", "/terms", "/admin"];
 
+// Routes that should redirect to /log on app start if authenticated
+const DEFAULT_AUTHENTICATED_ROUTE = "/log";
+
 export const saveLastRoute = (pathname) => {
 	if (typeof pathname === "string" && pathname.length > 0) {
 		// Only save if it's not an excluded route
@@ -21,7 +24,7 @@ export const saveLastRoute = (pathname) => {
 };
 
 export const getLastRoute = () => {
-	return localStorage.getItem(LAST_ROUTE_KEY) || "/home"; // Default to /home if no last route
+	return localStorage.getItem(LAST_ROUTE_KEY) || DEFAULT_AUTHENTICATED_ROUTE; // Default to /log if no last route
 };
 
 export const clearLastRoute = () => {

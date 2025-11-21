@@ -60,7 +60,7 @@ function LoginPage() {
             clearIntendedDestination();
             navigate(intendedDestination);
           } else {
-            navigate("/home");
+            navigate("/log");
           }
         }
       } catch (error) {

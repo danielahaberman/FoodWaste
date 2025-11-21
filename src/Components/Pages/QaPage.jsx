@@ -19,7 +19,7 @@ dayjs.extend(weekOfYear);
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 
-function QaPage({ setShowSurvey }) {
+function QaPage() {
   const [surveyQuestions, setSurveyQuestions] = useState(null);
   const [initialCompleted, setInitialCompleted] = useState(false);
   const [lastWeeklyCompletion, setLastWeeklyCompletion] = useState(null);
@@ -74,18 +74,9 @@ function QaPage({ setShowSurvey }) {
   // Calculate next week start date (assuming Monday)
   const nextSurveyDate = dayjs().startOf("week").add(1, "week").format("MMM D, YYYY");
 
-  const handleClose = () => {
-    if (setShowSurvey) {
-      setShowSurvey(false);
-    } else {
-      navigate("/home");
-    }
-  };
-
   return (
     <PageWrapper 
       title="Survey"
-      onClose={handleClose}
       maxWidth="sm"
       headerColor="background.default"
       headerTextColor="text.primary"
@@ -96,7 +87,7 @@ function QaPage({ setShowSurvey }) {
           maxWidth: { xs: '100%', sm: '600px' },
           px: { xs: 2.5, sm: 3 },
           py: { xs: 3, sm: 4 },
-          pb: `calc(40px + env(safe-area-inset-bottom, 0))`
+          pb: 0 // PageWrapper handles bottom padding for nav bar
         }}
       >
         {loadingStatus ? (

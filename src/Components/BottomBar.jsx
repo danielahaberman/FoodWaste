@@ -4,20 +4,17 @@ import React, { useState, useEffect } from "react";
 import { Box, IconButton, Typography, Badge } from "@mui/material";
 import {
   Restaurant as RestaurantIcon,
-  Delete as DeleteIcon,
   Assignment as AssignmentIcon,
-  Logout as LogoutIcon,
-  Description as DescriptionIcon,
-  MenuBook as MenuBookIcon,
+  CalendarToday as CalendarIcon,
   Checklist as ChecklistIcon,
-  EmojiEvents as TrophyIcon,
+  Settings as SettingsIcon,
 } from "@mui/icons-material";
-import { useNavigate } from "react-router-dom";
-import { logout } from "../utils/authUtils";
+import { useNavigate, useLocation } from "react-router-dom";
 import { dailyTasksAPI } from "../api";
 
-function BottomBar({ setShowConsumeWaste, setLoggingPurchase, setShowSurvey, setShowTasksAndLeaderboard }) {
+function BottomBar() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [taskCompletionStatus, setTaskCompletionStatus] = useState({ completed: 0, total: 3 });
   const [showDailyTasksIndicator, setShowDailyTasksIndicator] = useState(false);
 
@@ -56,51 +53,68 @@ function BottomBar({ setShowConsumeWaste, setLoggingPurchase, setShowSurvey, set
     return () => window.removeEventListener('taskCompleted', handleTaskUpdate);
   }, []);
 
-  const NavItem = ({ icon, label, onClick, color, isActive }) => (
+  const NavItem = ({ icon, label, onClick, color, isActive, route, isMain }) => (
     <Box
       sx={{
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
         flex: 1,
         minWidth: 0,
+        height: '100%',
       }}
     >
-      <IconButton 
-        onClick={onClick} 
-        size="large" 
-        sx={{ 
-          color: isActive ? color : 'rgba(0, 0, 0, 0.6)',
-          width: { xs: 56, sm: 60 },
-          height: { xs: 56, sm: 60 },
-          borderRadius: 2.5,
-          backgroundColor: isActive ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
-          transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
-          '&:active': {
-            transform: 'scale(0.92)',
-            backgroundColor: isActive ? 'rgba(25, 118, 210, 0.15)' : 'rgba(0, 0, 0, 0.08)',
-          },
-          '& .MuiSvgIcon-root': {
-            fontSize: { xs: '1.75rem', sm: '1.85rem' },
-          }
-        }} 
-        aria-label={label}
-      >
-        {icon}
-      </IconButton>
       <Typography
         variant="caption"
         sx={{
           fontSize: '0.65rem',
           fontWeight: 500,
           color: isActive ? color : 'rgba(0, 0, 0, 0.5)',
-          mt: 0.25,
+          mb: 0.75,
+          pb: 0.5,
           opacity: 0.8,
+          textAlign: 'center',
+          borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
+          width: '100%',
         }}
       >
         {label}
       </Typography>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: { xs: 40, sm: 42 }, // Reduced height for tighter spacing
+          width: '100%',
+          mt: 0.25, // Reduced margin top
+        }}
+      >
+        <IconButton 
+          onClick={onClick} 
+          size="large" 
+          sx={{ 
+            color: isActive ? color : 'rgba(0, 0, 0, 0.6)',
+            width: { xs: 48, sm: 52 },
+            height: { xs: 48, sm: 52 },
+            padding: { xs: 0.75, sm: 0.875 }, // Reduced padding
+            borderRadius: 2.5,
+            backgroundColor: isActive ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
+            transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
+            '&:active': {
+              transform: 'scale(0.92)',
+              backgroundColor: isActive ? 'rgba(25, 118, 210, 0.15)' : 'rgba(0, 0, 0, 0.08)',
+            },
+            '& .MuiSvgIcon-root': {
+              fontSize: { xs: '1.75rem', sm: '1.85rem' },
+            }
+          }} 
+          aria-label={label}
+        >
+          {icon}
+        </IconButton>
+      </Box>
     </Box>
   );
 
@@ -114,44 +128,47 @@ function BottomBar({ setShowConsumeWaste, setLoggingPurchase, setShowSurvey, set
         transform: "translateX(-50%)",
         maxWidth: "600px",
         width: "100%",
-        pt: 1.5,
-        pb: `calc(12px + env(safe-area-inset-bottom, 0))`,
+        pt: 0.5,
+        pb: `calc(8px + env(safe-area-inset-bottom, 0))`,
         px: { xs: 1, sm: 1.5 },
         display: "flex",
         justifyContent: "space-around",
         alignItems: "flex-start",
-        minHeight: 72,
-        height: `calc(72px + env(safe-area-inset-bottom, 0))`,
+        minHeight: 88,
+        height: `calc(88px + env(safe-area-inset-bottom, 0))`,
         backdropFilter: "blur(40px) saturate(200%)",
         WebkitBackdropFilter: "blur(40px) saturate(200%)",
         backgroundColor: "rgba(255, 255, 255, 0.9)",
         borderTop: "1px solid rgba(0, 0, 0, 0.08)",
         boxShadow: "0 -4px 20px rgba(0, 0, 0, 0.08), 0 -2px 6px rgba(0, 0, 0, 0.06)",
-        zIndex: 5,
+        zIndex: 1400, // Higher than PageWrapper (1300) to ensure it's always visible
       }}
     >
       <NavItem
-        icon={<RestaurantIcon />}
-        label="Log Food"
-        onClick={() => setShowConsumeWaste(true)}
+        icon={<CalendarIcon />}
+        label="Summary"
+        onClick={() => navigate("/summary")}
         color="#1976d2"
-        isActive={false}
+        isActive={location.pathname === "/summary"}
+        route="/summary"
       />
 
       <NavItem
         icon={<AssignmentIcon />}
         label="Survey"
-        onClick={() => setShowSurvey(true)}
+        onClick={() => navigate("/survey")}
         color="#1976d2"
-        isActive={false}
+        isActive={location.pathname === "/survey"}
+        route="/survey"
       />
 
       <NavItem
-        icon={<MenuBookIcon />}
-        label="Resources"
-        onClick={() => navigate("/resources")}
+        icon={<RestaurantIcon />}
+        label="Log"
+        onClick={() => navigate("/log")}
         color="#1976d2"
-        isActive={false}
+        isActive={location.pathname === "/log"}
+        route="/log"
       />
 
       <NavItem
@@ -179,20 +196,19 @@ function BottomBar({ setShowConsumeWaste, setLoggingPurchase, setShowSurvey, set
           )
         }
         label="Tasks"
-        onClick={() => setShowTasksAndLeaderboard(true)}
-        color={showDailyTasksIndicator && taskCompletionStatus.completed === taskCompletionStatus.total ? "#2e7d32" : "#1976d2"}
-        isActive={showDailyTasksIndicator}
+        onClick={() => navigate("/tasks")}
+        color="#1976d2"
+        isActive={location.pathname === "/tasks"}
+        route="/tasks"
       />
 
       <NavItem
-        icon={<LogoutIcon />}
-        label="Logout"
-        onClick={() => {
-          logout();
-          navigate("/");
-        }}
-        color="#d32f2f"
-        isActive={false}
+        icon={<SettingsIcon />}
+        label="Settings"
+        onClick={() => navigate("/settings")}
+        color="#1976d2"
+        isActive={location.pathname === "/settings"}
+        route="/settings"
       />
     </Box>
   );

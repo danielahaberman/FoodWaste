@@ -8,7 +8,7 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { IconButton, Paper, Button, Box, Typography } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import LogoutIcon from '@mui/icons-material/Logout';
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { shouldAutoLogin, setAuthenticated, getCurrentUserId } from "../../utils/authUtils";
 
 import RestaurantIcon from '@mui/icons-material/Restaurant';
@@ -17,22 +17,20 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddNewPurchase from "./AddNewPurchase";
 import DateNavigator from "../DateNavigator";
 import FoodPurchaseList from "../FoodPurchaseList";
-import AssignmentIcon from '@mui/icons-material/Assignment';
-import ConsumeWaste from "./ComsumeWaste";
-import QaPage from "./QaPage";
-import BottomBar from "../BottomBar";
-// import FoodEmojiBackground from "../FoodEmojiBackground";
+import PageWrapper from "../PageWrapper";
 import DailyTasksPopup from "../DailyTasksPopup";
-import TasksAndLeaderboard from "./TasksAndLeaderboard";
+import { Container } from "@mui/material";
+
 const FoodLog = () => {
   const [foodPurchases, setFoodPurchases] = useState([]);
   const [foodItems, setFoodItems] = useState([]);
   const [loggingPurchase, setLoggingPurchase] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(dayjs());
-  const [showSurvey, setShowSurvey] = useState(false)
-  const [showConsumeWaste, setShowConsumeWaste] = useState(false)
-  const [showDailyTasksPopup, setShowDailyTasksPopup] = useState(false)
-  const [showTasksAndLeaderboard, setShowTasksAndLeaderboard] = useState(false)
+  const [searchParams] = useSearchParams();
+  const dateParam = searchParams.get('date');
+  const [selectedDate, setSelectedDate] = useState(
+    dateParam ? dayjs(dateParam, 'YYYY-MM-DD') : dayjs()
+  );
+  const [showDailyTasksPopup, setShowDailyTasksPopup] = useState(false);
   const navigate = useNavigate();
 
   // Auto-login check on mount - restore auth if login was within 3 days
@@ -155,15 +153,6 @@ const deletePurchase = async (purchaseId) => {
     checkDailyTasksPopup();
   }, []);
 
-  // Listen for consume/waste modal events
-  useEffect(() => {
-    const handleOpenConsumeWaste = () => {
-      setShowConsumeWaste(true);
-    };
-    
-    window.addEventListener('openConsumeWaste', handleOpenConsumeWaste);
-    return () => window.removeEventListener('openConsumeWaste', handleOpenConsumeWaste);
-  }, []);
 
   // Listen for task completion events
   useEffect(() => {
@@ -193,145 +182,111 @@ const deletePurchase = async (purchaseId) => {
   const canModify = isWithin7Days && !isDateInFuture;
 
   return (
-    // <FoodEmojiBackground>
-      <Box sx={{ 
-        height: "100%", 
-        display: "flex", 
-        flexDirection: "column",
-        overflow: "hidden" /* Prevent page-level scrolling */
-      }}>
-      <LocalizationProvider dateAdapter={AdapterDayjs}>
+    <PageWrapper 
+      title="Food Log" 
+      maxWidth="sm"
+    >
+      <Container 
+        maxWidth="sm"
+        sx={{ 
+          maxWidth: { xs: '100%', sm: '600px' },
+          px: { xs: 2, sm: 2.5 },
+          py: { xs: 2.5, sm: 3 },
+          pb: 0 // PageWrapper handles bottom padding for nav bar
+        }}
+      >
+        <LocalizationProvider dateAdapter={AdapterDayjs}>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between', 
+            gap: 1,
+            mb: 2
+          }}>
+            <DateNavigator value={selectedDate} onChange={setSelectedDate} datesWithFood={datesWithFood} />
+            <Button 
+              variant="contained" 
+              size="small" 
+              onClick={() => setLoggingPurchase(true)}
+              disabled={!canModify}
+              title={!canModify ? "Can only add food for the past 7 days" : "Add food for this date"}
+            >
+              Add
+            </Button>
+          </Box>
+          {!canModify && (
+            <Typography 
+              variant="caption" 
+              color="text.secondary" 
+              sx={{ 
+                textAlign: 'center', 
+                fontStyle: 'italic',
+                mb: 2,
+                display: 'block'
+              }}
+            >
+              View only - can only add/delete food for the past 7 days
+            </Typography>
+          )}
+        </LocalizationProvider>
+
         <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'space-between', 
-          gap: 1,
-          px: 2, // Add horizontal padding
-          py: 1.5, // Add vertical padding
+          mt: 2
         }}>
-          <DateNavigator value={selectedDate} onChange={setSelectedDate} datesWithFood={datesWithFood} />
-          <Button 
-            variant="contained" 
-            size="small" 
-            onClick={() => setLoggingPurchase(true)}
-            disabled={!canModify}
-            title={!canModify ? "Can only add food for the past 7 days" : "Add food for this date"}
-          >
-            Add
-          </Button>
+          {filteredPurchases.length > 0 ? (
+            <FoodPurchaseList 
+              deletePurchase={deletePurchase} 
+              purchases={filteredPurchases} 
+              canModify={canModify}
+            />
+          ) : (
+            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "50vh", color: "text.secondary", gap: 1 }}>
+              <RestaurantIcon sx={{ fontSize: 40, opacity: 0.6 }} />
+              <Box component="span" sx={{ fontStyle: "italic" }}>
+                No foods logged for {selectedDate.format('MMMM D, YYYY')} yet.
+              </Box>
+            </Box>
+          )}
         </Box>
-        {!canModify && (
-          <Typography 
-            variant="caption" 
-            color="text.secondary" 
-            sx={{ 
-              textAlign: 'center', 
-              fontStyle: 'italic',
-              mt: 0.5 
+
+        {loggingPurchase && (
+          <Paper
+            style={{
+              position: "fixed",
+              height: "100vh",
+              top: "0vh",
+              width: "100vw",
+              maxWidth:"600px",
+              zIndex: 1500,
+              boxSizing:"border-box",
+              left:"50%",
+              transform: "translateX(-50%)",
+              backgroundColor: "#fafafa"
             }}
           >
-            View only - can only add/delete food for the past 7 days
-          </Typography>
+            <AddNewPurchase
+              setLoggingPurchase={setLoggingPurchase}
+              foodItems={foodItems}
+              fetchFoodItems={fetchFoodItems}
+              fetchFoodPurchases={fetchFoodPurchases}
+              selectedDate={selectedDate}
+            />
+          </Paper>
         )}
-      </LocalizationProvider>
 
-      <Box sx={{ 
-        flex: 1, 
-        overflow: "auto", 
-        pb: `calc(88px + env(safe-area-inset-bottom, 0))`, 
-        mt: 2,
-        paddingTop: 'env(safe-area-inset-top, 0)'
-      }}>
-        {filteredPurchases.length > 0 ? (
-          <FoodPurchaseList 
-            deletePurchase={deletePurchase} 
-            purchases={filteredPurchases} 
-            canModify={canModify}
+        {/* Daily Tasks Popup */}
+        {showDailyTasksPopup && (
+          <DailyTasksPopup
+            open={showDailyTasksPopup}
+            onClose={() => setShowDailyTasksPopup(false)}
+            onViewAllTasks={() => {
+              setShowDailyTasksPopup(false);
+              navigate("/tasks");
+            }}
           />
-        ) : (
-          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "50vh", color: "text.secondary", gap: 1 }}>
-            <RestaurantIcon sx={{ fontSize: 40, opacity: 0.6 }} />
-            <Box component="span" sx={{ fontStyle: "italic" }}>No foods logged for this day yet.</Box>
-          </Box>
         )}
-      </Box>
-
-      <BottomBar 
-        setLoggingPurchase={setLoggingPurchase} 
-        setShowConsumeWaste={setShowConsumeWaste} 
-        setShowSurvey={setShowSurvey}
-        setShowTasksAndLeaderboard={setShowTasksAndLeaderboard}
-      />
-
-      {loggingPurchase && (
-        <Paper
-          style={{
-            position: "absolute",
-            height: "100vh",
-            top: "0vh",
-            width: "100vw",
-            maxWidth:"600px",
-            zIndex: 10,
-            boxSizing:"border-box",
-            left:"0"
-          }}
-        >
-          <AddNewPurchase
-            setLoggingPurchase={setLoggingPurchase}
-            foodItems={foodItems}
-            fetchFoodItems={fetchFoodItems}
-            fetchFoodPurchases={fetchFoodPurchases}
-            selectedDate={selectedDate}
-          />
-        </Paper>
-      )}
-       {showSurvey && (
-   <QaPage setShowSurvey={setShowSurvey}/>
-      )}
-       {showConsumeWaste && (
-         <ConsumeWaste
-           handleBack={() => {
-             setShowConsumeWaste(false);
-           }}
-           onGoToDate={(dateStr) => {
-             setSelectedDate(dayjs(dateStr, 'MM/DD/YYYY'));
-             setShowConsumeWaste(false);
-           }}
-         />
-       )}
-
-       {/* Daily Tasks Popup */}
-       {showDailyTasksPopup && (
-         <DailyTasksPopup
-           open={showDailyTasksPopup}
-           onClose={() => setShowDailyTasksPopup(false)}
-           onViewAllTasks={() => {
-             setShowDailyTasksPopup(false);
-             setShowTasksAndLeaderboard(true);
-           }}
-         />
-       )}
-
-       {/* Tasks and Leaderboard Full View */}
-       {showTasksAndLeaderboard && (
-         <Paper
-           style={{
-             position: "absolute",
-             height: "100vh",
-             top: "0vh",
-             width: "100vw",
-             maxWidth: "600px",
-             zIndex: 10,
-             boxSizing: "border-box",
-             left: "0",
-             overflow: "auto"
-           }}
-         >
-           <TasksAndLeaderboard onClose={() => setShowTasksAndLeaderboard(false)} />
-         </Paper>
-       )}
-      </Box>
-    // </FoodEmojiBackground>
+      </Container>
+    </PageWrapper>
   );
 };
 

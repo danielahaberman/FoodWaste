@@ -78,7 +78,7 @@ const Survey = ({ questions }) => {
   const handleGoHome = () => {
     // Dispatch task completion event to update streak and task counts
     window.dispatchEvent(new CustomEvent('taskCompleted'));
-    window.location.href = "/home";
+    window.location.href = "/log";
   };
 
   const getCompletionMessage = () => {

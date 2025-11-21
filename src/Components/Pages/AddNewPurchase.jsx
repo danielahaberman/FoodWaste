@@ -164,10 +164,16 @@ function AddNewPurchase({
       >
         <IconButton
           aria-label="close"
-          size="small"
+          size="medium"
           onClick={() => setLoggingPurchase(false)}
+          sx={{
+            backgroundColor: 'rgba(0, 0, 0, 0.05)',
+            '&:hover': {
+              backgroundColor: 'rgba(0, 0, 0, 0.1)',
+            }
+          }}
         >
-          <CloseIcon fontSize="small" />
+          <CloseIcon />
         </IconButton>
         <Typography
           variant="subtitle1"

@@ -14,6 +14,8 @@ import QaPage from './Components/Pages/QaPage';
 import TermsAndConditions from './Components/Pages/TermsAndConditions';
 import Resources from './Components/Pages/Resources';
 import TasksAndLeaderboard from './Components/Pages/TasksAndLeaderboard';
+import ConsumeWaste from './Components/Pages/ComsumeWaste';
+import Settings from './Components/Pages/Settings';
 import TermsGuard from './Components/TermsGuard';
 import AuthGuard from './Components/AuthGuard';
 import SurveyGuard from './Components/SurveyGuard';
@@ -45,9 +47,14 @@ function App() {
                      
                       {/* SidebarLayout wrapped routes */}
                       <Route element={<SidebarLayout />}>
-                        <Route path="/home" element={<FoodLog/>} />
+                        <Route path="/summary" element={<ConsumeWaste />} />
                         <Route path="/survey" element={<QaPage />} />
+                        <Route path="/log" element={<FoodLog/>} />
+                        <Route path="/tasks" element={<TasksAndLeaderboard />} />
+                        <Route path="/settings" element={<Settings />} />
                         <Route path="/resources" element={<Resources />} />
+                        {/* Legacy route redirects */}
+                        <Route path="/home" element={<FoodLog/>} />
                         <Route path="/tasks-leaderboard" element={<TasksAndLeaderboard />} />
                       </Route>
                     </Routes>
