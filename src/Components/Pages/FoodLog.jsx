@@ -152,7 +152,12 @@ const deletePurchase = async (purchaseId) => {
 
   return (
     // <FoodEmojiBackground>
-      <Box sx={{ height: "100%", display: "flex", flexDirection: "column", }}>
+      <Box sx={{ 
+        height: "100%", 
+        display: "flex", 
+        flexDirection: "column",
+        overflow: "hidden" /* Prevent page-level scrolling */
+      }}>
       <LocalizationProvider dateAdapter={AdapterDayjs}>
         <Box sx={{ 
           display: 'flex', 
@@ -188,7 +193,13 @@ const deletePurchase = async (purchaseId) => {
         )}
       </LocalizationProvider>
 
-      <Box sx={{ flex: 1, overflow: "auto", pb: '88px', mt: 2 }}>
+      <Box sx={{ 
+        flex: 1, 
+        overflow: "auto", 
+        pb: `calc(88px + env(safe-area-inset-bottom, 0))`, 
+        mt: 2,
+        paddingTop: 'env(safe-area-inset-top, 0)'
+      }}>
         {filteredPurchases.length > 0 ? (
           <FoodPurchaseList 
             deletePurchase={deletePurchase} 

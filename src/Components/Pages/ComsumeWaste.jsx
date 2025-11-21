@@ -401,14 +401,27 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
       boxSizing:"border-box", 
       left:"0px", 
       width:"100vw",
-      maxWidth: { xs: "100vw", sm: "580px" } // Full width on mobile
+      maxWidth: { xs: "100vw", sm: "580px" }, // Full width on mobile
+      overflow: "hidden", /* Prevent page-level scrolling */
+      display: "flex",
+      flexDirection: "column",
+      /* iOS safe area support */
+      paddingTop: 'env(safe-area-inset-top, 0)',
+      paddingBottom: 'env(safe-area-inset-bottom, 0)',
+      paddingLeft: 'env(safe-area-inset-left, 0)',
+      paddingRight: 'env(safe-area-inset-right, 0)'
     }}>
       {/* Header Bar with Trends */}
       <AppBar position="sticky" color="primary" sx={{ 
         mb: 2, 
         bgcolor: 'var(--color-primary)',
         mx: { xs: -1, sm: 0 }, // Negative margin on mobile to counteract container padding
-        width: { xs: 'calc(100% + 16px)', sm: '100%' } // Extend full width on mobile
+        width: { xs: 'calc(100% + 16px)', sm: '100%' }, // Extend full width on mobile
+        /* iOS safe area support for header */
+        top: { xs: 'env(safe-area-inset-top, 0)', sm: 0 },
+        marginTop: { xs: `calc(env(safe-area-inset-top, 0) * -1)`, sm: 0 },
+        zIndex: 10,
+        flexShrink: 0 /* Prevent header from shrinking */
       }}>
         <Toolbar sx={{ px: { xs: 1, sm: 3 } }}> {/* Reduced padding on mobile */}
           <IconButton edge="start" color="inherit" onClick={() => activeWeekOf ? setActiveWeekOf(null) : handleBack()} aria-label="back">
@@ -428,7 +441,13 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
       )}
 
       {!activeWeekOf && (
-        <Box>
+        <Box sx={{ 
+          flex: 1, 
+          overflow: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          pb: `calc(16px + env(safe-area-inset-bottom, 0))`
+        }}>
           {/* Editable Weeks Section */}
           <Box sx={{ backgroundColor: 'grey.50', borderRadius: 2, p: 1, mb: 2 }}>
             <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
@@ -772,7 +791,12 @@ function ConsumeWaste({ handleBack, onGoToDate }) {
             zIndex: 1000,
             overflow: 'auto',
             borderRadius: 0,
-            p: 2
+            p: 2,
+            /* iOS safe area support */
+            paddingTop: `calc(16px + env(safe-area-inset-top, 0))`,
+            paddingBottom: `calc(16px + env(safe-area-inset-bottom, 0))`,
+            paddingLeft: `calc(16px + env(safe-area-inset-left, 0))`,
+            paddingRight: `calc(16px + env(safe-area-inset-right, 0))`
           }}>
             <Legend />
             {weekCharts[activeWeekOf] && (() => {

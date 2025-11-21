@@ -12,7 +12,7 @@ const SidebarLayout = () => {
         height: "100vh",
         width: "100%",
         backgroundColor: { xs: "transparent", sm: "#f5f5f5" },
-        overflow: "hidden",
+        overflow: "hidden", /* Prevent scrolling at layout level */
         margin: 0,
         padding: 0,
         // Remove PageLayout wrapper on mobile to eliminate any margins
@@ -37,7 +37,7 @@ const SidebarLayout = () => {
           backgroundColor: "transparent", // Make transparent to allow background to show through
           borderRadius: { xs: 0, sm: 2 }, // No border radius on mobile
           boxShadow: { xs: "none", sm: "0 2px 8px rgba(0,0,0,0.05)" }, // No shadow on mobile
-          overflow: "visible", // Allow content to extend beyond container
+          overflow: "hidden", /* Prevent scrolling at container level */
           height: "100%",
         }}
       >
@@ -47,7 +47,7 @@ const SidebarLayout = () => {
             flexGrow: 1,
             width: "100%",
             height: "100%",
-            overflow: "visible", // Allow content to extend beyond
+            overflow: "hidden", /* Prevent scrolling - only child content areas scroll */
             display: "flex",
             flexDirection: "column",
           }}

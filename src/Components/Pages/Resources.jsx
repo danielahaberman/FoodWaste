@@ -132,7 +132,12 @@ const Resources = () => {
       display: 'flex',
       flexDirection: 'column',
       overflow: 'hidden',
-      zIndex: 1300
+      zIndex: 1300,
+      /* iOS safe area support */
+      paddingTop: 'env(safe-area-inset-top, 0)',
+      paddingBottom: 'env(safe-area-inset-bottom, 0)',
+      paddingLeft: 'env(safe-area-inset-left, 0)',
+      paddingRight: 'env(safe-area-inset-right, 0)'
     }}>
       {/* Header */}
       <Box sx={{ 
@@ -142,7 +147,10 @@ const Resources = () => {
         position: 'sticky',
         top: 0,
         zIndex: 1000,
-        flexShrink: 0
+        flexShrink: 0, /* Prevent header from shrinking */
+        /* iOS safe area support for header */
+        paddingTop: { xs: `calc(16px + env(safe-area-inset-top, 0))`, sm: 2 },
+        marginTop: { xs: `calc(env(safe-area-inset-top, 0) * -1)`, sm: 0 }
       }}>
         <Container 
           maxWidth="md" 
@@ -182,7 +190,8 @@ const Resources = () => {
           maxWidth: { xs: '100%', sm: '600px' },
           mx: 'auto',
           mt: 3,
-          pb: 2
+          pb: `calc(16px + env(safe-area-inset-bottom, 0))`,
+          paddingBottom: `calc(16px + env(safe-area-inset-bottom, 0))`
         }}
       >
         {/* Introduction */}

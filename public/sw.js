@@ -1,9 +1,8 @@
 // Simple service worker for PWA functionality
-const CACHE_NAME = 'food-hero-v3';
+const CACHE_NAME = 'food-hero-v4';
 const urlsToCache = [
   '/',
-  '/static/js/bundle.js',
-  '/static/css/main.css',
+  '/index.html',
   '/manifest.json'
 ];
 

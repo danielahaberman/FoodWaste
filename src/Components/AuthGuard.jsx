@@ -9,9 +9,15 @@ function AuthGuard({ children }) {
   const location = useLocation();
 
   useEffect(() => {
-    // Check if user is logged in (this will also check expiration)
-    setIsUserAuthenticated(isAuthenticated());
-    setIsLoading(false);
+    try {
+      // Check if user is logged in (this will also check expiration)
+      setIsUserAuthenticated(isAuthenticated());
+      setIsLoading(false);
+    } catch (error) {
+      console.error('AuthGuard error:', error);
+      setIsUserAuthenticated(false);
+      setIsLoading(false);
+    }
   }, [location.pathname]); // Re-check on route changes
 
   // If still loading, show nothing

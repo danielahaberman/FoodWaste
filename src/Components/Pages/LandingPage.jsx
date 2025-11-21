@@ -10,13 +10,29 @@ function LandingPage() {
   const navigate = useNavigate();
   const [showPWAPrompt, setShowPWAPrompt] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
-    // Check if running as PWA (standalone mode)
-    const standalone = window.matchMedia('(display-mode: standalone)').matches || 
-                      window.navigator.standalone === true;
-    setIsStandalone(standalone);
+    try {
+      // Check if running as PWA (standalone mode)
+      const standalone = window.matchMedia('(display-mode: standalone)').matches || 
+                        window.navigator.standalone === true;
+      setIsStandalone(standalone);
+    } catch (error) {
+      console.error('Error in LandingPage useEffect:', error);
+      setHasError(true);
+    }
   }, []);
+
+  if (hasError) {
+    return (
+      <Box sx={{ p: 4, textAlign: 'center' }}>
+        <Typography variant="h6" color="error">
+          Error loading page. Please refresh.
+        </Typography>
+      </Box>
+    );
+  }
 
   const handleClearStorage = () => {
     if (window.confirm('This will clear all app data (localStorage and sessionStorage). This will log you out and reset all preferences. Continue?')) {
@@ -30,16 +46,6 @@ function LandingPage() {
   };
   
   return (
-    // <FoodEmojiBackground
-    //   sx={{
-    //     display: "flex", 
-    //     flexDirection: "column", 
-    //     alignItems: "center", 
-    //     justifyContent: "center", 
-    //     textAlign: "center", 
-    //     padding: "24px"
-    //   }}
-    // >
     <Box sx={{
       display: "flex", 
       flexDirection: "column", 
@@ -48,8 +54,12 @@ function LandingPage() {
       textAlign: "center", 
       padding: "24px",
       minHeight: "100vh",
+      width: "100%",
       backgroundColor: "#f5f5f5",
-      position: "relative"
+      position: "relative",
+      zIndex: 1,
+      visibility: "visible",
+      opacity: 1
     }}>
       {/* Clear Storage Button - Top Right */}
       <Tooltip title="Clear all app data (localStorage & sessionStorage)">
@@ -102,11 +112,14 @@ function LandingPage() {
             gap: "24px", 
             padding: "24px", 
             borderRadius: "12px", 
-            backgroundColor: "rgba(255, 255, 255, 0.95)", 
-            backdropFilter: "blur(10px)",
+            backgroundColor: "#ffffff", 
             width: "100%", 
             maxWidth: "400px",
-            margin: "0 auto"
+            margin: "0 auto",
+            position: "relative",
+            zIndex: 2,
+            visibility: "visible",
+            opacity: 1
           }}
         >
           <Typography 
