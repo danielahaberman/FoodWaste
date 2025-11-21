@@ -67,11 +67,6 @@ function SurveyGuard({ children }) {
     }
   };
 
-  const isPublicPage = (pathname) => {
-    const publicPages = ["/", "/auth/login", "/auth/register", "/terms", "/survey"];
-    return publicPages.includes(pathname);
-  };
-
   const handleStartSurvey = () => {
     setShowWelcomeModal(false);
     navigate("/survey?stage=initial");
