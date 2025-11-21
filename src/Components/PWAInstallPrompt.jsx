@@ -78,13 +78,6 @@ const PWAInstallPrompt = ({ open, onClose }) => {
     }
   };
 
-  const handleShareClick = () => {
-    // Note: navigator.share() doesn't show "Add to Home Screen" on iOS
-    // Users need to use Safari's native share button in the toolbar
-    // This button is just informational - the instructions explain the actual steps
-    alert('Please use Safari\'s share button (square with arrow) in the browser toolbar, not this button. Then scroll down to find "Add to Home Screen".');
-  };
-
   // Don't show if already installed
   if (isStandalone) {
     return null;
@@ -193,19 +186,6 @@ const PWAInstallPrompt = ({ open, onClose }) => {
         {selectedPlatform === 'ios' ? (
           // iOS Instructions
           <Box>
-            <Typography variant="body2" sx={{ 
-              mb: { xs: 1, sm: 1.5 }, 
-              color: '#666',
-              fontSize: { xs: '0.75rem', sm: '0.8rem' },
-              textAlign: 'center',
-              p: 1,
-              backgroundColor: '#fff3e0',
-              borderRadius: 1,
-              border: '1px solid #ffcc02'
-            }}>
-              ⚠️ Make sure you're using Safari (not Chrome). If "Add to Home Screen" doesn't appear, scroll down in the share menu or tap "Edit Actions..." at the bottom.
-            </Typography>
-            
             <Typography variant="h6" sx={{ 
               mb: { xs: 1, sm: 1.5 }, 
               color: '#1976d2',
@@ -239,15 +219,55 @@ const PWAInstallPrompt = ({ open, onClose }) => {
                     alignItems: 'center', 
                     gap: { xs: 0.5, sm: 1 }
                   }}>
-                    <ShareIcon color="primary" sx={{ fontSize: { xs: '1.1rem', sm: '1.5rem' } }} />
+                    <AddIcon color="primary" sx={{ fontSize: { xs: '1.1rem', sm: '1.5rem' } }} />
                     <Typography variant="body1" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-                      Tap the Share button
+                      Bookmark the app
                     </Typography>
                   </Box>
                 </StepLabel>
                 <StepContent>
                   <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, lineHeight: 1.3 }}>
-                    Tap the share icon (square with arrow ↑) in Safari's toolbar at the bottom of the screen
+                    First, bookmark this app in Safari by tapping the share icon and selecting "Add Bookmark"
+                  </Typography>
+                </StepContent>
+              </Step>
+              
+              <Step active>
+                <StepLabel>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: { xs: 0.5, sm: 1 }
+                  }}>
+                    <MenuIcon color="primary" sx={{ fontSize: { xs: '1.1rem', sm: '1.5rem' } }} />
+                    <Typography variant="body1" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                      Tap the three dot menu
+                    </Typography>
+                  </Box>
+                </StepLabel>
+                <StepContent>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, lineHeight: 1.3 }}>
+                    Tap the three dots (⋯) menu icon in Safari's address bar
+                  </Typography>
+                </StepContent>
+              </Step>
+              
+              <Step active>
+                <StepLabel>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: { xs: 0.5, sm: 1 }
+                  }}>
+                    <ShareIcon color="primary" sx={{ fontSize: { xs: '1.1rem', sm: '1.5rem' } }} />
+                    <Typography variant="body1" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                      Tap the Share icon
+                    </Typography>
+                  </Box>
+                </StepLabel>
+                <StepContent>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, lineHeight: 1.3 }}>
+                    In the menu, tap the Share icon (square with arrow pointing up)
                   </Typography>
                 </StepContent>
               </Step>
@@ -261,13 +281,13 @@ const PWAInstallPrompt = ({ open, onClose }) => {
                   }}>
                     <AddIcon color="primary" sx={{ fontSize: { xs: '1.1rem', sm: '1.5rem' } }} />
                     <Typography variant="body1" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-                      Scroll down and find "Add to Home Screen"
+                      Tap "Add to Home Screen"
                     </Typography>
                   </Box>
                 </StepLabel>
                 <StepContent>
                   <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, lineHeight: 1.3 }}>
-                    In the share menu, scroll down past the app icons to find "Add to Home Screen" option. It may be in the second row or require scrolling.
+                    Scroll down in the share menu and tap "Add to Home Screen"
                   </Typography>
                 </StepContent>
               </Step>
@@ -447,26 +467,7 @@ const PWAInstallPrompt = ({ open, onClose }) => {
           Don't Ask Again
         </Button>
 
-        {selectedPlatform === 'ios' ? (
-          <Button 
-            onClick={handleShareClick}
-            variant="outlined"
-            startIcon={<ShareIcon sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }} />}
-            sx={{
-              borderColor: '#1976d2',
-              color: '#1976d2',
-              '&:hover': { 
-                borderColor: '#1565c0',
-                backgroundColor: 'rgba(25, 118, 210, 0.04)'
-              },
-              fontSize: { xs: '0.875rem', sm: '1rem' },
-              py: { xs: 1, sm: 0.75 },
-              px: { xs: 2, sm: 2 }
-            }}
-          >
-            Need Help?
-          </Button>
-        ) : (
+        {selectedPlatform === 'ios' ? null : (
           deferredPrompt ? (
             <Button 
               onClick={handleInstallClick}

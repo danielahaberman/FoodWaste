@@ -93,6 +93,12 @@ const deletePurchase = async (purchaseId) => {
             return;
           }
           
+          // Don't show daily tasks popup if welcome modal is showing (initial survey not completed)
+          if (!surveyResponse.data.initialCompleted) {
+            // Welcome modal is showing, don't show daily tasks popup
+            return;
+          }
+          
           // Check if user has incomplete tasks
           const response = await fetch(`${import.meta.env.VITE_API_URL}/api/daily-tasks/today?user_id=${userId}`);
           const tasks = await response.json();

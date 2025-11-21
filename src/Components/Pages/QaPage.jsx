@@ -81,20 +81,37 @@ function QaPage({ setShowSurvey }) {
         inset: 0,
         bgcolor: "background.default",
         zIndex: 1300,
-        overflowY: "auto",
-        py: 4,
+        overflow: "hidden", /* Prevent page-level scrolling */
+        display: "flex",
+        flexDirection: "column",
         color: "black",
+        /* iOS safe area support */
+        paddingTop: 'env(safe-area-inset-top, 0)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0)',
+        paddingLeft: 'env(safe-area-inset-left, 0)',
+        paddingRight: 'env(safe-area-inset-right, 0)'
       }}
     >
-      <Container maxWidth="sm">
-        {/* Top Bar */}
-        <Box 
-          display="flex" 
-          justifyContent="space-between" 
-          alignItems="center" 
-          mb={2}
-          sx={{ px: { xs: 2, sm: 0 } }}
-        >
+      {/* Fixed Header */}
+      <Box 
+        sx={{ 
+          display: "flex", 
+          justifyContent: "space-between", 
+          alignItems: "center",
+          px: { xs: 2, sm: 0 },
+          py: 2,
+          flexShrink: 0, /* Prevent header from shrinking */
+          position: "sticky",
+          top: 0,
+          backgroundColor: "background.default",
+          zIndex: 10,
+          borderBottom: "1px solid #e0e0e0",
+          /* iOS safe area support for header */
+          paddingTop: { xs: `calc(16px + env(safe-area-inset-top, 0))`, sm: 2 },
+          marginTop: { xs: `calc(env(safe-area-inset-top, 0) * -1)`, sm: 0 }
+        }}
+      >
+        <Container maxWidth="sm" sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", px: { xs: 2, sm: 3 } }}>
           <Typography variant="h6">Survey</Typography>
           <Button 
             variant="outlined" 
@@ -108,7 +125,19 @@ function QaPage({ setShowSurvey }) {
           >
             Back
           </Button>
-        </Box>
+        </Container>
+      </Box>
+
+      {/* Scrollable Content Area */}
+      <Box
+        sx={{
+          flex: 1,
+          overflowY: "auto",
+          overflowX: "hidden",
+          py: 4
+        }}
+      >
+        <Container maxWidth="sm">
 
         {loadingStatus ? (
           <Box display="flex" justifyContent="center" alignItems="center" py={3}>
@@ -128,7 +157,8 @@ function QaPage({ setShowSurvey }) {
             </Typography>
           </Box>
         )}
-      </Container>
+        </Container>
+      </Box>
     </Box>
   );
 }

@@ -116,7 +116,7 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
     const tasks = [
       {
         id: "food",
-        title: "Log your first food item",
+        title: "Log daily food item",
         icon: <FoodIcon />,
         completed: dailyTasks.log_food_completed,
         buttonText: "Go",
@@ -124,7 +124,7 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
       },
       {
         id: "survey",
-        title: "Complete your survey",
+        title: "Complete survey",
         icon: <SurveyIcon />,
         completed: dailyTasks.complete_survey_completed,
         buttonText: "Go",
@@ -132,7 +132,7 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
       },
       {
         id: "consume_waste",
-        title: "Log your consume/waste",
+        title: "Log waste",
         icon: <WasteIcon />,
         completed: dailyTasks.log_consume_waste_completed,
         buttonText: "Go",

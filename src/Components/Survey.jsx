@@ -329,7 +329,7 @@ const Survey = ({ questions }) => {
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          minHeight: "100vh",
+          minHeight: "auto", /* Changed from 100vh to auto */
           boxSizing: "border-box"
         }}
       >

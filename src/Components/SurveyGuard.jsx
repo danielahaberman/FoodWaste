@@ -46,9 +46,10 @@ function SurveyGuard({ children }) {
       const weeklyModalShownToday = localStorage.getItem(`weeklyModalShown_${today}`);
       
       if (response.data.initialCompleted && response.data.weeklyDue && !isPublicPage(location.pathname)) {
+        // Weekly survey is due if 7+ days have passed since last weekly survey OR since initial survey completion
+        // The backend now ensures weeklyDue is only true if 7+ days have passed
         // If more than 9 days have passed (7 days + 2 grace days), force the survey
-        const forceSurvey = response.data.daysSinceLastWeekly > 9 || 
-                           (response.data.daysSinceLastWeekly === null); // Never completed weekly survey
+        const forceSurvey = response.data.daysSinceLastWeekly !== null && response.data.daysSinceLastWeekly > 9;
         
         if (forceSurvey || !weeklyModalShownToday) {
           setShowWeeklyModal(true);

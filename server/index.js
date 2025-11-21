@@ -993,14 +993,37 @@ app.get("/api/surveys/status/:userId", async (req, res) => {
     
     const lastWeeklyCompletion = weeklyResult.rows.length > 0 ? weeklyResult.rows[0].last_response_date : null;
     
-    // Check if weekly survey is due (7 days since last completion or never completed)
+    // Get initial survey completion date
+    const initialCompletionQuery = `
+      SELECT MIN(response_date) AS initial_completion_date
+      FROM survey_responses
+      WHERE user_id = $1 AND question_id IN (
+        SELECT id FROM survey_questions WHERE stage = 'initial'
+      )
+    `;
+    const initialCompletionResult = await pool.query(initialCompletionQuery, [userId]);
+    const initialCompletionDate = initialCompletionResult.rows.length > 0 && initialCompletionResult.rows[0].initial_completion_date 
+      ? initialCompletionResult.rows[0].initial_completion_date 
+      : null;
+    
+    // Check if weekly survey is due (7 days since last completion or 7 days since initial survey completion)
     let weeklyDue = false;
     let daysSinceLastWeekly = null;
     
     if (initialCompleted) { // Only check for weekly surveys if initial is completed
       if (!lastWeeklyCompletion) {
-        // Never completed a weekly survey - it's due
-        weeklyDue = true;
+        // Never completed a weekly survey - check if 7 days have passed since initial survey completion
+        if (initialCompletionDate) {
+          const initialDate = moment.tz(initialCompletionDate, 'America/New_York');
+          const today = moment.tz('America/New_York');
+          const daysSinceInitial = today.diff(initialDate, 'days');
+          // Only set weeklyDue if at least 7 days have passed since initial survey completion
+          weeklyDue = daysSinceInitial >= 7;
+          daysSinceLastWeekly = daysSinceInitial; // Use days since initial as reference
+        } else {
+          // Can't determine initial completion date, don't show weekly survey yet
+          weeklyDue = false;
+        }
       } else {
         // Calculate days since last weekly survey
         const lastDate = moment.tz(lastWeeklyCompletion, 'America/New_York');
