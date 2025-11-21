@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Button, Box, Typography, Paper, Divider } from "@mui/material";
 import { GetApp as InstallIcon } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
+import { isAuthenticated } from "../../utils/authUtils";
 import PWAInstallPrompt from "../PWAInstallPrompt";
 // import FoodEmojiBackground from "../FoodEmojiBackground";
 
@@ -16,7 +17,12 @@ function LandingPage() {
     const standalone = window.matchMedia('(display-mode: standalone)').matches || 
                       window.navigator.standalone === true;
     setIsStandalone(standalone);
-  }, []);
+
+    // If user is already logged in, redirect to home
+    if (isAuthenticated()) {
+      navigate("/home");
+    }
+  }, [navigate]);
   
   return (
     // <FoodEmojiBackground
@@ -130,20 +136,13 @@ function LandingPage() {
             </>
           )}
           
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
             <Button
               variant="text"
               sx={{ color: "#1976d2" }}
               onClick={() => navigate("/terms")}
             >
               Terms & Conditions
-            </Button>
-            <Button
-              variant="text"
-              sx={{ color: "#6b7280" }}
-              onClick={() => navigate("/privacy")}
-            >
-              Privacy
             </Button>
           </Box>
         </Paper>

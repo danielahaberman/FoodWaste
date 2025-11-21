@@ -203,7 +203,7 @@ const PWAInstallPrompt = ({ open, onClose }) => {
               borderRadius: 1,
               border: '1px solid #ffcc02'
             }}>
-              ⚠️ Make sure you're using Safari (not Chrome). If "Add to Home Screen" doesn't appear, try: 1) Scroll down in share menu 2) Check if icon loads at /appIcon2.png 3) Clear Safari cache
+              ⚠️ Make sure you're using Safari (not Chrome). If "Add to Home Screen" doesn't appear, scroll down in the share menu or tap "Edit Actions..." at the bottom.
             </Typography>
             
             <Typography variant="h6" sx={{ 

@@ -1,6 +1,6 @@
 // @ts-nocheck
 /* eslint-disable no-unused-vars */
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   TextField, 
   Button, 
@@ -13,7 +13,7 @@ import {
   Paper
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import { setAuthenticated, getIntendedDestination, clearIntendedDestination } from "../../utils/authUtils";
+import { setAuthenticated, getIntendedDestination, clearIntendedDestination, isAuthenticated } from "../../utils/authUtils";
 import { authAPI } from "../../api";
 // import FoodEmojiBackground from "../FoodEmojiBackground";
 
@@ -23,6 +23,13 @@ function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // If user is already logged in, redirect to home
+    if (isAuthenticated()) {
+      navigate("/home");
+    }
+  }, [navigate]);
 
   const handleLogin = async () => {
     if (!email || !password) {
