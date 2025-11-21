@@ -14,6 +14,7 @@ import {
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { authAPI } from "../../api";
+import { saveUsername } from "../../utils/authUtils";
 // import FoodEmojiBackground from "../FoodEmojiBackground";
 
 function RegisterPage() {
@@ -47,6 +48,8 @@ function RegisterPage() {
       const response = await authAPI.register({ username, password, name });
       const data = response.data;
       console.log("User registered successfully:", data);
+      // Save username for auto-fill on login page
+      saveUsername(username);
       navigate("/auth/login");
     } catch (err) {
       setError("Registration failed. Please try again.");

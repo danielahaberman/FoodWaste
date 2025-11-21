@@ -4,69 +4,19 @@ import { Button, Box, Typography, Paper, Divider, IconButton, Tooltip } from "@m
 import { GetApp as InstallIcon, Refresh as RefreshIcon } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import PWAInstallPrompt from "../PWAInstallPrompt";
-import { isAuthenticated, getLastRoute } from "../../utils/authUtils";
 // import FoodEmojiBackground from "../FoodEmojiBackground";
 
 function LandingPage() {
   const navigate = useNavigate();
   const [showPWAPrompt, setShowPWAPrompt] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
-  const [hasError, setHasError] = useState(false);
-  const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    try {
-      // Check if running as PWA (standalone mode)
-      const standalone = window.matchMedia('(display-mode: standalone)').matches || 
-                        window.navigator.standalone === true;
-      setIsStandalone(standalone);
-      
-      // Check if user is authenticated and restore their last route
-      // Use setTimeout to ensure React Router is fully initialized
-      const checkAndRestore = () => {
-        try {
-          if (isAuthenticated()) {
-            const lastRoute = getLastRoute();
-            console.log("[LandingPage] User authenticated, restoring last route:", lastRoute);
-            // Small delay to ensure router is ready, especially on mobile/PWA
-            setTimeout(() => {
-              try {
-                navigate(lastRoute, { replace: true });
-              } catch (navError) {
-                console.error('[LandingPage] Navigation error:', navError);
-                // If navigation fails, just show landing page
-                setIsChecking(false);
-              }
-            }, 150);
-          } else {
-            setIsChecking(false);
-          }
-        } catch (error) {
-          console.error('[LandingPage] Error checking auth:', error);
-          setIsChecking(false);
-        }
-      };
-      
-      // Delay check slightly to ensure everything is initialized
-      const timer = setTimeout(checkAndRestore, 50);
-      
-      return () => clearTimeout(timer);
-    } catch (error) {
-      console.error('Error in LandingPage useEffect:', error);
-      setHasError(true);
-      setIsChecking(false);
-    }
-  }, [navigate]);
-
-  if (hasError) {
-    return (
-      <Box sx={{ p: 4, textAlign: 'center' }}>
-        <Typography variant="h6" color="error">
-          Error loading page. Please refresh.
-        </Typography>
-      </Box>
-    );
-  }
+    // Check if running as PWA (standalone mode)
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || 
+                      window.navigator.standalone === true;
+    setIsStandalone(standalone);
+  }, []);
 
   const handleClearStorage = () => {
     if (window.confirm('This will clear all app data (localStorage and sessionStorage). This will log you out and reset all preferences. Continue?')) {

@@ -13,12 +13,12 @@ import {
   Paper
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import { setAuthenticated, getIntendedDestination, clearIntendedDestination } from "../../utils/authUtils";
+import { setAuthenticated, getIntendedDestination, clearIntendedDestination, getUsername, saveUsername } from "../../utils/authUtils";
 import { authAPI } from "../../api";
 // import FoodEmojiBackground from "../FoodEmojiBackground";
 
 function LoginPage() {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(getUsername());
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -39,8 +39,10 @@ function LoginPage() {
       });
       
       console.log("response", response);
+      // Save username for auto-fill next time
+      saveUsername(email);
       // Set authentication first
-      setAuthenticated(response.data.user_id);
+      setAuthenticated(response.data.user_id, email);
       
       // Verify authentication was set correctly
       const userId = localStorage.getItem("userId");
