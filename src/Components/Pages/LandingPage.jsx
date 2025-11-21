@@ -20,7 +20,7 @@ function LandingPage() {
 
     // If user is already logged in, redirect to home
     if (isAuthenticated()) {
-      navigate("/home");
+      navigate("/home", { replace: true });
     }
   }, [navigate]);
   

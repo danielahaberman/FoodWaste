@@ -19,7 +19,7 @@ function AuthGuard({ children }) {
     
     // If authenticated and trying to access login/landing pages, redirect to home
     if (authenticated && (location.pathname === "/" || location.pathname === "/auth/login" || location.pathname === "/auth/register")) {
-      navigate("/home");
+      navigate("/home", { replace: true });
       return;
     }
     
@@ -27,10 +27,10 @@ function AuthGuard({ children }) {
     if (!authenticated && !publicPages.includes(location.pathname)) {
       // Store the intended destination for after login
       setIntendedDestination(location.pathname);
-      navigate("/auth/login");
+      navigate("/auth/login", { replace: true });
       return;
     }
-  }, [location.pathname, navigate]); // Re-check on route changes
+  }, [location.pathname]); // Only depend on pathname, navigate is stable
 
   // If still loading, show nothing
   if (isLoading) {
@@ -44,7 +44,7 @@ function AuthGuard({ children }) {
   if (!isUserAuthenticated && !publicPages.includes(location.pathname)) {
     // Store the intended destination for after login
     setIntendedDestination(location.pathname);
-    navigate("/auth/login");
+    navigate("/auth/login", { replace: true });
     return null;
   }
 
