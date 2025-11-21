@@ -86,9 +86,10 @@ function BottomBar() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          height: { xs: 40, sm: 42 }, // Reduced height for tighter spacing
+          height: { xs: 40, sm: 42 },
           width: '100%',
-          mt: 0.25, // Reduced margin top
+          mt: 0.25,
+          position: 'relative',
         }}
       >
         <IconButton 
@@ -98,16 +99,24 @@ function BottomBar() {
             color: isActive ? color : 'rgba(0, 0, 0, 0.6)',
             width: { xs: 48, sm: 52 },
             height: { xs: 48, sm: 52 },
-            padding: { xs: 0.75, sm: 0.875 }, // Reduced padding
+            minWidth: { xs: 48, sm: 52 },
+            minHeight: { xs: 48, sm: 52 },
+            padding: 0,
+            margin: 0,
             borderRadius: 2.5,
-            backgroundColor: isActive ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
+            backgroundColor: isActive ? 'rgba(25, 118, 210, 0.08)' : 'rgba(0, 0, 0, 0.02)',
             transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             '&:active': {
               transform: 'scale(0.92)',
               backgroundColor: isActive ? 'rgba(25, 118, 210, 0.15)' : 'rgba(0, 0, 0, 0.08)',
             },
             '& .MuiSvgIcon-root': {
               fontSize: { xs: '1.75rem', sm: '1.85rem' },
+              width: '1em',
+              height: '1em',
             }
           }} 
           aria-label={label}

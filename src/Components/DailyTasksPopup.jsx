@@ -103,6 +103,13 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
     }
   };
 
+  const handleClose = () => {
+    // Treat closing as dismiss - save dismiss time
+    const dismissTime = Date.now();
+    localStorage.setItem(`dailyTasksPopupDismissed_${userId}`, dismissTime.toString());
+    onClose();
+  };
+
   const getTaskCompletionCount = () => {
     if (!dailyTasks) return 0;
     let count = 0;
@@ -154,7 +161,7 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
     return (
       <Dialog 
         open={open} 
-        onClose={onClose} 
+        onClose={handleClose} 
         maxWidth="sm" 
         fullWidth
         PaperProps={{
@@ -183,7 +190,7 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
   return (
     <Dialog 
       open={open} 
-      onClose={onClose} 
+      onClose={handleClose} 
       maxWidth="sm" 
       fullWidth
       PaperProps={{
@@ -206,7 +213,7 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
             Daily Tasks
           </Typography>
         </Box>
-        <IconButton onClick={onClose} size="small">
+        <IconButton onClick={handleClose} size="small">
           <CloseIcon />
         </IconButton>
       </DialogTitle>

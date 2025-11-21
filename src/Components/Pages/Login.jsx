@@ -94,6 +94,19 @@ function LoginPage() {
           py: 4
         }}
       >
+        {/* Logo */}
+        <Box
+          component="img"
+          src="/appIcon2.png"
+          alt="Food Hero Logo"
+          sx={{
+            width: { xs: 100, sm: 120 },
+            height: { xs: 100, sm: 120 },
+            mb: 3,
+            borderRadius: 3,
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+          }}
+        />
         <Typography 
           variant="h3" 
           component="h1" 

@@ -74,8 +74,9 @@ function LandingPage() {
       localStorage.clear();
       // Clear sessionStorage
       sessionStorage.clear();
-      // Reload the page to apply changes
-      window.location.reload();
+      // Force navigation to root and reload to prevent white screen
+      // Use window.location.href instead of navigate to ensure clean reload
+      window.location.href = '/';
     }
   };
   
@@ -125,6 +126,19 @@ function LandingPage() {
         justifyContent: 'center',
         textAlign: 'center'
       }}>
+        {/* Logo */}
+        <Box
+          component="img"
+          src="/appIcon2.png"
+          alt="Food Hero Logo"
+          sx={{
+            width: { xs: 120, sm: 150 },
+            height: { xs: 120, sm: 150 },
+            mb: 3,
+            borderRadius: 4,
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+          }}
+        />
         <Typography 
           variant="h3" 
           component="h1" 
