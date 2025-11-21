@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from "react";
-import { Button, Box, Typography, Paper, Divider } from "@mui/material";
-import { GetApp as InstallIcon } from "@mui/icons-material";
+import { Button, Box, Typography, Paper, Divider, IconButton, Tooltip } from "@mui/material";
+import { GetApp as InstallIcon, Refresh as RefreshIcon } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import PWAInstallPrompt from "../PWAInstallPrompt";
 // import FoodEmojiBackground from "../FoodEmojiBackground";
@@ -17,6 +17,17 @@ function LandingPage() {
                       window.navigator.standalone === true;
     setIsStandalone(standalone);
   }, []);
+
+  const handleClearStorage = () => {
+    if (window.confirm('This will clear all app data (localStorage and sessionStorage). This will log you out and reset all preferences. Continue?')) {
+      // Clear localStorage
+      localStorage.clear();
+      // Clear sessionStorage
+      sessionStorage.clear();
+      // Reload the page to apply changes
+      window.location.reload();
+    }
+  };
   
   return (
     // <FoodEmojiBackground
@@ -37,8 +48,29 @@ function LandingPage() {
       textAlign: "center", 
       padding: "24px",
       minHeight: "100vh",
-      backgroundColor: "#f5f5f5"
+      backgroundColor: "#f5f5f5",
+      position: "relative"
     }}>
+      {/* Clear Storage Button - Top Right */}
+      <Tooltip title="Clear all app data (localStorage & sessionStorage)">
+        <IconButton
+          onClick={handleClearStorage}
+          sx={{
+            position: "absolute",
+            top: 16,
+            right: 16,
+            color: "#666",
+            backgroundColor: "rgba(255, 255, 255, 0.8)",
+            '&:hover': {
+              backgroundColor: "rgba(255, 255, 255, 1)",
+              color: "#1976d2"
+            }
+          }}
+        >
+          <RefreshIcon />
+        </IconButton>
+      </Tooltip>
+
       {/* Main Content */}
       <Box sx={{ 
         width: '100%', 
