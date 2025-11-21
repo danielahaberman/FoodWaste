@@ -11,25 +11,49 @@ function TermsGuard({ children }) {
   const userId = getCurrentUserId();
 
   useEffect(() => {
+    let isMounted = true;
+    
     const checkTermsStatus = async () => {
       if (!userId) {
-        setTermsAccepted(false);
-        setIsLoading(false);
+        if (isMounted) {
+          setTermsAccepted(false);
+          setIsLoading(false);
+        }
         return;
       }
 
       try {
-        const response = await authAPI.getTermsStatus(userId);
-        setTermsAccepted(response.data.termsAccepted);
+        // Add timeout to prevent hanging
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Terms check timeout')), 3000)
+        );
+        
+        const response = await Promise.race([
+          authAPI.getTermsStatus(userId),
+          timeoutPromise
+        ]);
+        
+        if (isMounted) {
+          setTermsAccepted(response.data.termsAccepted);
+        }
       } catch (error) {
         console.error("Error checking terms status:", error);
-        setTermsAccepted(false);
+        // Default to false (terms not accepted) on error to allow access
+        if (isMounted) {
+          setTermsAccepted(false);
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     checkTermsStatus();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [userId]);
 
   // If still loading or termsAccepted is null (not yet checked), show nothing

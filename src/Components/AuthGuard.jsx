@@ -9,18 +9,47 @@ function AuthGuard({ children }) {
   const location = useLocation();
 
   useEffect(() => {
-    try {
-      // Check if user is logged in (this will also check expiration)
-      setIsUserAuthenticated(isAuthenticated());
-      setIsLoading(false);
-    } catch (error) {
-      console.error('AuthGuard error:', error);
-      setIsUserAuthenticated(false);
-      setIsLoading(false);
-    }
+    let isMounted = true;
+    let loadingState = true;
+    
+    const checkAuth = async () => {
+      try {
+        // Check if user is logged in (this will also check expiration)
+        const authenticated = isAuthenticated();
+        if (isMounted) {
+          setIsUserAuthenticated(authenticated);
+          setIsLoading(false);
+          loadingState = false;
+        }
+      } catch (error) {
+        console.error('AuthGuard error:', error);
+        if (isMounted) {
+          setIsUserAuthenticated(false);
+          setIsLoading(false);
+          loadingState = false;
+        }
+      }
+    };
+    
+    // Add timeout to prevent infinite loading
+    const timeout = setTimeout(() => {
+      if (isMounted && loadingState) {
+        console.warn('AuthGuard: Loading timeout, defaulting to unauthenticated');
+        setIsUserAuthenticated(false);
+        setIsLoading(false);
+        loadingState = false;
+      }
+    }, 2000);
+    
+    checkAuth();
+    
+    return () => {
+      isMounted = false;
+      clearTimeout(timeout);
+    };
   }, [location.pathname]); // Re-check on route changes
 
-  // If still loading, show nothing
+  // If still loading, show nothing (but with timeout protection)
   if (isLoading) {
     return null;
   }

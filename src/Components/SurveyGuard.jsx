@@ -31,7 +31,16 @@ function SurveyGuard({ children }) {
         return;
       }
 
-      const response = await surveyAPI.getSurveyStatus(userId);
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Survey check timeout')), 3000)
+      );
+      
+      const response = await Promise.race([
+        surveyAPI.getSurveyStatus(userId),
+        timeoutPromise
+      ]);
+      
       setSurveyStatus(response.data);
       setIsLoading(false);
 
@@ -57,6 +66,7 @@ function SurveyGuard({ children }) {
       }
     } catch (error) {
       console.error("Error checking survey status:", error);
+      // On error, allow access (don't block the app)
       setIsLoading(false);
     }
   };

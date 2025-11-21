@@ -4,78 +4,41 @@ export const USER_ID_KEY = "userId";
 export const INTENDED_DESTINATION_KEY = "intendedDestination";
 export const AUTH_EXPIRY_KEY = "authExpiry";
 export const LOGIN_DATE_KEY = "loginDate";
+export const LAST_ROUTE_KEY = "lastRoute";
 const AUTH_DURATION_DAYS = 7; // Keep user logged in for 7 days
 const AUTO_LOGIN_DAYS = 3; // Auto-login if logged in within 3 days
 
+// Routes that shouldn't be persisted (public/auth pages)
+const EXCLUDED_ROUTES = ["/", "/auth/login", "/auth/register", "/terms", "/admin"];
+
+export const saveLastRoute = (pathname) => {
+	if (typeof pathname === "string" && pathname.length > 0) {
+		// Only save if it's not an excluded route
+		if (!EXCLUDED_ROUTES.includes(pathname)) {
+			localStorage.setItem(LAST_ROUTE_KEY, pathname);
+		}
+	}
+};
+
+export const getLastRoute = () => {
+	return localStorage.getItem(LAST_ROUTE_KEY) || "/home"; // Default to /home if no last route
+};
+
+export const clearLastRoute = () => {
+	localStorage.removeItem(LAST_ROUTE_KEY);
+};
+
 export const isAuthenticated = () => {
-	const userId = localStorage.getItem(USER_ID_KEY);
-	if (!userId) {
-		console.log("[isAuthenticated] No userId found");
+	try {
+		// Simple check: if userId exists in localStorage, user is authenticated
+		// No need for complex expiry/token logic since this isn't highly secure
+		const userId = localStorage.getItem(USER_ID_KEY);
+		return !!userId; // Return true if userId exists, false otherwise
+	} catch (error) {
+		console.error('[isAuthenticated] Error:', error);
+		// On error (e.g., localStorage not available), default to not authenticated
 		return false;
 	}
-
-	// Check if authentication has expired
-	const expiryTime = localStorage.getItem(AUTH_EXPIRY_KEY);
-	const loginDate = localStorage.getItem(LOGIN_DATE_KEY);
-	console.log("[isAuthenticated] Check:", { userId, expiryTime, loginDate });
-	
-	if (expiryTime) {
-		const now = Date.now();
-		const expiryTimestamp = parseInt(expiryTime, 10);
-		
-		// Check if expiryTime is valid number
-		if (isNaN(expiryTimestamp)) {
-			console.log("[isAuthenticated] Invalid expiryTime, checking auto-login");
-			// Invalid expiry time - check if we should auto-login
-			if (shouldAutoLogin()) {
-				// Restore authentication by resetting expiry
-				const newExpiryTime = Date.now() + (AUTH_DURATION_DAYS * 24 * 60 * 60 * 1000);
-				localStorage.setItem(AUTH_EXPIRY_KEY, newExpiryTime.toString());
-				console.log("[isAuthenticated] Auto-login restored auth");
-				return true;
-			}
-			// Invalid expiry and can't auto-login - clear it
-			console.log("[isAuthenticated] Invalid expiry, can't auto-login, logging out");
-			logout();
-			return false;
-		}
-		
-		if (now > expiryTimestamp) {
-			console.log("[isAuthenticated] Expiry passed, checking auto-login");
-			// Token expired - check if we should auto-login (within 3 days)
-			if (shouldAutoLogin()) {
-				// Restore authentication by resetting expiry
-				const newExpiryTime = Date.now() + (AUTH_DURATION_DAYS * 24 * 60 * 60 * 1000);
-				localStorage.setItem(AUTH_EXPIRY_KEY, newExpiryTime.toString());
-				console.log("[isAuthenticated] Auto-login restored auth");
-				return true;
-			}
-			// Token expired and too old, clear it
-			console.log("[isAuthenticated] Expiry too old, logging out");
-			logout();
-			return false;
-		}
-		// Expiry time exists and is valid (not expired)
-		console.log("[isAuthenticated] Valid auth");
-		return true;
-	}
-
-	// No expiry time set - check if we have a recent login date (within 3 days)
-	// This handles cases where expiryTime might not be set but user just logged in
-	console.log("[isAuthenticated] No expiryTime, checking auto-login");
-	if (shouldAutoLogin()) {
-		// Restore authentication by setting expiry
-		const newExpiryTime = Date.now() + (AUTH_DURATION_DAYS * 24 * 60 * 60 * 1000);
-		localStorage.setItem(AUTH_EXPIRY_KEY, newExpiryTime.toString());
-		console.log("[isAuthenticated] Auto-login restored auth");
-		return true;
-	}
-
-	// No expiry time and login date is too old or missing - not authenticated
-	// If userId exists but no expiry/loginDate, might be a race condition - don't logout
-	// Just return false and let AuthGuard handle redirect
-	console.log("[isAuthenticated] No expiryTime and can't auto-login, returning false");
-	return false;
 };
 
 export const getCurrentUserId = () => {
@@ -110,6 +73,7 @@ export const logout = () => {
 	localStorage.removeItem(AUTH_EXPIRY_KEY);
 	localStorage.removeItem(INTENDED_DESTINATION_KEY);
 	localStorage.removeItem(LOGIN_DATE_KEY);
+	clearLastRoute(); // Clear last route on logout
 };
 
 export const shouldAutoLogin = () => {

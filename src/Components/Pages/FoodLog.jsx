@@ -36,18 +36,24 @@ const FoodLog = () => {
   const navigate = useNavigate();
 
   // Auto-login check on mount - restore auth if login was within 3 days
+  // Only restore if we're already on the home page (don't redirect)
   useEffect(() => {
-    const userId = localStorage.getItem("userId");
-    
-    // If we have userId and login date is within 3 days, restore auth if needed
-    if (userId && shouldAutoLogin()) {
-      // Check if auth expired - isAuthenticated will auto-restore, but we ensure it here too
-      const expiryTime = localStorage.getItem("authExpiry");
-      if (!expiryTime || parseInt(expiryTime, 10) < Date.now()) {
-        // Restore authentication by resetting expiry
-        const newExpiryTime = Date.now() + (7 * 24 * 60 * 60 * 1000); // 7 days
-        localStorage.setItem("authExpiry", newExpiryTime.toString());
+    try {
+      const userId = localStorage.getItem("userId");
+      
+      // If we have userId and login date is within 3 days, restore auth if needed
+      if (userId && shouldAutoLogin()) {
+        // Check if auth expired - isAuthenticated will auto-restore, but we ensure it here too
+        const expiryTime = localStorage.getItem("authExpiry");
+        if (!expiryTime || parseInt(expiryTime, 10) < Date.now()) {
+          // Restore authentication by resetting expiry
+          const newExpiryTime = Date.now() + (7 * 24 * 60 * 60 * 1000); // 7 days
+          localStorage.setItem("authExpiry", newExpiryTime.toString());
+        }
       }
+    } catch (error) {
+      console.error('Error in FoodLog auto-login check:', error);
+      // Don't crash the app if auto-login check fails
     }
   }, []);
 

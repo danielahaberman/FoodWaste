@@ -20,11 +20,13 @@ import SurveyGuard from './Components/SurveyGuard';
 import ErrorBoundary from './Components/ErrorBoundary';
 import AdminGuard from './Components/AdminGuard';
 import PWAProvider from './Components/PWAProvider';
+import RouteTracker from './Components/RouteTracker';
 function App() {
   return (
     <ErrorBoundary>
       <PWAProvider>
         <BrowserRouter>
+          <RouteTracker />
           <Routes>
             {/* Admin routes (completely separate from user auth) */}
             <Route path="/admin" element={<AdminGuard />} />

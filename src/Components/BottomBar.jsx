@@ -56,32 +56,52 @@ function BottomBar({ setShowConsumeWaste, setLoggingPurchase, setShowSurvey, set
     return () => window.removeEventListener('taskCompleted', handleTaskUpdate);
   }, []);
 
-  const NavItem = ({ icon, label, onClick, color }) => (
-    <IconButton 
-      onClick={onClick} 
-      size="large" 
-      sx={{ 
-        color,
-        width: { xs: 48, sm: 52 },
-        height: { xs: 48, sm: 52 },
-        borderRadius: 3,
-        backgroundColor: 'transparent',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        '&:hover': {
-          backgroundColor: 'rgba(0, 0, 0, 0.04)',
-          transform: 'translateY(-2px)',
-        },
-        '&:active': {
-          transform: 'translateY(0px) scale(0.95)',
-        },
-        '& .MuiSvgIcon-root': {
-          fontSize: { xs: '1.5rem', sm: '1.6rem' }
-        }
-      }} 
-      aria-label={label}
+  const NavItem = ({ icon, label, onClick, color, isActive }) => (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flex: 1,
+        minWidth: 0,
+      }}
     >
-      {icon}
-    </IconButton>
+      <IconButton 
+        onClick={onClick} 
+        size="large" 
+        sx={{ 
+          color: isActive ? color : 'rgba(0, 0, 0, 0.6)',
+          width: { xs: 56, sm: 60 },
+          height: { xs: 56, sm: 60 },
+          borderRadius: 2.5,
+          backgroundColor: isActive ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
+          transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
+          '&:active': {
+            transform: 'scale(0.92)',
+            backgroundColor: isActive ? 'rgba(25, 118, 210, 0.15)' : 'rgba(0, 0, 0, 0.08)',
+          },
+          '& .MuiSvgIcon-root': {
+            fontSize: { xs: '1.75rem', sm: '1.85rem' },
+          }
+        }} 
+        aria-label={label}
+      >
+        {icon}
+      </IconButton>
+      <Typography
+        variant="caption"
+        sx={{
+          fontSize: '0.65rem',
+          fontWeight: 500,
+          color: isActive ? color : 'rgba(0, 0, 0, 0.5)',
+          mt: 0.25,
+          opacity: 0.8,
+        }}
+      >
+        {label}
+      </Typography>
+    </Box>
   );
 
   return (
@@ -94,47 +114,44 @@ function BottomBar({ setShowConsumeWaste, setLoggingPurchase, setShowSurvey, set
         transform: "translateX(-50%)",
         maxWidth: "600px",
         width: "100%",
-        pt: 2,
-        pb: `calc(14px + env(safe-area-inset-bottom, 0))`,
-        pl: { xs: `calc(20px + env(safe-area-inset-left, 0))`, sm: `calc(24px + env(safe-area-inset-left, 0))` },
-        pr: { xs: `calc(20px + env(safe-area-inset-right, 0))`, sm: `calc(24px + env(safe-area-inset-right, 0))` },
+        pt: 1.5,
+        pb: `calc(12px + env(safe-area-inset-bottom, 0))`,
+        px: { xs: 1, sm: 1.5 },
         display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        minHeight: 68,
-        height: `calc(68px + env(safe-area-inset-bottom, 0))`,
+        justifyContent: "space-around",
+        alignItems: "flex-start",
+        minHeight: 72,
+        height: `calc(72px + env(safe-area-inset-bottom, 0))`,
         backdropFilter: "blur(40px) saturate(200%)",
         WebkitBackdropFilter: "blur(40px) saturate(200%)",
-        backgroundColor: "rgba(255, 255, 255, 0.85)",
-        borderTop: "0.5px solid rgba(0, 0, 0, 0.06)",
-        boxShadow: "0 -2px 10px rgba(0, 0, 0, 0.05), 0 -1px 3px rgba(0, 0, 0, 0.08)",
+        backgroundColor: "rgba(255, 255, 255, 0.9)",
+        borderTop: "1px solid rgba(0, 0, 0, 0.08)",
+        boxShadow: "0 -4px 20px rgba(0, 0, 0, 0.08), 0 -2px 6px rgba(0, 0, 0, 0.06)",
         zIndex: 5,
       }}
     >
       <NavItem
-        icon={
-          <Box display="flex" alignItems="center" gap={0.5}>
-            <RestaurantIcon />
-            <DeleteIcon fontSize="small" />
-          </Box>
-        }
-        label="Consume/Waste"
+        icon={<RestaurantIcon />}
+        label="Log Food"
         onClick={() => setShowConsumeWaste(true)}
-        color="primary.main"
+        color="#1976d2"
+        isActive={false}
       />
 
       <NavItem
         icon={<AssignmentIcon />}
         label="Survey"
         onClick={() => setShowSurvey(true)}
-        color="primary.main"
+        color="#1976d2"
+        isActive={false}
       />
 
       <NavItem
         icon={<MenuBookIcon />}
         label="Resources"
         onClick={() => navigate("/resources")}
-        color="primary.main"
+        color="#1976d2"
+        isActive={false}
       />
 
       <NavItem
@@ -144,9 +161,15 @@ function BottomBar({ setShowConsumeWaste, setLoggingPurchase, setShowSurvey, set
               badgeContent={`${taskCompletionStatus.completed}/${taskCompletionStatus.total}`} 
               color={taskCompletionStatus.completed === taskCompletionStatus.total ? "success" : "primary"}
               sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
+                '& .MuiBadge-badge': {
+                  fontSize: '0.65rem',
+                  fontWeight: 600,
+                  minWidth: '20px',
+                  height: '18px',
+                  borderRadius: '9px',
+                  padding: '0 6px',
+                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.15)',
+                }
               }}
             >
               <ChecklistIcon />
@@ -155,9 +178,10 @@ function BottomBar({ setShowConsumeWaste, setLoggingPurchase, setShowSurvey, set
             <ChecklistIcon />
           )
         }
-        label="Tasks & Leaderboard"
+        label="Tasks"
         onClick={() => setShowTasksAndLeaderboard(true)}
-        color={showDailyTasksIndicator && taskCompletionStatus.completed === taskCompletionStatus.total ? "success.main" : "primary.main"}
+        color={showDailyTasksIndicator && taskCompletionStatus.completed === taskCompletionStatus.total ? "#2e7d32" : "#1976d2"}
+        isActive={showDailyTasksIndicator}
       />
 
       <NavItem
@@ -167,7 +191,8 @@ function BottomBar({ setShowConsumeWaste, setLoggingPurchase, setShowSurvey, set
           logout();
           navigate("/");
         }}
-        color="error.main"
+        color="#d32f2f"
+        isActive={false}
       />
     </Box>
   );
