@@ -9,6 +9,7 @@ import { IconButton, Paper, Button, Box, Typography } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import LogoutIcon from '@mui/icons-material/Logout';
 import { useNavigate } from "react-router-dom";
+import { shouldAutoLogin, setAuthenticated, getCurrentUserId } from "../../utils/authUtils";
 
 import RestaurantIcon from '@mui/icons-material/Restaurant';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -33,6 +34,22 @@ const FoodLog = () => {
   const [showDailyTasksPopup, setShowDailyTasksPopup] = useState(false)
   const [showTasksAndLeaderboard, setShowTasksAndLeaderboard] = useState(false)
   const navigate = useNavigate();
+
+  // Auto-login check on mount - restore auth if login was within 3 days
+  useEffect(() => {
+    const userId = localStorage.getItem("userId");
+    
+    // If we have userId and login date is within 3 days, restore auth if needed
+    if (userId && shouldAutoLogin()) {
+      // Check if auth expired - isAuthenticated will auto-restore, but we ensure it here too
+      const expiryTime = localStorage.getItem("authExpiry");
+      if (!expiryTime || parseInt(expiryTime, 10) < Date.now()) {
+        // Restore authentication by resetting expiry
+        const newExpiryTime = Date.now() + (7 * 24 * 60 * 60 * 1000); // 7 days
+        localStorage.setItem("authExpiry", newExpiryTime.toString());
+      }
+    }
+  }, []);
 
   // Extract unique dates with food purchases
   const datesWithFood = [...new Set(
@@ -85,6 +102,19 @@ const deletePurchase = async (purchaseId) => {
       if (!popupShownToday) {
         try {
           const userId = localStorage.getItem("userId");
+          
+          // Check if popup was dismissed within the last 10 minutes
+          const dismissTime = localStorage.getItem(`dailyTasksPopupDismissed_${userId}`);
+          if (dismissTime) {
+            const dismissTimestamp = parseInt(dismissTime, 10);
+            const now = Date.now();
+            const tenMinutesInMs = 10 * 60 * 1000; // 10 minutes in milliseconds
+            
+            if (now - dismissTimestamp < tenMinutesInMs) {
+              // Popup was dismissed less than 10 minutes ago, don't show it
+              return;
+            }
+          }
           
           // First check if weekly survey is due - if so, don't show daily tasks popup
           const surveyResponse = await surveyAPI.getSurveyStatus(userId);

@@ -9,11 +9,11 @@ import weekOfYear from "dayjs/plugin/weekOfYear";
 import Survey from "../Survey";
 import {
   Box,
-  Button,
   Typography,
   Container,
   CircularProgress,
 } from "@mui/material";
+import PageWrapper from "../PageWrapper";
 
 dayjs.extend(weekOfYear);
 dayjs.extend(isSameOrAfter);
@@ -74,92 +74,87 @@ function QaPage({ setShowSurvey }) {
   // Calculate next week start date (assuming Monday)
   const nextSurveyDate = dayjs().startOf("week").add(1, "week").format("MMM D, YYYY");
 
+  const handleClose = () => {
+    if (setShowSurvey) {
+      setShowSurvey(false);
+    } else {
+      navigate("/home");
+    }
+  };
+
   return (
-    <Box
-      sx={{
-        position: "absolute",
-        inset: 0,
-        bgcolor: "background.default",
-        zIndex: 1300,
-        overflow: "hidden", /* Prevent page-level scrolling */
-        display: "flex",
-        flexDirection: "column",
-        color: "black",
-        /* iOS safe area support */
-        paddingTop: 'env(safe-area-inset-top, 0)',
-        paddingBottom: 'env(safe-area-inset-bottom, 0)',
-        paddingLeft: 'env(safe-area-inset-left, 0)',
-        paddingRight: 'env(safe-area-inset-right, 0)'
-      }}
+    <PageWrapper 
+      title="Survey"
+      onClose={handleClose}
+      maxWidth="sm"
+      headerColor="background.default"
+      headerTextColor="text.primary"
     >
-      {/* Fixed Header */}
-      <Box 
+      <Container 
+        maxWidth="sm"
         sx={{ 
-          display: "flex", 
-          justifyContent: "space-between", 
-          alignItems: "center",
-          px: { xs: 2, sm: 0 },
-          py: 2,
-          flexShrink: 0, /* Prevent header from shrinking */
-          position: "sticky",
-          top: 0,
-          backgroundColor: "background.default",
-          zIndex: 10,
-          borderBottom: "1px solid #e0e0e0",
-          /* iOS safe area support for header */
-          paddingTop: { xs: `calc(16px + env(safe-area-inset-top, 0))`, sm: 2 },
-          marginTop: { xs: `calc(env(safe-area-inset-top, 0) * -1)`, sm: 0 }
+          maxWidth: { xs: '100%', sm: '600px' },
+          px: { xs: 2.5, sm: 3 },
+          py: { xs: 3, sm: 4 },
+          pb: `calc(40px + env(safe-area-inset-bottom, 0))`
         }}
       >
-        <Container maxWidth="sm" sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", px: { xs: 2, sm: 3 } }}>
-          <Typography variant="h6">Survey</Typography>
-          <Button 
-            variant="outlined" 
-            onClick={() => {
-              if (setShowSurvey) {
-                setShowSurvey(false);
-              } else {
-                navigate("/home");
-              }
-            }}
-          >
-            Back
-          </Button>
-        </Container>
-      </Box>
-
-      {/* Scrollable Content Area */}
-      <Box
-        sx={{
-          flex: 1,
-          overflowY: "auto",
-          overflowX: "hidden",
-          py: 4
-        }}
-      >
-        <Container maxWidth="sm">
-
         {loadingStatus ? (
-          <Box display="flex" justifyContent="center" alignItems="center" py={3}>
+          <Box display="flex" justifyContent="center" alignItems="center" py={5}>
             <CircularProgress />
           </Box>
         ) : errorStatus ? (
-          <Typography color="error">{errorStatus}</Typography>
+          <Typography 
+            color="error"
+            sx={{ 
+              fontSize: '1rem',
+              fontWeight: 500,
+              textAlign: 'center',
+              py: 2
+            }}
+          >
+            {errorStatus}
+          </Typography>
         ) : surveyQuestions?.length > 0 ? (
           <Survey questions={surveyQuestions} />
         ) : (
-          <Box mt={4} textAlign="center">
-            <Typography variant="h6" gutterBottom>
-              You have completed this week’s survey. 🎉
+          <Box 
+            mt={4} 
+            textAlign="center"
+            sx={{
+              p: { xs: 4, sm: 5 },
+              backgroundColor: 'white',
+              borderRadius: 4,
+              border: 'none',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06)'
+            }}
+          >
+            <Typography 
+              variant="h6" 
+              gutterBottom
+              sx={{
+                fontSize: { xs: '1.2rem', sm: '1.4rem' },
+                fontWeight: 600,
+                mb: 2,
+                color: 'rgba(0, 0, 0, 0.85)'
+              }}
+            >
+              You have completed this week's survey. 🎉
             </Typography>
-            <Typography variant="body1">
-              Please come back on <strong>{nextSurveyDate}</strong> to complete the next survey.
+            <Typography 
+              variant="body1"
+              sx={{
+                fontSize: { xs: '0.95rem', sm: '1.05rem' },
+                lineHeight: 1.6,
+                color: 'rgba(0, 0, 0, 0.7)'
+              }}
+            >
+              Please come back on <strong style={{ fontWeight: 600 }}>{nextSurveyDate}</strong> to complete the next survey.
             </Typography>
           </Box>
         )}
-        </Container>
-      </Box>
-    </Box>
+      </Container>
+    </PageWrapper>
   );
 }
 

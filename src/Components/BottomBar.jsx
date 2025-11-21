@@ -57,7 +57,29 @@ function BottomBar({ setShowConsumeWaste, setLoggingPurchase, setShowSurvey, set
   }, []);
 
   const NavItem = ({ icon, label, onClick, color }) => (
-    <IconButton onClick={onClick} size="large" sx={{ color }} aria-label={label}>
+    <IconButton 
+      onClick={onClick} 
+      size="large" 
+      sx={{ 
+        color,
+        width: { xs: 48, sm: 52 },
+        height: { xs: 48, sm: 52 },
+        borderRadius: 3,
+        backgroundColor: 'transparent',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        '&:hover': {
+          backgroundColor: 'rgba(0, 0, 0, 0.04)',
+          transform: 'translateY(-2px)',
+        },
+        '&:active': {
+          transform: 'translateY(0px) scale(0.95)',
+        },
+        '& .MuiSvgIcon-root': {
+          fontSize: { xs: '1.5rem', sm: '1.6rem' }
+        }
+      }} 
+      aria-label={label}
+    >
       {icon}
     </IconButton>
   );
@@ -72,19 +94,20 @@ function BottomBar({ setShowConsumeWaste, setLoggingPurchase, setShowSurvey, set
         transform: "translateX(-50%)",
         maxWidth: "600px",
         width: "100%",
-        px: 1.5,
-        pt: 0.5,
-        pb: `calc(8px + env(safe-area-inset-bottom, 0))`,
+        pt: 2,
+        pb: `calc(14px + env(safe-area-inset-bottom, 0))`,
+        pl: { xs: `calc(20px + env(safe-area-inset-left, 0))`, sm: `calc(24px + env(safe-area-inset-left, 0))` },
+        pr: { xs: `calc(20px + env(safe-area-inset-right, 0))`, sm: `calc(24px + env(safe-area-inset-right, 0))` },
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        minHeight: 56,
-        height: `calc(56px + env(safe-area-inset-bottom, 0))`,
-        backdropFilter: "blur(10px)",
-        backgroundColor: "rgba(255, 255, 255, 0.9)",
-        borderTop: 1,
-        borderColor: "#e0e0e0",
-        boxShadow: "0 -6px 18px rgba(0,0,0,0.08)",
+        minHeight: 68,
+        height: `calc(68px + env(safe-area-inset-bottom, 0))`,
+        backdropFilter: "blur(40px) saturate(200%)",
+        WebkitBackdropFilter: "blur(40px) saturate(200%)",
+        backgroundColor: "rgba(255, 255, 255, 0.85)",
+        borderTop: "0.5px solid rgba(0, 0, 0, 0.06)",
+        boxShadow: "0 -2px 10px rgba(0, 0, 0, 0.05), 0 -1px 3px rgba(0, 0, 0, 0.08)",
         zIndex: 5,
       }}
     >

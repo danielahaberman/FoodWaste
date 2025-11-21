@@ -138,15 +138,16 @@ const Survey = ({ questions }) => {
       case "multiple_choice":
       case "rating":
         return (
-          <Stack spacing={2}>
+          <Stack spacing={3}>
             <Typography 
               variant="h6" 
               sx={{ 
-                color: 'black', 
-                fontWeight: 'bold', 
-                mb: 2,
-                fontSize: { xs: "1.1rem", sm: "1.25rem" },
-                lineHeight: 1.3
+                color: 'rgba(0, 0, 0, 0.85)', 
+                fontWeight: 600, 
+                mb: 1,
+                fontSize: { xs: "1.2rem", sm: "1.35rem" },
+                lineHeight: 1.4,
+                letterSpacing: '-0.01em'
               }}
             >
               {question.question || question.question_text || 'Question text not available'}
@@ -158,7 +159,7 @@ const Survey = ({ questions }) => {
                   xs: "repeat(auto-fit, minmax(120px, 1fr))", 
                   sm: "repeat(auto-fit, minmax(150px, 1fr))" 
                 },
-                gap: { xs: 1.5, sm: 2 },
+                gap: { xs: 2, sm: 2.5 },
                 width: "100%"
               }}
             >
@@ -174,12 +175,28 @@ const Survey = ({ questions }) => {
                     color={isSelected ? "primary" : "inherit"}
                     onClick={() => handleResponse(optionValue)}
                     sx={{
-                      minHeight: { xs: 48, sm: 56 },
+                      minHeight: { xs: 52, sm: 60 },
                       fontSize: { xs: "0.9rem", sm: "1rem" },
-                      padding: { xs: "8px 12px", sm: "12px 16px" },
+                      padding: { xs: "12px 16px", sm: "14px 20px" },
                       whiteSpace: "nowrap",
                       overflow: "hidden",
-                      textOverflow: "ellipsis"
+                      textOverflow: "ellipsis",
+                      borderRadius: 3,
+                      textTransform: 'none',
+                      fontWeight: isSelected ? 600 : 500,
+                      borderColor: isSelected ? 'primary.main' : 'rgba(0, 0, 0, 0.15)',
+                      backgroundColor: isSelected ? 'primary.main' : '#fafafa',
+                      color: isSelected ? 'white' : 'rgba(0, 0, 0, 0.85)',
+                      boxShadow: isSelected ? '0 2px 8px rgba(25, 118, 210, 0.25)' : 'none',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      '&:hover': {
+                        backgroundColor: isSelected ? 'primary.dark' : 'white',
+                        borderColor: isSelected ? 'primary.dark' : 'primary.main',
+                        transform: 'translateY(-2px)',
+                        boxShadow: isSelected 
+                          ? '0 6px 16px rgba(25, 118, 210, 0.35)' 
+                          : '0 2px 8px rgba(0, 0, 0, 0.1)'
+                      }
                     }}
                   >
                     {optionText}
@@ -196,11 +213,12 @@ const Survey = ({ questions }) => {
             <Typography 
               variant="h6" 
               sx={{ 
-                color: 'black', 
-                fontWeight: 'bold', 
-                mb: 2,
-                fontSize: { xs: "1.1rem", sm: "1.25rem" },
-                lineHeight: 1.3
+                color: 'rgba(0, 0, 0, 0.85)', 
+                fontWeight: 600, 
+                mb: 3,
+                fontSize: { xs: "1.2rem", sm: "1.35rem" },
+                lineHeight: 1.4,
+                letterSpacing: '-0.01em'
               }}
             >
               {question.question || question.question_text || 'Question text not available'}
@@ -220,9 +238,23 @@ const Survey = ({ questions }) => {
                 step: question.question?.toLowerCase().includes("spend") ? 0.01 : 1,
               } : undefined}
               sx={{
+                borderRadius: 3,
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 3,
+                  backgroundColor: '#fafafa',
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    backgroundColor: 'white'
+                  },
+                  '&.Mui-focused': {
+                    backgroundColor: 'white',
+                    boxShadow: '0 0 0 3px rgba(25, 118, 210, 0.1)'
+                  }
+                },
                 '& .MuiInputBase-input': {
                   fontSize: { xs: "1rem", sm: "1.1rem" },
-                  padding: { xs: "12px 14px", sm: "16px 14px" }
+                  padding: { xs: "14px 16px", sm: "16px 18px" },
+                  fontWeight: 500
                 }
               }}
             />
@@ -234,11 +266,12 @@ const Survey = ({ questions }) => {
             <Typography 
               variant="h6" 
               sx={{ 
-                color: 'black', 
-                fontWeight: 'bold', 
-                mb: 2,
-                fontSize: { xs: "1.1rem", sm: "1.25rem" },
-                lineHeight: 1.3
+                color: 'rgba(0, 0, 0, 0.85)', 
+                fontWeight: 600, 
+                mb: 3,
+                fontSize: { xs: "1.2rem", sm: "1.35rem" },
+                lineHeight: 1.4,
+                letterSpacing: '-0.01em'
               }}
             >
               {question.question || question.question_text || 'Question text not available'}
@@ -258,9 +291,23 @@ const Survey = ({ questions }) => {
                 step: 0.01,
               }}
               sx={{
+                borderRadius: 3,
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 3,
+                  backgroundColor: '#fafafa',
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    backgroundColor: 'white'
+                  },
+                  '&.Mui-focused': {
+                    backgroundColor: 'white',
+                    boxShadow: '0 0 0 3px rgba(25, 118, 210, 0.1)'
+                  }
+                },
                 '& .MuiInputBase-input': {
                   fontSize: { xs: "1rem", sm: "1.1rem" },
-                  padding: { xs: "12px 14px", sm: "16px 14px" }
+                  padding: { xs: "14px 16px", sm: "16px 18px" },
+                  fontWeight: 500
                 }
               }}
             />
@@ -337,21 +384,28 @@ const Survey = ({ questions }) => {
           variant="h4" 
           gutterBottom
           sx={{ 
-            fontSize: { xs: "1.5rem", sm: "2rem" },
+            fontSize: { xs: "1.6rem", sm: "2.1rem" },
             textAlign: "center",
-            mb: { xs: 2, sm: 3 }
+            mb: { xs: 3, sm: 4 },
+            fontWeight: 600,
+            letterSpacing: '-0.02em',
+            color: 'rgba(0, 0, 0, 0.85)'
           }}
         >
           📝 {surveyTitle} survey
         </Typography>
 
         <Paper 
-          elevation={3} 
+          elevation={0}
           sx={{ 
-            padding: { xs: 2, sm: 4 }, 
+            padding: { xs: 4, sm: 5 }, 
             width: "100%", 
             color: "black",
-            boxSizing: "border-box"
+            boxSizing: "border-box",
+            borderRadius: 4,
+            border: 'none',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06)',
+            backgroundColor: 'white'
           }}
         >
           {currentQuestion && renderQuestion(currentQuestion)}
@@ -372,7 +426,25 @@ const Survey = ({ questions }) => {
               disabled={currentIndex === 0}
               sx={{ 
                 flex: 1,
-                maxWidth: "120px"
+                maxWidth: "120px",
+                borderRadius: 3,
+                textTransform: 'none',
+                fontWeight: 500,
+                borderColor: 'rgba(0, 0, 0, 0.15)',
+                color: 'rgba(0, 0, 0, 0.85)',
+                backgroundColor: '#fafafa',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                '&:hover': {
+                  borderColor: 'primary.main',
+                  backgroundColor: 'white',
+                  transform: 'translateY(-1px)',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+                },
+                '&:disabled': {
+                  borderColor: 'rgba(0, 0, 0, 0.08)',
+                  color: 'rgba(0, 0, 0, 0.25)',
+                  backgroundColor: '#fafafa'
+                }
               }}
             >
               ⬅
@@ -382,7 +454,10 @@ const Survey = ({ questions }) => {
               sx={{ 
                 textAlign: "center",
                 flex: 1,
-                fontSize: { xs: "0.9rem", sm: "1rem" }
+                fontSize: { xs: "0.95rem", sm: "1rem" },
+                fontWeight: 500,
+                color: 'rgba(0, 0, 0, 0.6)',
+                letterSpacing: '-0.01em'
               }}
             >
               Question {currentIndex + 1} of {questions.length}
@@ -393,7 +468,23 @@ const Survey = ({ questions }) => {
               disabled={isEmptyResponse}
               sx={{ 
                 flex: 1,
-                maxWidth: "120px"
+                maxWidth: "120px",
+                borderRadius: 3,
+                textTransform: 'none',
+                fontWeight: 600,
+                backgroundColor: 'primary.main',
+                boxShadow: '0 2px 8px rgba(25, 118, 210, 0.25)',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                '&:hover': {
+                  backgroundColor: 'primary.dark',
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 6px 16px rgba(25, 118, 210, 0.35)'
+                },
+                '&:disabled': {
+                  backgroundColor: 'rgba(0, 0, 0, 0.08)',
+                  color: 'rgba(0, 0, 0, 0.25)',
+                  boxShadow: 'none'
+                }
               }}
             >
               {currentIndex < questions.length - 1 ? "Next ➡" : "Finish ✅"}

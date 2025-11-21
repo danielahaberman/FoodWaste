@@ -32,21 +32,21 @@ function TermsGuard({ children }) {
     checkTermsStatus();
   }, [userId]);
 
-  // If still loading, show nothing
-  if (isLoading) {
+  // If still loading or termsAccepted is null (not yet checked), show nothing
+  if (isLoading || termsAccepted === null) {
     return null;
   }
 
   // Define pages that don't require terms acceptance
   const publicPages = ["/", "/auth/login", "/auth/register", "/terms"];
   
-  // If terms not accepted and trying to access protected pages, show terms page
+  // If terms not accepted (explicitly false) and trying to access protected pages, show terms page
   // But only if user is authenticated (AuthGuard will handle unauthenticated users)
-  if (!termsAccepted && !publicPages.includes(location.pathname) && userId) {
+  if (termsAccepted === false && !publicPages.includes(location.pathname) && userId) {
     return <TermsAndConditions onTermsAccepted={() => setTermsAccepted(true)} />;
   }
 
-  // If terms accepted, render the children (normal app content)
+  // If terms accepted or on public page, render the children (normal app content)
   return children;
 }
 

@@ -88,10 +88,17 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
 
   const handleDismiss = async () => {
     try {
+      // Save dismiss datetime to localStorage (10 minutes cooldown)
+      const dismissTime = Date.now();
+      localStorage.setItem(`dailyTasksPopupDismissed_${userId}`, dismissTime.toString());
+      
       await dailyTasksAPI.markPopupShown({ user_id: userId });
       onClose();
     } catch (error) {
       console.error("Error marking popup as shown:", error);
+      // Still save dismiss time even if API call fails
+      const dismissTime = Date.now();
+      localStorage.setItem(`dailyTasksPopupDismissed_${userId}`, dismissTime.toString());
       onClose();
     }
   };

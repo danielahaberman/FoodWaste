@@ -39,7 +39,14 @@ function LoginPage() {
       });
       
       console.log("response", response);
+      // Set authentication first
       setAuthenticated(response.data.user_id);
+      
+      // Verify authentication was set correctly
+      const userId = localStorage.getItem("userId");
+      const expiryTime = localStorage.getItem("authExpiry");
+      const loginDate = localStorage.getItem("loginDate");
+      console.log("[Login] Auth check after login:", { userId, expiryTime, loginDate });
       
       // Check if terms have been accepted
       try {

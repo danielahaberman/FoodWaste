@@ -4,6 +4,7 @@ import { Button, Box, Typography, Paper, Divider, IconButton, Tooltip } from "@m
 import { GetApp as InstallIcon, Refresh as RefreshIcon } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import PWAInstallPrompt from "../PWAInstallPrompt";
+import { isAuthenticated } from "../../utils/authUtils";
 // import FoodEmojiBackground from "../FoodEmojiBackground";
 
 function LandingPage() {
@@ -18,11 +19,17 @@ function LandingPage() {
       const standalone = window.matchMedia('(display-mode: standalone)').matches || 
                         window.navigator.standalone === true;
       setIsStandalone(standalone);
+      
+      // Check if user is authenticated and redirect to home
+      if (isAuthenticated()) {
+        console.log("[LandingPage] User is authenticated, redirecting to /home");
+        navigate("/home");
+      }
     } catch (error) {
       console.error('Error in LandingPage useEffect:', error);
       setHasError(true);
     }
-  }, []);
+  }, [navigate]);
 
   if (hasError) {
     return (

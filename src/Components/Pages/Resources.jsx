@@ -24,10 +24,10 @@ import {
   Delete,
   Park,
   School,
-  Link as LinkIcon,
-  ArrowBack
+  Link as LinkIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import PageWrapper from '../PageWrapper';
 
 const Resources = () => {
   const navigate = useNavigate();
@@ -120,94 +120,58 @@ const Resources = () => {
   };
 
   return (
-    <Box sx={{ 
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      width: '100vw',
-      height: '100vh',
-      backgroundColor: '#f5f5f5',
-      display: 'flex',
-      flexDirection: 'column',
-      overflow: 'hidden',
-      zIndex: 1300,
-      /* iOS safe area support */
-      paddingTop: 'env(safe-area-inset-top, 0)',
-      paddingBottom: 'env(safe-area-inset-bottom, 0)',
-      paddingLeft: 'env(safe-area-inset-left, 0)',
-      paddingRight: 'env(safe-area-inset-right, 0)'
-    }}>
-      {/* Header */}
-      <Box sx={{ 
-        backgroundColor: 'primary.main', 
-        color: 'white', 
-        py: 2,
-        position: 'sticky',
-        top: 0,
-        zIndex: 1000,
-        flexShrink: 0, /* Prevent header from shrinking */
-        /* iOS safe area support for header */
-        paddingTop: { xs: `calc(16px + env(safe-area-inset-top, 0))`, sm: 2 },
-        marginTop: { xs: `calc(env(safe-area-inset-top, 0) * -1)`, sm: 0 }
-      }}>
-        <Container 
-          maxWidth="md" 
-          sx={{ 
-            px: { xs: 2, sm: 3 },
-            maxWidth: { xs: '100%', sm: '600px' }
-          }}
-        >
-          <Box display="flex" alignItems="center" gap={2}>
-            <Button
-              color="inherit"
-              onClick={() => navigate('/home')}
-              startIcon={<ArrowBack />}
-              sx={{ minWidth: 'auto', px: 1 }}
-            >
-              {/* Back */}
-            </Button>
-            <Typography 
-              variant="h5" 
-              component="h1" 
-              sx={{ 
-                flexGrow: 1,
-                fontSize: { xs: '1.2rem', sm: '1.5rem' }
-              }}
-            >
-              🌱 Food Waste Resources
-            </Typography>
-          </Box>
-        </Container>
-      </Box>
-
-      <Box 
+    <PageWrapper 
+      title="🌱 Food Waste Resources"
+      onClose={() => navigate('/home')}
+      maxWidth="sm"
+    >
+      <Container 
+        maxWidth="sm"
         sx={{ 
-          flex: 1,
-          overflow: 'auto',
-          px: { xs: 2, sm: 3 },
           maxWidth: { xs: '100%', sm: '600px' },
-          mx: 'auto',
-          mt: 3,
-          pb: `calc(16px + env(safe-area-inset-bottom, 0))`,
-          paddingBottom: `calc(16px + env(safe-area-inset-bottom, 0))`
+          px: { xs: 2, sm: 2.5 },
+          py: { xs: 2.5, sm: 3 },
+          pb: `calc(32px + env(safe-area-inset-bottom, 0))`
         }}
       >
         {/* Introduction */}
-        <Paper elevation={2} sx={{ p: { xs: 2, sm: 3 }, mb: 3, backgroundColor: 'white' }}>
+        <Paper 
+          elevation={0} 
+          sx={{ 
+            p: { xs: 3, sm: 4 }, 
+            mb: 3, 
+            backgroundColor: 'white',
+            borderRadius: 4,
+            border: 'none',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06)',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            '&:hover': {
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.08)',
+              transform: 'translateY(-1px)'
+            }
+          }}
+        >
           <Typography 
             variant="h6" 
             gutterBottom 
             color="primary"
-            sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}
+            sx={{ 
+              fontSize: { xs: '1.15rem', sm: '1.3rem' },
+              fontWeight: 600,
+              mb: 2,
+              letterSpacing: '-0.01em'
+            }}
           >
             💡 Why Reduce Food Waste?
           </Typography>
           <Typography 
             variant="body1" 
             paragraph
-            sx={{ fontSize: { xs: '0.95rem', sm: '1rem' } }}
+            sx={{ 
+              fontSize: { xs: '0.95rem', sm: '1.05rem' },
+              lineHeight: 1.6,
+              color: 'rgba(0, 0, 0, 0.7)'
+            }}
           >
             Food waste is a major global issue that affects our environment, economy, and society. 
             By reducing food waste, you can save money, help the environment, and ensure more 
@@ -219,35 +183,72 @@ const Resources = () => {
               label="Reduces greenhouse gases" 
               color="success" 
               size="small"
-              sx={{ fontSize: { xs: '0.75rem', sm: '0.8rem' } }}
+              sx={{ 
+                fontSize: { xs: '0.75rem', sm: '0.8rem' },
+                borderRadius: 2,
+                fontWeight: 500,
+                height: { xs: 28, sm: 32 }
+              }}
             />
             <Chip 
               icon={<Storage />} 
               label="Saves money" 
               color="primary" 
               size="small"
-              sx={{ fontSize: { xs: '0.75rem', sm: '0.8rem' } }}
+              sx={{ 
+                fontSize: { xs: '0.75rem', sm: '0.8rem' },
+                borderRadius: 2,
+                fontWeight: 500,
+                height: { xs: 28, sm: 32 }
+              }}
             />
             <Chip 
               icon={<Delete />} 
               label="Conserves resources" 
               color="info" 
               size="small"
-              sx={{ fontSize: { xs: '0.75rem', sm: '0.8rem' } }}
+              sx={{ 
+                fontSize: { xs: '0.75rem', sm: '0.8rem' },
+                borderRadius: 2,
+                fontWeight: 500,
+                height: { xs: 28, sm: 32 }
+              }}
             />
           </Box>
         </Paper>
 
         {/* Quick Tips */}
-        <Card sx={{ mb: 3 }}>
-          <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+        <Card 
+          elevation={0}
+          sx={{ 
+            mb: 3,
+            borderRadius: 4,
+            border: 'none',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06)',
+            backgroundColor: 'white',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            '&:hover': {
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.08)',
+              transform: 'translateY(-1px)'
+            }
+          }}
+        >
+          <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
             <Typography 
               variant="h6" 
               gutterBottom 
               color="primary"
-              sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}
+              sx={{ 
+                fontSize: { xs: '1.15rem', sm: '1.3rem' },
+                fontWeight: 600,
+                mb: 2.5,
+                letterSpacing: '-0.01em',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1
+              }}
             >
-              <Lightbulb sx={{ mr: 1, verticalAlign: 'middle' }} />
+              <Lightbulb sx={{ fontSize: { xs: '1.3rem', sm: '1.5rem' } }} />
               Quick Tips to Get Started
             </Typography>
             <Grid container spacing={1}>
@@ -282,29 +283,70 @@ const Resources = () => {
         </Card>
 
         {/* Storage Tips */}
-        <Card sx={{ mb: 3 }}>
-          <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+        <Card 
+          elevation={0}
+          sx={{ 
+            mb: 3,
+            borderRadius: 4,
+            border: 'none',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06)',
+            backgroundColor: 'white',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            '&:hover': {
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.08)',
+              transform: 'translateY(-1px)'
+            }
+          }}
+        >
+          <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
             <Typography 
               variant="h6" 
               gutterBottom 
               color="primary"
-              sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}
+              sx={{ 
+                fontSize: { xs: '1.15rem', sm: '1.3rem' },
+                fontWeight: 600,
+                mb: 2.5,
+                letterSpacing: '-0.01em',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1
+              }}
             >
-              <Storage sx={{ mr: 1, verticalAlign: 'middle' }} />
+              <Storage sx={{ fontSize: { xs: '1.3rem', sm: '1.5rem' } }} />
               Proper Food Storage Guide
             </Typography>
             <Typography 
               variant="body2" 
               color="text.secondary" 
               paragraph
-              sx={{ fontSize: { xs: '0.85rem', sm: '0.9rem' } }}
+              sx={{ 
+                fontSize: { xs: '0.9rem', sm: '0.95rem' },
+                lineHeight: 1.6,
+                mb: 2.5
+              }}
             >
               Proper storage can significantly extend the life of your food and reduce waste.
             </Typography>
             <Grid container spacing={2}>
               {storageTips.map((item, index) => (
                 <Grid item xs={12} sm={6} md={4} key={index}>
-                  <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 }, height: '100%' }}>
+                  <Paper 
+                    elevation={0}
+                    sx={{ 
+                      p: { xs: 2.5, sm: 3 }, 
+                      height: '100%',
+                      borderRadius: 3,
+                      border: 'none',
+                      backgroundColor: '#fafafa',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      '&:hover': {
+                        backgroundColor: 'white',
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                        transform: 'translateY(-2px)'
+                      }
+                    }}
+                  >
                     <Typography 
                       variant="subtitle2" 
                       color="primary" 
@@ -327,15 +369,37 @@ const Resources = () => {
         </Card>
 
         {/* External Resources */}
-        <Card sx={{ mb: 3 }}>
-          <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+        <Card 
+          elevation={0}
+          sx={{ 
+            mb: 3,
+            borderRadius: 4,
+            border: 'none',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06)',
+            backgroundColor: 'white',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            '&:hover': {
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.08)',
+              transform: 'translateY(-1px)'
+            }
+          }}
+        >
+          <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
             <Typography 
               variant="h6" 
               gutterBottom 
               color="primary"
-              sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}
+              sx={{ 
+                fontSize: { xs: '1.15rem', sm: '1.3rem' },
+                fontWeight: 600,
+                mb: 2.5,
+                letterSpacing: '-0.01em',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1
+              }}
             >
-              <School sx={{ mr: 1, verticalAlign: 'middle' }} />
+              <School sx={{ fontSize: { xs: '1.3rem', sm: '1.5rem' } }} />
               Helpful Resources & Links
             </Typography>
             <Typography 
@@ -350,14 +414,19 @@ const Resources = () => {
               {externalResources.map((resource, index) => (
                 <Grid item xs={12} key={index}>
                   <Paper 
-                    variant="outlined" 
+                    elevation={0}
                     sx={{ 
-                      p: { xs: 1.5, sm: 2 }, 
+                      p: { xs: 2.5, sm: 3 }, 
+                      borderRadius: 3,
+                      border: 'none',
+                      backgroundColor: '#fafafa',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                       '&:hover': { 
-                        backgroundColor: 'action.hover',
-                        cursor: 'pointer'
-                      },
-                      transition: 'background-color 0.2s'
+                        backgroundColor: 'white',
+                        transform: 'translateY(-2px)',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
+                      }
                     }}
                     onClick={() => window.open(resource.url, '_blank')}
                   >
@@ -402,15 +471,37 @@ const Resources = () => {
         </Card>
 
         {/* Local Resources */}
-        <Card sx={{ mb: 3 }}>
-          <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+        <Card 
+          elevation={0}
+          sx={{ 
+            mb: 3,
+            borderRadius: 4,
+            border: 'none',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06)',
+            backgroundColor: 'white',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            '&:hover': {
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.08)',
+              transform: 'translateY(-1px)'
+            }
+          }}
+        >
+          <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
             <Typography 
               variant="h6" 
               gutterBottom 
               color="primary"
-              sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}
+              sx={{ 
+                fontSize: { xs: '1.15rem', sm: '1.3rem' },
+                fontWeight: 600,
+                mb: 2.5,
+                letterSpacing: '-0.01em',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1
+              }}
             >
-              <Restaurant sx={{ mr: 1, verticalAlign: 'middle' }} />
+              <Restaurant sx={{ fontSize: { xs: '1.3rem', sm: '1.5rem' } }} />
               Local Community Resources
             </Typography>
             <Typography 
@@ -512,8 +603,8 @@ const Resources = () => {
             Start Tracking Your Food
           </Button>
         </Paper>
-      </Box>
-    </Box>
+      </Container>
+    </PageWrapper>
   );
 };
 
