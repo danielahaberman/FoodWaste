@@ -3,7 +3,6 @@ import React, { useState, useEffect } from "react";
 import { Button, Box, Typography, Paper, Divider } from "@mui/material";
 import { GetApp as InstallIcon } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
-import { isAuthenticated } from "../../utils/authUtils";
 import PWAInstallPrompt from "../PWAInstallPrompt";
 // import FoodEmojiBackground from "../FoodEmojiBackground";
 
@@ -17,12 +16,7 @@ function LandingPage() {
     const standalone = window.matchMedia('(display-mode: standalone)').matches || 
                       window.navigator.standalone === true;
     setIsStandalone(standalone);
-
-    // If user is already logged in, redirect to home
-    if (isAuthenticated()) {
-      navigate("/home", { replace: true });
-    }
-  }, [navigate]);
+  }, []);
   
   return (
     // <FoodEmojiBackground

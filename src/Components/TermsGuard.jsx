@@ -10,9 +10,14 @@ function TermsGuard({ children }) {
   const [isLoading, setIsLoading] = useState(true);
   const userId = getCurrentUserId();
 
+  // Define pages that don't require terms acceptance
+  const publicPages = ["/", "/auth/login", "/auth/register", "/terms"];
+  const isPublicPage = publicPages.includes(location.pathname);
+
   useEffect(() => {
     const checkTermsStatus = async () => {
-      if (!userId) {
+      // If public page or no userId, skip check
+      if (!userId || isPublicPage) {
         setTermsAccepted(false);
         setIsLoading(false);
         return;
@@ -30,19 +35,21 @@ function TermsGuard({ children }) {
     };
 
     checkTermsStatus();
-  }, [userId]);
+  }, [userId, isPublicPage]);
+
+  // If public page, immediately render children (no loading delay)
+  if (isPublicPage) {
+    return children;
+  }
 
   // If still loading, show nothing
   if (isLoading) {
     return null;
   }
-
-  // Define pages that don't require terms acceptance
-  const publicPages = ["/", "/auth/login", "/auth/register", "/terms"];
   
   // If terms not accepted and trying to access protected pages, show terms page
   // But only if user is authenticated (AuthGuard will handle unauthenticated users)
-  if (!termsAccepted && !publicPages.includes(location.pathname) && userId) {
+  if (!termsAccepted && userId) {
     return <TermsAndConditions onTermsAccepted={() => setTermsAccepted(true)} />;
   }
 

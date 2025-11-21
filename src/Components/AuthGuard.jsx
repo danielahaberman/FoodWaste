@@ -17,20 +17,11 @@ function AuthGuard({ children }) {
     // Define public pages that don't require authentication
     const publicPages = ["/", "/auth/login", "/auth/register", "/terms"];
     
-    // If authenticated and trying to access login/landing pages, redirect to home
+    // If authenticated and on login/landing pages, redirect to home
     if (authenticated && (location.pathname === "/" || location.pathname === "/auth/login" || location.pathname === "/auth/register")) {
       navigate("/home", { replace: true });
-      return;
     }
-    
-    // If not authenticated and trying to access protected pages, redirect to login
-    if (!authenticated && !publicPages.includes(location.pathname)) {
-      // Store the intended destination for after login
-      setIntendedDestination(location.pathname);
-      navigate("/auth/login", { replace: true });
-      return;
-    }
-  }, [location.pathname]); // Only depend on pathname, navigate is stable
+  }, [location.pathname, navigate]); // Re-check on route changes
 
   // If still loading, show nothing
   if (isLoading) {
@@ -48,7 +39,12 @@ function AuthGuard({ children }) {
     return null;
   }
 
-  // If authenticated, render the children (normal app content)
+  // If authenticated and on login/landing pages, show nothing (redirect happening)
+  if (isUserAuthenticated && (location.pathname === "/" || location.pathname === "/auth/login" || location.pathname === "/auth/register")) {
+    return null;
+  }
+
+  // Otherwise, render the children (normal app content)
   return children;
 }
 

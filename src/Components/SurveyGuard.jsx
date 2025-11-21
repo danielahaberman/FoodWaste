@@ -19,14 +19,21 @@ function SurveyGuard({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const isPublicPage = (pathname) => {
+    const publicPages = ["/", "/auth/login", "/auth/register", "/terms", "/survey"];
+    return publicPages.includes(pathname);
+  };
+
   useEffect(() => {
     checkSurveyStatus();
-  }, []);
+  }, [location.pathname]);
 
   const checkSurveyStatus = async () => {
     try {
       const userId = localStorage.getItem("userId");
-      if (!userId) {
+      
+      // If public page or no userId, skip check
+      if (!userId || isPublicPage(location.pathname)) {
         setIsLoading(false);
         return;
       }
@@ -93,6 +100,11 @@ function SurveyGuard({ children }) {
   };
 
 
+
+  // If public page, immediately render children (no loading delay)
+  if (isPublicPage(location.pathname)) {
+    return children;
+  }
 
   // If still loading, show nothing
   if (isLoading) {
