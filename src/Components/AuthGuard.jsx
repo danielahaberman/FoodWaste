@@ -49,19 +49,27 @@ function AuthGuard({ children }) {
     };
   }, [location.pathname]); // Re-check on route changes
 
-  // If still loading, show nothing (but with timeout protection)
-  if (isLoading) {
-    return null;
-  }
-
   // Define public pages that don't require authentication
   const publicPages = ["/", "/auth/login", "/auth/register", "/terms"];
   
-  // If not authenticated and trying to access protected pages, redirect to login
+  // If still loading, show nothing for public pages, but allow them through
+  // This prevents white screens on public pages during auth check
+  if (isLoading) {
+    // If it's a public page, render children immediately (don't wait for auth check)
+    if (publicPages.includes(location.pathname)) {
+      return children;
+    }
+    // For protected pages, return null (will show white screen briefly, but timeout will handle it)
+    return null;
+  }
+
+  // If not authenticated (or auth check failed/errored) and trying to access protected pages, redirect to login
+  // This handles: failed auth check, errors during check, and timeout scenarios
   if (!isUserAuthenticated && !publicPages.includes(location.pathname)) {
-    // Store the intended destination for after login
+    // Store the intended destination so user can return after login
     setIntendedDestination(location.pathname);
-    navigate("/auth/login");
+    // Redirect to login page (replace: true prevents back button issues)
+    navigate("/auth/login", { replace: true });
     return null;
   }
 

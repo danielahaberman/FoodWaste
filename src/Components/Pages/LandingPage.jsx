@@ -11,6 +11,10 @@ function LandingPage() {
   const [showPWAPrompt, setShowPWAPrompt] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
 
+  // NOTE: This page should NEVER check authentication or redirect users.
+  // AuthGuard handles authentication checks. This page is public and should
+  // always render immediately to prevent white screens.
+  
   useEffect(() => {
     // Check if running as PWA (standalone mode)
     const standalone = window.matchMedia('(display-mode: standalone)').matches || 
