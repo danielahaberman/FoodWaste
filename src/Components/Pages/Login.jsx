@@ -50,28 +50,40 @@ function LoginPage() {
       const loginDate = localStorage.getItem("loginDate");
       console.log("[Login] Auth check after login:", { userId, expiryTime, loginDate });
       
-      // Check if terms have been accepted
-      try {
-        const termsResponse = await authAPI.getTermsStatus(response.data.user_id);
-        if (!termsResponse.data.termsAccepted) {
-          navigate("/terms");
-        } else {
-          // Check if there's a stored intended destination
-          const intendedDestination = getIntendedDestination();
-          if (intendedDestination) {
-            clearIntendedDestination();
-            navigate(intendedDestination);
-          } else {
-            navigate("/log");
-          }
-        }
-      } catch (error) {
-        console.error("Error checking terms status:", error);
-        // If we can't check terms status, proceed to home
-        navigate("/home");
+      // Check if there's a stored intended destination
+      const intendedDestination = getIntendedDestination();
+      if (intendedDestination) {
+        clearIntendedDestination();
+        navigate(intendedDestination);
+      } else {
+        navigate("/log");
       }
+      // TermsGuard will handle showing terms if not accepted
     } catch (err) {
-      setError("Invalid credentials or server error");
+      console.error("Login error:", err);
+      // Provide more specific error messages
+      if (err.response) {
+        // Server responded with error status
+        const status = err.response.status;
+        const responseData = err.response.data || {};
+        const errorMessage = responseData.error || responseData.message || err.message;
+        
+        if (status === 401) {
+          setError(errorMessage || "Invalid username or password");
+        } else if (status === 404) {
+          setError(errorMessage || "User not found");
+        } else if (status === 400) {
+          setError(errorMessage || "Please fill in all fields");
+        } else {
+          setError(errorMessage || "Server error. Please try again.");
+        }
+      } else if (err.request) {
+        // Request was made but no response received
+        setError("Network error. Please check your connection and try again.");
+      } else {
+        // Something else happened
+        setError(err.message || "An unexpected error occurred. Please try again.");
+      }
     } finally {
       setLoading(false);
     }

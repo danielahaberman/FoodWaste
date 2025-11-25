@@ -28,19 +28,15 @@ if ('serviceWorker' in navigator) {
     
     // Register the new no-cache service worker
     navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
-      .then((registration) => {
-        console.log('SW registered (caching disabled): ', registration);
-      })
       .catch((registrationError) => {
-        console.log('SW registration failed: ', registrationError);
+        console.error('SW registration failed: ', registrationError);
       });
     
     // Add utility function to unregister service worker (for debugging)
     window.unregisterServiceWorker = () => {
       navigator.serviceWorker.getRegistrations().then((registrations) => {
         registrations.forEach((registration) => {
-          registration.unregister().then((success) => {
-            console.log('ServiceWorker unregistered:', success);
+          registration.unregister().then(() => {
             window.location.reload();
           });
         });

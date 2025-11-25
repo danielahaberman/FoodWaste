@@ -2,19 +2,63 @@
 // src/api.js
 import axios from "axios";
 
+// Use relative URLs if VITE_API_URL is not set (same origin)
+// This prevents CORS issues when frontend and backend are on the same domain
+const baseURL = import.meta.env.VITE_API_URL || '';
+
+// Log API configuration in development
+if (import.meta.env.DEV) {
+  console.log('API Base URL:', baseURL || '(relative - same origin)');
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL,
   withCredentials: true, // if you're using cookies
+  timeout: 30000, // 30 second timeout
 });
 
-// Add interceptor to handle errors
+// Add request interceptor for logging
+api.interceptors.request.use(
+  (config) => {
+    // Log failed requests in development
+    if (import.meta.env.DEV) {
+      console.log(`API Request: ${config.method?.toUpperCase()} ${config.baseURL || ''}${config.url}`);
+    }
+    return config;
+  },
+  (error) => {
+    console.error('API Request Error:', error);
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor to handle errors
 api.interceptors.response.use(
   response => response,
   error => {
+    // Handle network errors (CORS, timeout, etc.)
+    if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+      console.error('Network Error - Check CORS configuration and API URL:', {
+        attemptedURL: error.config?.baseURL + error.config?.url,
+        baseURL: error.config?.baseURL,
+        message: error.message
+      });
+      
+      // Show user-friendly error
+      if (error.config?.url?.includes('/survey-response')) {
+        console.error('Survey submission failed - network error. Please check your connection and try again.');
+      }
+    }
+    
     if (error.response) {
       const status = error.response.status;
 
-      if (status === 401 || status === 403) {
+      // Only redirect to login if it's NOT already a login/register request
+      // This prevents redirecting when user is already on login page with wrong credentials
+      const isAuthRequest = error.config?.url?.includes('/auth/login') || 
+                           error.config?.url?.includes('/auth/register');
+      
+      if ((status === 401 || status === 403) && !isAuthRequest) {
         console.warn("Redirecting to login...");
         window.location.href = "/";
       }
@@ -105,6 +149,7 @@ export const adminAPI = {
   cleanupFakeData: () => api.delete("/admin/cleanup-fake-data"),
   
   // User Data Management endpoints
+  deleteAllUsers: (confirm) => api.delete("/admin/delete-all-users", { data: { confirm } }),
   deleteAllUserData: (confirm) => api.delete("/admin/delete-all-user-data", { data: { confirm } }),
   searchUsers: (query, limit = 10) => api.get("/admin/search-users", { params: { q: query, limit } }),
   searchUser: (userId) => api.get(`/admin/search-user/${userId}`),

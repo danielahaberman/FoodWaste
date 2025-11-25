@@ -54,15 +54,21 @@ function TermsGuard({ children }) {
     return () => {
       isMounted = false;
     };
-  }, [userId]);
+  }, [userId, location.pathname]); // Re-check when route changes too
 
   // If still loading or termsAccepted is null (not yet checked), show nothing
   if (isLoading || termsAccepted === null) {
     return null;
   }
 
-  // Define pages that don't require terms acceptance
-  const publicPages = ["/", "/auth/login", "/auth/register", "/terms"];
+  // Define pages that don't require terms acceptance or already show terms
+  const publicPages = ["/", "/auth/login", "/auth/register"];
+  const termsPage = "/terms";
+  
+  // If on the /terms route, let it render normally (don't double-render)
+  if (location.pathname === termsPage) {
+    return children;
+  }
   
   // If terms not accepted (explicitly false) and trying to access protected pages, show terms page
   // But only if user is authenticated (AuthGuard will handle unauthenticated users)

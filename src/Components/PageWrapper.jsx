@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React from 'react';
-import { Box, Typography, Container } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 
 /**
  * Unified wrapper component for pages with bottom navigation
@@ -55,6 +55,8 @@ const PageWrapper = ({
         WebkitBackdropFilter: headerColor === 'white' || headerColor === 'background.default' 
           ? 'blur(40px) saturate(200%)' 
           : 'none',
+        display: 'flex',
+        justifyContent: 'center',
         /* iOS safe area support for header */
         paddingTop: { xs: `calc(8px + env(safe-area-inset-top, 0))`, sm: `calc(10px + env(safe-area-inset-top, 0))` },
         paddingBottom: { xs: 1, sm: 1.25 },
@@ -62,11 +64,10 @@ const PageWrapper = ({
         paddingRight: { xs: `calc(16px + env(safe-area-inset-right, 0))`, sm: `calc(20px + env(safe-area-inset-right, 0))` },
         marginTop: { xs: `calc(env(safe-area-inset-top, 0) * -1)`, sm: `calc(env(safe-area-inset-top, 0) * -1)` }
       }}>
-        <Container 
-          maxWidth={maxWidth}
+        <Box
           sx={{ 
-            px: { xs: 2, sm: 2.5 },
-            maxWidth: { xs: '100%', sm: maxWidth === 'sm' ? '600px' : '900px' },
+            width: '100%',
+            maxWidth: '600px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -95,7 +96,7 @@ const PageWrapper = ({
               {headerAction}
             </Box>
           )}
-        </Container>
+        </Box>
       </Box>
 
       {/* Scrollable Content Area */}

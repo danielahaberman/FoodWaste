@@ -248,6 +248,33 @@ function AdminDashboard({ onLogout }) {
   };
 
   // Data Management Functions
+  const handleDeleteAllUsers = async () => {
+    const confirmText = 'DELETE_ALL_USERS';
+    const userInput = window.prompt(
+      `⚠️ CRITICAL WARNING: This will PERMANENTLY DELETE ALL USERS and ALL their data.\n\nThis action CANNOT be undone!\n\nType "${confirmText}" to confirm this irreversible action:`
+    );
+    
+    if (userInput !== confirmText) {
+      setDataManagementMessage('❌ Operation cancelled - confirmation text did not match');
+      return;
+    }
+
+    setLoadingDataOperation(true);
+    setDataManagementMessage('');
+
+    try {
+      const response = await adminAPI.deleteAllUsers(confirmText);
+      setDataManagementMessage(`✅ ${response.data.message}`);
+      setSearchedUser(null); // Clear search results
+      loadOverviewData(); // Refresh overview
+    } catch (err) {
+      console.error('Error deleting all users:', err);
+      setDataManagementMessage(`❌ Failed to delete all users: ${err.response?.data?.error || err.message}`);
+    } finally {
+      setLoadingDataOperation(false);
+    }
+  };
+
   const handleDeleteAllUserData = async () => {
     const confirmText = 'DELETE_ALL_DATA';
     const userInput = window.prompt(
@@ -1692,6 +1719,30 @@ function AdminDashboard({ onLogout }) {
         </Typography>
 
         <Grid container spacing={3}>
+          {/* Delete All Users */}
+          <Grid item xs={12}>
+            <Card sx={{ border: '3px solid', borderColor: 'error.main', backgroundColor: 'rgba(211, 47, 47, 0.05)' }}>
+              <CardContent>
+                <Typography variant="h6" color="error.main" gutterBottom>
+                  🗑️ Delete All Users
+                </Typography>
+                <Typography variant="body2" sx={{ mb: 2 }}>
+                  <strong>CRITICAL:</strong> This will PERMANENTLY DELETE ALL USERS and ALL their associated data (purchases, logs, surveys, streaks).
+                  This action CANNOT be undone. Use this to clear the database for fresh testing.
+                </Typography>
+                <Button
+                  variant="contained"
+                  color="error"
+                  onClick={handleDeleteAllUsers}
+                  disabled={loadingDataOperation}
+                  sx={{ mb: 1 }}
+                >
+                  {loadingDataOperation ? 'Deleting...' : 'Delete All Users'}
+                </Button>
+              </CardContent>
+            </Card>
+          </Grid>
+
           {/* Bulk Data Deletion */}
           <Grid item xs={12}>
             <Card sx={{ border: '2px solid', borderColor: 'error.main' }}>

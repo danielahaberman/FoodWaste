@@ -35,7 +35,6 @@ router.post('/register', async (req, res) => {
 
 // Login route
 router.post('/login', async (req, res) => {
-  console.log("req", req)
   const { username, password } = req.body;
 
   if (!username || !password) {

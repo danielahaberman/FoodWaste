@@ -8,6 +8,7 @@ import {
   Logout as LogoutIcon,
   MenuBook as ResourcesIcon
 } from '@mui/icons-material';
+import versionData from '../../../version.json';
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -93,6 +94,26 @@ const Settings = () => {
             </Button>
           </Box>
         </Paper>
+
+        {/* Version Display */}
+        <Box
+          sx={{
+            textAlign: 'center',
+            py: 2,
+            px: 2
+          }}
+        >
+          <Typography
+            variant="caption"
+            sx={{
+              color: 'text.secondary',
+              fontSize: '0.75rem',
+              fontWeight: 400
+            }}
+          >
+            Version {versionData.version}
+          </Typography>
+        </Box>
       </Container>
     </PageWrapper>
   );

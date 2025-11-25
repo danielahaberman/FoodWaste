@@ -1631,6 +1631,29 @@ app.delete("/admin/cleanup-fake-data", async (req, res) => {
   }
 });
 
+// DELETE all users (for local development - clears everything)
+app.delete("/admin/delete-all-users", async (req, res) => {
+  try {
+    const { confirm } = req.body;
+    
+    if (confirm !== 'DELETE_ALL_USERS') {
+      return res.status(400).json({ error: 'Confirmation required. Send { confirm: "DELETE_ALL_USERS" }' });
+    }
+
+    // Delete all users (CASCADE will delete all associated data)
+    const result = await pool.query('DELETE FROM users WHERE id > 0 RETURNING id, username');
+    const deletedCount = result.rows.length;
+
+    res.json({ 
+      message: `Successfully deleted ${deletedCount} users and all their associated data`,
+      deletedUsers: result.rows
+    });
+  } catch (err) {
+    console.error("Error deleting all users:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // DELETE all user data but keep user accounts
 app.delete("/admin/delete-all-user-data", async (req, res) => {
   try {

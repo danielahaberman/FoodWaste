@@ -4,6 +4,7 @@ import { Button, Box, Typography, Paper, Divider, IconButton, Tooltip } from "@m
 import { GetApp as InstallIcon, Refresh as RefreshIcon } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import PWAInstallPrompt from "../PWAInstallPrompt";
+import versionData from '../../../version.json';
 // import FoodEmojiBackground from "../FoodEmojiBackground";
 
 function LandingPage() {
@@ -187,6 +188,26 @@ function LandingPage() {
             </Button>
           </Box>
         </Paper>
+
+        {/* Version Display */}
+        <Box
+          sx={{
+            textAlign: 'center',
+            mt: 3,
+            px: 2
+          }}
+        >
+          <Typography
+            variant="caption"
+            sx={{
+              color: 'text.secondary',
+              fontSize: '0.75rem',
+              fontWeight: 400
+            }}
+          >
+            Version {versionData.version}
+          </Typography>
+        </Box>
       </Box>
 
       {/* PWA Install Prompt */}

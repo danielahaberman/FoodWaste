@@ -20,6 +20,7 @@ const Survey = ({ questions }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [responses, setResponses] = useState({}); // object keyed by questionId
   const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   
   const surveyTitle = questions[0]?.stage || 'Survey';
   const currentQuestion = questions[currentIndex];
@@ -32,7 +33,7 @@ const Survey = ({ questions }) => {
     currentResponse === null ||
     (typeof currentResponse === "string" && currentResponse.trim() === "");
 
-  const submitResponse = async ({ questionId, response }) => {
+  const submitResponse = async ({ questionId, response }, retries = 2) => {
     try {
       await surveyAPI.submitSurveyResponse({
         userId: localStorage.getItem("userId"),
@@ -41,7 +42,21 @@ const Survey = ({ questions }) => {
       });
     } catch (error) {
       console.error("Failed to save response:", error);
-      alert("Failed to save response. Try again.");
+      
+      // Retry on network errors
+      if (retries > 0 && (error.code === 'ERR_NETWORK' || error.message === 'Network Error')) {
+        console.log(`Retrying survey submission (${retries} retries left)...`);
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+        return submitResponse({ questionId, response }, retries - 1);
+      }
+      
+      // Show user-friendly error message
+      const errorMessage = error.code === 'ERR_NETWORK' || error.message === 'Network Error'
+        ? "Network error. Please check your connection and try again."
+        : "Failed to save response. Please try again.";
+      
+      alert(errorMessage);
+      throw error; // Re-throw to allow caller to handle
     }
   };
 
@@ -49,10 +64,22 @@ const Survey = ({ questions }) => {
     const currentQuestionId = questions[currentIndex]?.id;
     const response = responses[currentQuestionId];
 
+    // If there's a response, try to save it first
     if (response !== undefined && response !== null) {
-      await submitResponse({ questionId: currentQuestionId, response });
+      setIsSaving(true);
+      try {
+        await submitResponse({ questionId: currentQuestionId, response });
+        // Only advance if save was successful
+      } catch (error) {
+        // Error already handled in submitResponse (alert shown)
+        // Don't advance to next question on failure
+        setIsSaving(false);
+        return;
+      }
+      setIsSaving(false);
     }
 
+    // Only advance if save succeeded (or no response needed)
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
@@ -423,7 +450,7 @@ const Survey = ({ questions }) => {
             <Button
               variant="outlined"
               onClick={handleBack}
-              disabled={currentIndex === 0}
+              disabled={currentIndex === 0 || isSaving}
               sx={{ 
                 flex: 1,
                 maxWidth: "120px",
@@ -465,7 +492,7 @@ const Survey = ({ questions }) => {
             <Button
               variant="contained"
               onClick={handleNext}
-              disabled={isEmptyResponse}
+              disabled={isEmptyResponse || isSaving}
               sx={{ 
                 flex: 1,
                 maxWidth: "120px",
@@ -487,7 +514,14 @@ const Survey = ({ questions }) => {
                 }
               }}
             >
-              {currentIndex < questions.length - 1 ? "Next ➡" : "Finish ✅"}
+              {isSaving ? (
+                <>
+                  <CircularProgress size={16} sx={{ mr: 1, color: 'rgba(255, 255, 255, 0.7)' }} />
+                  Saving...
+                </>
+              ) : (
+                currentIndex < questions.length - 1 ? "Next ➡" : "Finish ✅"
+              )}
             </Button>
           </Box>
         </Paper>
