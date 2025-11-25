@@ -1,44 +1,34 @@
-// Simple service worker for PWA functionality
-const CACHE_NAME = 'food-hero-v4';
-const urlsToCache = [
-  '/',
-  '/index.html',
-  '/manifest.json'
-];
+// Service worker disabled - no caching
+// This file exists for PWA manifest requirements but does not cache anything
 
-// Install event - cache resources
+// Install event - do nothing, just activate immediately
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        return cache.addAll(urlsToCache);
-      })
-  );
+  // Skip waiting to activate immediately
+  self.skipWaiting();
 });
 
-// Fetch event - serve from cache when offline
+// Fetch event - don't intercept, let all requests pass through to network
 self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Return cached version or fetch from network
-        return response || fetch(event.request);
-      }
-    )
-  );
+  // Do nothing - let browser handle all requests normally
+  // This ensures no caching and no interference with asset loading
+  return;
 });
 
-// Activate event - clean up old caches
+// Activate event - clean up all old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
+      // Delete ALL caches to ensure clean state
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
+          console.log('Deleting cache:', cacheName);
+          return caches.delete(cacheName);
         })
       );
+    })
+    .then(() => {
+      // Take control of all pages immediately
+      return self.clients.claim();
     })
   );
 });

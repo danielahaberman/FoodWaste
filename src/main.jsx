@@ -14,16 +14,38 @@ window.addEventListener('unhandledrejection', (event) => {
   console.error('Unhandled promise rejection:', event.reason);
 });
 
-// Register service worker for PWA functionality
+// Register service worker for PWA functionality (caching disabled)
+// ServiceWorker is registered only to satisfy PWA manifest requirements
+// It does not cache anything - all requests go directly to network
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
+    // First, unregister any existing service workers to clear old caches
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      registrations.forEach((registration) => {
+        registration.unregister();
+      });
+    });
+    
+    // Register the new no-cache service worker
+    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
       .then((registration) => {
-        console.log('SW registered: ', registration);
+        console.log('SW registered (caching disabled): ', registration);
       })
       .catch((registrationError) => {
         console.log('SW registration failed: ', registrationError);
       });
+    
+    // Add utility function to unregister service worker (for debugging)
+    window.unregisterServiceWorker = () => {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        registrations.forEach((registration) => {
+          registration.unregister().then((success) => {
+            console.log('ServiceWorker unregistered:', success);
+            window.location.reload();
+          });
+        });
+      });
+    };
   });
 }
 
