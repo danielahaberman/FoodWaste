@@ -57,8 +57,8 @@ function LandingPage() {
           onClick={handleClearStorage}
           sx={{
             position: "absolute",
-            top: 16,
-            right: 16,
+            top: { xs: 16, sm: 16 },
+            right: { xs: 16, sm: 16 },
             color: "#666",
             backgroundColor: "rgba(255, 255, 255, 0.8)",
             '&:hover': {

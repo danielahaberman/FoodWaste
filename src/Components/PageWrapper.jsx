@@ -29,11 +29,6 @@ const PageWrapper = ({
       overflow: 'hidden',
       zIndex: 1300,
       pointerEvents: 'none', // Allow clicks to pass through to BottomBar
-      /* iOS safe area support */
-      paddingTop: 'env(safe-area-inset-top, 0)',
-      paddingBottom: 'env(safe-area-inset-bottom, 0)',
-      paddingLeft: 'env(safe-area-inset-left, 0)',
-      paddingRight: 'env(safe-area-inset-right, 0)',
     }}>
       {/* Header */}
       <Box sx={{
@@ -57,12 +52,10 @@ const PageWrapper = ({
           : 'none',
         display: 'flex',
         justifyContent: 'center',
-        /* iOS safe area support for header */
-        paddingTop: { xs: `calc(8px + env(safe-area-inset-top, 0))`, sm: `calc(10px + env(safe-area-inset-top, 0))` },
+        paddingTop: { xs: 1, sm: 1.25 },
         paddingBottom: { xs: 1, sm: 1.25 },
-        paddingLeft: { xs: `calc(16px + env(safe-area-inset-left, 0))`, sm: `calc(20px + env(safe-area-inset-left, 0))` },
-        paddingRight: { xs: `calc(16px + env(safe-area-inset-right, 0))`, sm: `calc(20px + env(safe-area-inset-right, 0))` },
-        marginTop: { xs: `calc(env(safe-area-inset-top, 0) * -1)`, sm: `calc(env(safe-area-inset-top, 0) * -1)` }
+        paddingLeft: { xs: 2, sm: 2.5 },
+        paddingRight: { xs: 2, sm: 2.5 }
       }}>
         <Box
           sx={{ 
@@ -109,7 +102,7 @@ const PageWrapper = ({
           flexDirection: 'column',
           pt: { xs: 2, sm: 2.5 }, // Padding after header
           px: { xs: 2, sm: 2.5 }, // Left and right padding for content
-          pb: `calc(88px + env(safe-area-inset-bottom, 0))`, // Space for bottom nav bar
+          pb: '88px', // Space for bottom nav bar
           pointerEvents: 'auto' // Re-enable pointer events for content
         }}
       >

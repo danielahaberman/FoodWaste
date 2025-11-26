@@ -1,7 +1,7 @@
 {
   "name": "food-hero",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "server": "npm --prefix server run start",
     "dev:all": "concurrently -n web,api -c green,cyan \"npm:dev\" \"npm:server\"",
+    "devhost:all": "node scripts/get-local-ip.js && concurrently -n web,api -c green,cyan \"npm:dev\" \"npm:server\"",
     "start": "npm run dev:all",
+    "local-ip": "node scripts/get-local-ip.js",
     "update-version": "node scripts/update-version.js",
     "git-push": "npm run update-version && git commit -m \"chore: bump version\" && git push"
   },

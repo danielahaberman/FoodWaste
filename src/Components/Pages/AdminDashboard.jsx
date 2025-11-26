@@ -806,7 +806,7 @@ function AdminDashboard({ onLogout }) {
 
   return (
     <Box sx={{ 
-      p: 3, 
+      p: 3,
       width: '100vw', 
       maxWidth: '100vw', 
       boxSizing: 'border-box',

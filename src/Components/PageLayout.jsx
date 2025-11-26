@@ -6,6 +6,7 @@ function PageLayout({children, backgroundColor = "white"}){
         <div 
             style={{
                 width: "100%", 
+                minHeight: "100vh",
                 height: "100vh",
                 maxWidth: "600px",
                 margin: "0 auto",

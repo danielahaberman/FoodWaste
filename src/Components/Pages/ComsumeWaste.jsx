@@ -768,12 +768,7 @@ function ConsumeWaste({ onGoToDate }) {
             zIndex: 1000,
             overflow: 'auto',
             borderRadius: 0,
-            p: 2,
-            /* iOS safe area support */
-            paddingTop: `calc(16px + env(safe-area-inset-top, 0))`,
-            paddingBottom: `calc(16px + env(safe-area-inset-bottom, 0))`,
-            paddingLeft: `calc(16px + env(safe-area-inset-left, 0))`,
-            paddingRight: `calc(16px + env(safe-area-inset-right, 0))`
+            p: 2
           }}>
             <Legend />
             {weekCharts[activeWeekOf] && (() => {

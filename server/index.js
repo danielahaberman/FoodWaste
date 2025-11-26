@@ -2,6 +2,7 @@
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { networkInterfaces } from 'os';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,11 +39,94 @@ async function startServer() {
     
     const app = express();
 app.use(express.json()); // <-- add this line
-app.use(cors({
-  origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
+
+// CORS configuration - allow all origins in development, restricted in production
+const isDevelopment = process.env.NODE_ENV !== 'production';
+const allowedOrigins = process.env.CLIENT_ORIGIN 
+  ? process.env.CLIENT_ORIGIN.split(',')
+  : ['http://localhost:5173'];
+
+// Get local network IPs for CORS whitelist
+const nets = networkInterfaces();
+const localIPs = [];
+for (const name of Object.keys(nets)) {
+  for (const net of nets[name]) {
+    if (net.family === 'IPv4' && !net.internal) {
+      localIPs.push(`http://${net.address}:5173`);
+      localIPs.push(`https://${net.address}:5173`);
+    }
+  }
+}
+
+console.log("🌐 CORS Configuration:");
+console.log("  Mode:", isDevelopment ? "DEVELOPMENT (allowing all origins)" : "PRODUCTION (restricted)");
+console.log("  Allowed origins from env:", allowedOrigins);
+console.log("  Detected local IPs:", localIPs);
+
+// CORS configuration function
+const corsOptions = {
+  origin: function (origin, callback) {
+    // In development mode, allow all origins
+    if (isDevelopment) {
+      if (!origin) {
+        console.log("✅ CORS: Allowing request with no origin (dev mode)");
+        return callback(null, true);
+      }
+      console.log(`✅ CORS: Allowing origin (dev mode): ${origin}`);
+      return callback(null, true);
+    }
+    
+    // Production mode - strict CORS checking
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) {
+      console.log("✅ CORS: Allowing request with no origin");
+      return callback(null, true);
+    }
+    
+    console.log(`🔍 CORS: Checking origin: ${origin}`);
+    
+    // Check if origin matches allowed origins from env
+    if (allowedOrigins.includes(origin)) {
+      console.log(`✅ CORS: Allowed (env whitelist): ${origin}`);
+      return callback(null, true);
+    }
+    
+    // Check if origin matches detected local IPs
+    if (localIPs.includes(origin)) {
+      console.log(`✅ CORS: Allowed (local IP): ${origin}`);
+      return callback(null, true);
+    }
+    
+    // Allow local network IPs (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+    // This covers your phone's IP when it's on the same network
+    const localNetworkRegex = /^https?:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2[0-9]|3[01])\.\d+\.\d+)/;
+    if (localNetworkRegex.test(origin)) {
+      console.log(`✅ CORS: Allowed (local network IP): ${origin}`);
+      return callback(null, true);
+    }
+    
+    // Allow localhost variants
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      console.log(`✅ CORS: Allowed (localhost): ${origin}`);
+      return callback(null, true);
+    }
+    
+    console.log(`❌ CORS: Blocked origin: ${origin}`);
+    callback(new Error(`Not allowed by CORS: ${origin}`));
+  },
   credentials: true,
-}));
-console.log("using",process.env.CLIENT_ORIGIN)
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Content-Type', 'Authorization'],
+  maxAge: 86400, // 24 hours - Safari needs this for preflight caching
+  optionsSuccessStatus: 200, // Safari needs 200, not 204
+};
+
+// Handle preflight OPTIONS requests explicitly (Safari needs this)
+app.options('*', cors(corsOptions));
+
+// Apply CORS to all routes
+app.use(cors(corsOptions));
 // Middleware to verify user ID in request
 function requireUserId(req, res, next) {
   const user_id = req.body.user_id || req.query.user_id;
@@ -55,7 +139,27 @@ function requireUserId(req, res, next) {
   next();
 }
 
+// Health check endpoint
+app.get("/health", (req, res) => {
+  res.json({ 
+    status: "ok", 
+    timestamp: new Date().toISOString(),
+    origin: req.headers.origin || 'no origin',
+    host: req.headers.host || 'no host'
+  });
+});
+
+// Request logging middleware (for debugging)
+app.use((req, res, next) => {
+  console.log(`📥 Incoming request: ${req.method} ${req.path}${req.url !== req.path ? ` (url: ${req.url})` : ''}`);
+  console.log(`   Origin: ${req.headers.origin || 'no origin'}`);
+  console.log(`   Host: ${req.headers.host || 'no host'}`);
+  next();
+});
+
+// Mount auth routes
 app.use("/auth", authRoutes);
+console.log("✅ Auth routes mounted at /auth");
 
 // Terms acceptance endpoints
 app.post("/auth/accept-terms", requireUserId, async (req, res) => {
@@ -2163,7 +2267,11 @@ app.get("/api/leaderboard/total-completions", async (req, res) => {
 
 // Catch-all for 404
 app.use((req, res) => {
-  res.status(404).json({ error: "Endpoint not found" });
+  console.log(`❌ 404 - Endpoint not found: ${req.method} ${req.path}`);
+  console.log(`   Origin: ${req.headers.origin || 'no origin'}`);
+  console.log(`   Host: ${req.headers.host || 'no host'}`);
+  console.log(`   URL: ${req.url}`);
+  res.status(404).json({ error: "Endpoint not found", path: req.path, method: req.method });
 });
 
 
@@ -2185,8 +2293,11 @@ app.use((req, res) => {
 
     // Start server
     const PORT = process.env.PORT || 5001;
-    app.listen(PORT, () => {
+    const HOST = process.env.HOST || '0.0.0.0'; // Listen on all network interfaces
+    app.listen(PORT, HOST, () => {
       console.log(`Server running on http://localhost:${PORT}`);
+      console.log(`Server accessible on your local network at http://[YOUR_LOCAL_IP]:${PORT}`);
+      console.log(`To find your local IP, run: ipconfig (Windows) or ifconfig (Mac/Linux)`);
     });
   } catch (err) {
     console.error("Failed to start server:", err);

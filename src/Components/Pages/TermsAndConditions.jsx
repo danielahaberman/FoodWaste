@@ -74,6 +74,7 @@ function TermsAndConditions({ onTermsAccepted }) {
           justifyContent: "center",
           minHeight: "100vh",
           padding: "24px",
+          boxSizing: 'border-box'
         }}
       >
         <Paper

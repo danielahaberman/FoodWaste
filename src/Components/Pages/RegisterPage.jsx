@@ -69,12 +69,18 @@ function RegisterPage() {
       <Container 
         maxWidth="sm" 
         sx={{ 
-          height: '100vh', 
+          minHeight: '100vh',
+          height: '100vh',
           display: 'flex', 
           flexDirection: 'column', 
           justifyContent: 'center',
           alignItems: 'center',
-          py: 4
+          py: 4,
+          paddingTop: { xs: 4, sm: 4 },
+          paddingBottom: { xs: 4, sm: 4 },
+          paddingLeft: { xs: 2, sm: 2 },
+          paddingRight: { xs: 2, sm: 2 },
+          boxSizing: 'border-box'
         }}
       >
         <Typography 

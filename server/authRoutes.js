@@ -35,6 +35,14 @@ router.post('/register', async (req, res) => {
 
 // Login route
 router.post('/login', async (req, res) => {
+  console.log('🔐 Login attempt:', {
+    path: req.path,
+    url: req.url,
+    method: req.method,
+    origin: req.headers.origin,
+    host: req.headers.host,
+    body: { username: req.body?.username, hasPassword: !!req.body?.password }
+  });
   const { username, password } = req.body;
 
   if (!username || !password) {

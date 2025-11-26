@@ -8,41 +8,62 @@ const baseURL = import.meta.env.VITE_API_URL || '';
 
 // Log API configuration in development
 if (import.meta.env.DEV) {
-  console.log('API Base URL:', baseURL || '(relative - same origin)');
+  console.log('🌐 API Configuration:');
+  console.log('   Base URL:', baseURL || '(relative - will use Vite proxy)');
+  console.log('   Current Origin:', window.location.origin);
+  console.log('   User Agent:', navigator.userAgent);
 }
 
 const api = axios.create({
   baseURL,
   withCredentials: true, // if you're using cookies
   timeout: 30000, // 30 second timeout
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  },
 });
 
 // Add request interceptor for logging
 api.interceptors.request.use(
   (config) => {
-    // Log failed requests in development
+    // Log all requests in development
     if (import.meta.env.DEV) {
-      console.log(`API Request: ${config.method?.toUpperCase()} ${config.baseURL || ''}${config.url}`);
+      const fullURL = (config.baseURL || '') + config.url;
+      console.log(`🌐 API Request: ${config.method?.toUpperCase()} ${fullURL}`);
+      console.log(`   From origin: ${window.location.origin}`);
     }
     return config;
   },
   (error) => {
-    console.error('API Request Error:', error);
+    console.error('❌ API Request Error:', error);
     return Promise.reject(error);
   }
 );
 
 // Add response interceptor to handle errors
 api.interceptors.response.use(
-  response => response,
+  response => {
+    if (import.meta.env.DEV) {
+      console.log(`✅ API Response: ${response.config.method?.toUpperCase()} ${response.config.url} - ${response.status}`);
+    }
+    return response;
+  },
   error => {
     // Handle network errors (CORS, timeout, etc.)
     if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
-      console.error('Network Error - Check CORS configuration and API URL:', {
-        attemptedURL: error.config?.baseURL + error.config?.url,
-        baseURL: error.config?.baseURL,
-        message: error.message
+      const attemptedURL = (error.config?.baseURL || '') + error.config?.url;
+      console.error('❌ Network Error - Check CORS configuration and API URL:', {
+        attemptedURL,
+        baseURL: error.config?.baseURL || '(relative - should be proxied)',
+        currentOrigin: window.location.origin,
+        message: error.message,
+        code: error.code
       });
+      console.error('💡 Make sure:');
+      console.error('   1. Backend server is running on port 5001');
+      console.error('   2. Vite dev server proxy is configured correctly');
+      console.error('   3. Both servers are accessible from your network');
       
       // Show user-friendly error
       if (error.config?.url?.includes('/survey-response')) {
