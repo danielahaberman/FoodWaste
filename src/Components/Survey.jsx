@@ -1,6 +1,6 @@
 // @ts-nocheck
 /* eslint-disable react/prop-types */
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { surveyAPI } from "../api";
 import {
   Box,
@@ -21,8 +21,57 @@ const Survey = ({ questions }) => {
   const [responses, setResponses] = useState({}); // object keyed by questionId
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingProgress, setIsLoadingProgress] = useState(true);
   
   const surveyTitle = questions[0]?.stage || 'Survey';
+  const userId = localStorage.getItem("userId");
+  
+  // Load saved responses from backend on mount
+  useEffect(() => {
+    const loadSavedProgress = async () => {
+      if (!userId || !questions || questions.length === 0) {
+        setIsLoadingProgress(false);
+        return;
+      }
+      
+      try {
+        // Fetch saved responses from backend
+        const response = await surveyAPI.getSurveyResponses({
+          userId,
+          stage: surveyTitle
+        });
+        
+        const savedResponses = response.data || {};
+        
+        // Find the first unanswered question
+        let startIndex = 0;
+        for (let i = 0; i < questions.length; i++) {
+          const questionId = questions[i].id;
+          if (!savedResponses[questionId]) {
+            startIndex = i;
+            break;
+          }
+          // If all questions are answered, start at the last one
+          if (i === questions.length - 1) {
+            startIndex = i;
+          }
+        }
+        
+        setResponses(savedResponses);
+        setCurrentIndex(startIndex);
+      } catch (error) {
+        console.error("Error loading saved survey progress:", error);
+        // On error, start from the beginning
+        setCurrentIndex(0);
+        setResponses({});
+      } finally {
+        setIsLoadingProgress(false);
+      }
+    };
+    
+    loadSavedProgress();
+  }, [userId, surveyTitle, questions]);
+  
   const currentQuestion = questions[currentIndex];
   const currentQuestionId = currentQuestion?.id;
   const currentResponse = responses[currentQuestionId];
@@ -345,6 +394,30 @@ const Survey = ({ questions }) => {
     }
   };
 
+  // Show loading state while fetching saved progress
+  if (isLoadingProgress) {
+    return (
+      <Box
+        sx={{
+          maxWidth: { xs: "100%", sm: 600 },
+          margin: "auto",
+          padding: { xs: 2, sm: 4 },
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "50vh",
+          boxSizing: "border-box"
+        }}
+      >
+        <CircularProgress />
+        <Typography sx={{ mt: 2, color: 'text.secondary' }}>
+          Loading your progress...
+        </Typography>
+      </Box>
+    );
+  }
+
   // Safety check for empty questions array
   if (!questions || questions.length === 0) {
     return (
@@ -484,10 +557,11 @@ const Survey = ({ questions }) => {
                 fontSize: { xs: "0.95rem", sm: "1rem" },
                 fontWeight: 500,
                 color: 'rgba(0, 0, 0, 0.6)',
-                letterSpacing: '-0.01em'
+                letterSpacing: '-0.01em',
+                whiteSpace: 'nowrap',
               }}
             >
-              Question {currentIndex + 1} of {questions.length}
+              {currentIndex + 1} of {questions.length}
             </Typography>
             <Button
               variant="contained"
@@ -499,6 +573,7 @@ const Survey = ({ questions }) => {
                 borderRadius: 3,
                 textTransform: 'none',
                 fontWeight: 600,
+                whiteSpace: 'nowrap',
                 backgroundColor: 'primary.main',
                 boxShadow: '0 2px 8px rgba(25, 118, 210, 0.25)',
                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',

@@ -164,6 +164,7 @@ const deletePurchase = async (purchaseId) => {
     <PageWrapper 
       title="Food Log" 
       maxWidth="sm"
+      showLogo={true}
     >
       <Container 
         maxWidth="sm"

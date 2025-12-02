@@ -53,6 +53,11 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
   useEffect(() => {
     if (open) {
       fetchDailyTasks();
+      // Notify that daily tasks popup is open
+      window.dispatchEvent(new CustomEvent('dailyTasksPopupOpen'));
+    } else {
+      // Notify that daily tasks popup is closed
+      window.dispatchEvent(new CustomEvent('dailyTasksPopupClose'));
     }
   }, [open]);
 

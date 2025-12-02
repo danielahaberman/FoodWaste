@@ -112,9 +112,27 @@ export const usePWAInstall = () => {
     localStorage.setItem(PWA_STORAGE_KEYS.DISMISSED, Date.now().toString());
   };
 
+  const [isDailyTasksPopupOpen, setIsDailyTasksPopupOpen] = useState(false);
+
+  // Listen for daily tasks popup open/close events
+  useEffect(() => {
+    const handleDailyTasksOpen = () => setIsDailyTasksPopupOpen(true);
+    const handleDailyTasksClose = () => setIsDailyTasksPopupOpen(false);
+
+    window.addEventListener('dailyTasksPopupOpen', handleDailyTasksOpen);
+    window.addEventListener('dailyTasksPopupClose', handleDailyTasksClose);
+
+    return () => {
+      window.removeEventListener('dailyTasksPopupOpen', handleDailyTasksOpen);
+      window.removeEventListener('dailyTasksPopupClose', handleDailyTasksClose);
+    };
+  }, []);
+
   const canInstall = deferredPrompt !== null || isIOS;
-  // Don't show PWA prompt if initial survey is not completed (welcome modal is showing)
-  const shouldShowPrompt = showInstallPrompt && !isStandalone && canInstall && isInitialSurveyCompleted;
+  // Don't show PWA prompt if:
+  // - Initial survey is not completed (welcome modal is showing)
+  // - Daily tasks popup is open
+  const shouldShowPrompt = showInstallPrompt && !isStandalone && canInstall && isInitialSurveyCompleted && !isDailyTasksPopupOpen;
 
   return {
     showInstallPrompt: shouldShowPrompt,

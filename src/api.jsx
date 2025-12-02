@@ -116,6 +116,7 @@ export const foodDataAPI = {
 export const surveyAPI = {
   getSurveyStatus: (userId) => api.get(`/api/surveys/status/${userId}`),
   getSurveyQuestions: (params) => api.get("/survey-questions", { params }),
+  getSurveyResponses: (params) => api.get("/api/surveys/responses", { params }),
   submitSurveyResponse: (responseData) => api.post("/survey-response", responseData),
 };
 

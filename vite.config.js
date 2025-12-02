@@ -89,6 +89,17 @@ export default {
       '/admin': {
         target: 'http://localhost:5001',
         changeOrigin: true,
+        bypass: (req) => {
+          // Don't proxy the exact /admin path (frontend route handled by React Router)
+          // Only proxy /admin/* API endpoints
+          const url = req.url || '';
+          if (url === '/admin' || url === '/admin/') {
+            // Return index.html to let React Router handle the route
+            return '/index.html';
+          }
+          // Continue proxying for /admin/* API paths
+          return null;
+        },
       },
       '/health': {
         target: 'http://localhost:5001',

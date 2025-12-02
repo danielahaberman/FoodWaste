@@ -29,6 +29,10 @@ router.post('/register', async (req, res) => {
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('Error registering user:', err);
+    // Check if it's a unique constraint violation (username already exists)
+    if (err.code === '23505') {
+      return res.status(409).json({ error: 'Username is already taken' });
+    }
     res.status(500).json({ error: 'Error registering user' });
   }
 });

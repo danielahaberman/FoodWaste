@@ -1055,6 +1055,38 @@ app.post("/survey-response", async (req, res) => {
   }
 });
 
+// GET survey responses for a user and stage
+app.get("/api/surveys/responses", async (req, res) => {
+  const { userId, stage } = req.query;
+
+  if (!userId || !stage) {
+    return res.status(400).json({ error: "userId and stage are required" });
+  }
+
+  try {
+    const query = `
+      SELECT sr.question_id, sr.response
+      FROM survey_responses sr
+      JOIN survey_questions sq ON sr.question_id = sq.id
+      WHERE sr.user_id = $1 AND sq.stage = $2
+      ORDER BY sq.id
+    `;
+    
+    const result = await pool.query(query, [userId, stage]);
+    
+    // Convert to object keyed by question_id for easy lookup
+    const responses = {};
+    result.rows.forEach(row => {
+      responses[row.question_id] = row.response;
+    });
+    
+    res.json(responses);
+  } catch (error) {
+    console.error("Error fetching survey responses:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // GET survey status
 app.get("/api/surveys/status/:userId", async (req, res) => {
   const userId = req.params.userId;

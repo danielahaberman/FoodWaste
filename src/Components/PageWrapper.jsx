@@ -12,7 +12,9 @@ const PageWrapper = ({
   maxWidth = 'sm',
   headerColor = 'background.default',
   headerTextColor = 'text.primary',
-  headerAction
+  headerAction,
+  showLogo = false,
+  logoSrc = '/appIcon2.png'
 }) => {
   return (
     <Box sx={{ 
@@ -68,22 +70,36 @@ const PageWrapper = ({
             minHeight: { xs: 40, sm: 44 }
           }}
         >
-          <Typography 
-            variant="h5" 
-            component="h1" 
-            sx={{ 
-              flexGrow: 1,
-              fontSize: { xs: '1.1rem', sm: '1.25rem' },
-              fontWeight: 600,
-              letterSpacing: '-0.01em',
-              lineHeight: 1.3,
-              color: headerColor === 'white' || headerColor === 'background.default'
-                ? 'rgba(0, 0, 0, 0.9)'
-                : headerTextColor
-            }}
-          >
-            {title}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexGrow: 1 }}>
+            {showLogo && (
+              <Box
+                component="img"
+                src={logoSrc}
+                alt="Food Hero Logo"
+                sx={{
+                  width: { xs: 28, sm: 32 },
+                  height: { xs: 28, sm: 32 },
+                  borderRadius: 1,
+                  flexShrink: 0
+                }}
+              />
+            )}
+            <Typography 
+              variant="h5" 
+              component="h1" 
+              sx={{ 
+                fontSize: { xs: '1.1rem', sm: '1.25rem' },
+                fontWeight: 600,
+                letterSpacing: '-0.01em',
+                lineHeight: 1.3,
+                color: headerColor === 'white' || headerColor === 'background.default'
+                  ? 'rgba(0, 0, 0, 0.9)'
+                  : headerTextColor
+              }}
+            >
+              {title}
+            </Typography>
+          </Box>
           {headerAction && (
             <Box sx={{ ml: 'auto' }}>
               {headerAction}

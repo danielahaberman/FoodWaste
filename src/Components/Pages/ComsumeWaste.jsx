@@ -540,11 +540,16 @@ function ConsumeWaste({ onGoToDate }) {
             }
           }}
           onClick={() => {
-            // Navigate to log page with the week's start date
-            const weekStart = moment.tz(week.weekOf, 'MM/DD/YYYY', 'America/New_York');
-            // Format date as YYYY-MM-DD for URL parameter
-            const dateParam = weekStart.format('YYYY-MM-DD');
-            navigate(`/log?date=${dateParam}`);
+            if (isEmpty) {
+              // If week is empty, navigate to log page to add food
+              const weekStart = moment.tz(week.weekOf, 'MM/DD/YYYY', 'America/New_York');
+              // Format date as YYYY-MM-DD for URL parameter
+              const dateParam = weekStart.format('YYYY-MM-DD');
+              navigate(`/log?date=${dateParam}`);
+            } else {
+              // If week has purchases, open week details to manage waste/consumption
+              openWeekDetails(week.weekOf);
+            }
           }}
         >
           <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
