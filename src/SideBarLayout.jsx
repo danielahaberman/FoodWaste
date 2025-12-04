@@ -33,7 +33,10 @@ const SidebarLayout = () => {
           maxWidth: { xs: "100%", sm: "600px" },
           margin: { xs: 0, sm: "0 auto" },
           px: { xs: 0, sm: 2 }, // No padding on mobile, padding on larger screens
-          pt: { xs: 0, sm: 3 }, // No top padding on mobile, normal padding on larger screens
+          pt: { 
+            xs: `max(0px, env(safe-area-inset-top))`, // iOS safe area top padding on mobile
+            sm: 3 
+          },
           pb: { xs: 0, sm: 9 }, // No bottom padding on mobile for full height, padding on larger screens
           backgroundColor: "transparent", // Make transparent to allow background to show through
           borderRadius: { xs: 0, sm: 2 }, // No border radius on mobile
