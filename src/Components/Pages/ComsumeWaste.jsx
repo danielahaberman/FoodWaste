@@ -36,6 +36,8 @@ import FastfoodIcon from "@mui/icons-material/Fastfood";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import CloseIcon from "@mui/icons-material/Close";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import { Pie, Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -97,7 +99,8 @@ function ConsumeWaste({ onGoToDate }) {
   const [overallChart, setOverallChart] = useState(null);
   const [overallTotals, setOverallTotals] = useState(null); // { consumed, wasted }
   const [overallOpen, setOverallOpen] = useState(false);
-  const [trendPeriod, setTrendPeriod] = useState('day'); // 'day' | 'week'
+  const [trendPeriod, setTrendPeriod] = useState('day'); // 'day' | 'week' | 'month'
+  const [trendOffset, setTrendOffset] = useState(0); // Offset in periods to go back in time
   const [tabIndex, setTabIndex] = useState(0); // 0: overall pie, 1: trend, 2: by category
   const [activeWeekOf, setActiveWeekOf] = useState(null);
   const [byCategory, setByCategory] = useState([]);
@@ -202,15 +205,32 @@ function ConsumeWaste({ onGoToDate }) {
     })();
   }, [weeklySummary]);
 
-  const loadTrend = async (period) => {
-    const trendRes = await consumptionAPI.getTrends({ user_id: userId, period, count: period === 'day' ? 30 : 12 });
+  const loadTrend = async (period, offset = 0) => {
+    const count = period === 'day' ? 30 : period === 'week' ? 12 : 12;
+    const trendRes = await consumptionAPI.getTrends({ user_id: userId, period, count, offset });
     const t = trendRes.data || [];
+    
+    // Filter out periods with no data (both consumed and wasted are 0)
+    const filteredData = t.filter(x => {
+      const consumed = parseFloat(x.consumed_qty || 0);
+      const wasted = parseFloat(x.wasted_qty || 0);
+      return consumed > 0 || wasted > 0;
+    });
+    
+    const formatLabel = (date, periodType) => {
+      const d = new Date(date);
+      if (periodType === 'month') {
+        return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      }
+      return d.toLocaleDateString();
+    };
+    
     setTrendData({
-      labels: t.map(x => new Date(x.bucket).toLocaleDateString()),
+      labels: filteredData.map(x => formatLabel(x.bucket, period)),
       datasets: [
         {
           label: "% Wasted",
-          data: t.map(x => parseFloat((x.percent_wasted || 0).toFixed(2))),
+          data: filteredData.map(x => parseFloat((x.percent_wasted || 0).toFixed(2))),
           borderColor: "#ef5350",
           backgroundColor: "rgba(239,83,80,0.2)",
           tension: 0.3,
@@ -222,9 +242,9 @@ function ConsumeWaste({ onGoToDate }) {
 
   useEffect(() => {
     if (overallOpen) {
-      loadTrend(trendPeriod);
+      loadTrend(trendPeriod, trendOffset);
     }
-  }, [overallOpen, trendPeriod]);
+  }, [overallOpen, trendPeriod, trendOffset]);
 
   const ensureWeekChart = async (weekOf, refresh = false) => {
     if (!weekCharts[weekOf] || refresh) {
@@ -1213,17 +1233,67 @@ function ConsumeWaste({ onGoToDate }) {
 								<ToggleButtonGroup
 									value={trendPeriod}
 									exclusive
-									onChange={(_, v) => v && setTrendPeriod(v)}
+									onChange={(_, v) => {
+										if (v) {
+											setTrendPeriod(v);
+											setTrendOffset(0); // Reset offset when changing period
+										}
+									}}
 									color="primary"
 									size="small"
 									sx={{ alignSelf: 'center' }}
 								>
 									<ToggleButton value="day">By Day</ToggleButton>
 									<ToggleButton value="week">By Week</ToggleButton>
+									<ToggleButton value="month">By Month</ToggleButton>
 								</ToggleButtonGroup>
+								
+								{/* Time Navigation Controls */}
+								<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+									<IconButton 
+										size="small"
+										onClick={() => {
+											// Bigger increments based on period type
+											const increment = trendPeriod === 'day' ? 7 : trendPeriod === 'week' ? 4 : 3;
+											setTrendOffset(prev => prev + increment);
+										}}
+										sx={{ 
+											border: '1px solid',
+											borderColor: 'divider',
+											'&:hover': { bgcolor: 'action.hover' }
+										}}
+									>
+										<ArrowBackIosIcon fontSize="small" />
+									</IconButton>
+									<Typography variant="body2" sx={{ minWidth: 120, textAlign: 'center' }}>
+										{trendOffset === 0 
+											 ? 'Current Period' 
+										 : `${trendOffset} ${trendPeriod}${trendOffset > 1 ? 's' : ''} ago`}
+									</Typography>
+									<IconButton 
+										size="small"
+										onClick={() => {
+											// Bigger increments based on period type
+											const increment = trendPeriod === 'day' ? 7 : trendPeriod === 'week' ? 4 : 3;
+											setTrendOffset(prev => Math.max(0, prev - increment));
+										}}
+										disabled={trendOffset === 0}
+										sx={{ 
+											border: '1px solid',
+											borderColor: 'divider',
+											'&:hover': { bgcolor: 'action.hover' },
+											'&:disabled': { opacity: 0.3 }
+										}}
+									>
+										<ArrowForwardIosIcon fontSize="small" />
+									</IconButton>
+								</Box>
+								
 								{trendData && (
 									<Box sx={{ maxWidth: 700, mx: "auto" }}>
-										<Typography variant="subtitle2" sx={{ textAlign: "center", mb: 1 }}>Trend: % Wasted ({trendPeriod})</Typography>
+										<Typography variant="subtitle2" sx={{ textAlign: "center", mb: 1 }}>
+											Trend: % Wasted ({trendPeriod === 'day' ? 'Daily' : trendPeriod === 'week' ? 'Weekly' : 'Monthly'})
+										</Typography>
 										<Line data={trendData} options={{ scales: { y: { min: 0, max: 100, ticks: { callback: (v) => v + '%' } } } }} />
 									</Box>
 								)}

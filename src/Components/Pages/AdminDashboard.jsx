@@ -110,6 +110,13 @@ function AdminDashboard({ onLogout }) {
   const [loadingUserSearch, setLoadingUserSearch] = useState(false);
   const [dataManagementMessage, setDataManagementMessage] = useState('');
   const [loadingDataOperation, setLoadingDataOperation] = useState(false);
+  
+  // User trends states
+  const [trendsUser, setTrendsUser] = useState(null);
+  const [userTrendsData, setUserTrendsData] = useState(null);
+  const [loadingUserTrends, setLoadingUserTrends] = useState(false);
+  const [userTrendsPeriod, setUserTrendsPeriod] = useState('week');
+  const [userTrendsError, setUserTrendsError] = useState(null);
 
   useEffect(() => {
     loadOverviewData();
@@ -242,6 +249,25 @@ function AdminDashboard({ onLogout }) {
     } catch (err) {
       console.error('Error cleaning up fake data:', err);
       setFakeDataMessage(`❌ Error: ${err.response?.data?.error || err.message}`);
+    } finally {
+      setLoadingFakeData(false);
+    }
+  };
+
+  const handleGenerateDtestTrendingData = async () => {
+    try {
+      setLoadingFakeData(true);
+      setFakeDataMessage('⏳ Generating trending data for dtest user... This may take 1-2 minutes. Check the server terminal for progress updates.');
+      const response = await adminAPI.generateDtestTrendingData();
+      setFakeDataMessage(`✅ ${response.data.message} - ${response.data.data.purchases} purchases, ${response.data.data.consumptionLogs} consumption logs from ${response.data.data.startDate} to ${response.data.data.endDate}`);
+      await loadOverviewData(); // Refresh overview to show updated counts
+    } catch (err) {
+      console.error('Error generating dtest trending data:', err);
+      if (err.code === 'ECONNABORTED') {
+        setFakeDataMessage(`❌ Request timed out. The operation may still be running on the server. Check the server logs.`);
+      } else {
+        setFakeDataMessage(`❌ Error: ${err.response?.data?.error || err.message}`);
+      }
     } finally {
       setLoadingFakeData(false);
     }
@@ -434,6 +460,167 @@ function AdminDashboard({ onLogout }) {
       // Fake Data Management tab - refresh count
       loadFakeUsersCount();
     }
+  };
+
+  const loadUserTrends = async (userId, period = 'week') => {
+    if (!userId) {
+      setUserTrendsError('Please select a user');
+      return;
+    }
+
+    try {
+      setLoadingUserTrends(true);
+      setUserTrendsError(null);
+      
+      // All periods show full data range - no count needed
+      const response = await adminAPI.getUserTrends(userId, period);
+      setUserTrendsData(response.data);
+    } catch (err) {
+      console.error('Error loading user trends:', err);
+      setUserTrendsError(err.response?.data?.error || 'Failed to load user trends');
+      setUserTrendsData(null);
+    } finally {
+      setLoadingUserTrends(false);
+    }
+  };
+
+  const handleTrendsUserSelect = (user) => {
+    setTrendsUser(user);
+    if (user) {
+      loadUserTrends(user.id, userTrendsPeriod);
+    } else {
+      setUserTrendsData(null);
+      setUserTrendsError(null);
+    }
+  };
+
+  const processUserTrendsData = (trendsData) => {
+    if (!trendsData || trendsData.length === 0) return null;
+
+    // Filter out periods with no data (both consumed and wasted are 0)
+    const filteredData = trendsData.filter(item => {
+      const consumed = parseFloat(item.consumed_qty || 0);
+      const wasted = parseFloat(item.wasted_qty || 0);
+      return consumed > 0 || wasted > 0;
+    });
+
+    if (filteredData.length === 0) return null;
+
+    const labels = filteredData.map(item => {
+      const date = new Date(item.bucket);
+      switch (userTrendsPeriod) {
+        case 'day':
+          return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        case 'week':
+          return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        case 'month':
+        case 'all':
+          return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        default:
+          return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      }
+    });
+
+    return {
+      labels,
+      datasets: [
+        {
+          label: '% Consumed',
+          data: filteredData.map(item => {
+            const total = item.consumed_qty + item.wasted_qty;
+            const percent_consumed = total > 0 ? (item.consumed_qty / total) * 100 : 0;
+            return parseFloat(percent_consumed.toFixed(2));
+          }),
+          borderColor: 'rgb(59, 130, 246)', // Blue
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          tension: 0.3,
+          fill: false,
+        },
+        {
+          label: '% Wasted',
+          data: filteredData.map(item => parseFloat(item.percent_wasted.toFixed(2))),
+          borderColor: 'rgb(239, 83, 80)', // Red
+          backgroundColor: 'rgba(239, 83, 80, 0.1)',
+          tension: 0.3,
+          fill: false,
+        },
+      ],
+    };
+  };
+
+  const getUserTrendsChartOptions = () => {
+    const periodLabels = {
+      day: 'Daily',
+      week: 'Weekly',
+      month: 'Monthly',
+      all: 'All Time'
+    };
+    
+    const xAxisLabels = {
+      day: 'Day',
+      week: 'Week',
+      month: 'Month',
+      all: 'Month'
+    };
+    
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'top',
+        },
+        title: {
+          display: true,
+          text: trendsUser 
+            ? `Waste Trends for ${trendsUser.username || `User ${trendsUser.id}`} (${periodLabels[userTrendsPeriod] || 'Weekly'} View)`
+            : 'Select a user to view trends',
+          font: {
+            size: 16,
+            weight: 'bold'
+          }
+        },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            label: function(context) {
+              return `${context.dataset.label}: ${context.parsed.y.toFixed(1)}%`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          display: true,
+          title: {
+            display: true,
+            text: xAxisLabels[userTrendsPeriod] || 'Week'
+          }
+        },
+        y: {
+          type: 'linear',
+          display: true,
+          position: 'left',
+          title: {
+            display: true,
+            text: 'Percentage (%)'
+          },
+          beginAtZero: true,
+          max: 100,
+          ticks: {
+            callback: function(value) {
+              return value + '%';
+            }
+          }
+        },
+      },
+      interaction: {
+        mode: 'nearest',
+        axis: 'x',
+        intersect: false
+      }
+    };
   };
 
   const handleExport = async (exportFunction, filename) => {
@@ -906,6 +1093,7 @@ function AdminDashboard({ onLogout }) {
           <Tab label="Survey Responses" />
           <Tab label="Waste Patterns" />
           <Tab label="Purchase Trends" />
+          <Tab label="User Trends" />
           <Tab label="Data Export" />
           <Tab label="Fake Data Management" />
         <Tab label="Data Management" />
@@ -1450,8 +1638,258 @@ function AdminDashboard({ onLogout }) {
         )}
       </TabPanel>
 
-      {/* Data Export Tab */}
+      {/* User Trends Tab */}
       <TabPanel value={tabValue} index={4}>
+        <Typography variant="h6" gutterBottom>
+          User Waste Trends
+        </Typography>
+        <Typography variant="body2" color="textSecondary" sx={{ mb: 3 }}>
+          Select a user to view their waste and consumption trends over time.
+        </Typography>
+
+        <Grid container spacing={3}>
+          {/* User Selection */}
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <Typography variant="subtitle1" gutterBottom>
+                  Select User
+                </Typography>
+                <Box sx={{ mb: 2 }}>
+                  <UserSearchAutocomplete
+                    onUserSelect={handleTrendsUserSelect}
+                    placeholder="Search by User ID or Username..."
+                  />
+                </Box>
+                
+                {trendsUser && (
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="body2" color="textSecondary">
+                      Viewing trends for: <strong>{trendsUser.username || `User ${trendsUser.id}`}</strong>
+                      {trendsUser.email && ` (${trendsUser.email})`}
+                    </Typography>
+                  </Box>
+                )}
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Period Selector */}
+          {trendsUser && (
+            <Grid item xs={12}>
+              <Card>
+                <CardContent>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="subtitle1">
+                      Time Period
+                    </Typography>
+                    <FormControl size="small" sx={{ minWidth: 150 }}>
+                      <InputLabel>Period</InputLabel>
+                      <Select
+                        value={userTrendsPeriod}
+                        label="Period"
+                        onChange={(e) => {
+                          const newPeriod = e.target.value;
+                          setUserTrendsPeriod(newPeriod);
+                          if (trendsUser) {
+                            loadUserTrends(trendsUser.id, newPeriod);
+                          }
+                        }}
+                      >
+                        <MenuItem value="day">Daily</MenuItem>
+                        <MenuItem value="week">Weekly</MenuItem>
+                        <MenuItem value="month">Monthly</MenuItem>
+                        <MenuItem value="all">All Time</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          )}
+
+          {/* Trends Chart */}
+          {trendsUser && (
+            <Grid item xs={12}>
+              <Card>
+                <CardContent>
+                  {loadingUserTrends ? (
+                    <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px">
+                      <CircularProgress />
+                    </Box>
+                  ) : userTrendsError ? (
+                    <Alert severity="error">{userTrendsError}</Alert>
+                  ) : userTrendsData && userTrendsData.length > 0 ? (
+                    <>
+                      {(() => {
+                        // Filter out periods with no data
+                        const filteredData = userTrendsData.filter(item => {
+                          const consumed = parseFloat(item.consumed_qty || 0);
+                          const wasted = parseFloat(item.wasted_qty || 0);
+                          return consumed > 0 || wasted > 0;
+                        });
+
+                        if (filteredData.length === 0) {
+                          return (
+                            <Alert severity="info">
+                              No trend data available for this user. They may not have any consumption logs yet.
+                            </Alert>
+                          );
+                        }
+
+                        return (
+                          <>
+                            <Box sx={{ height: '400px', width: '100%' }}>
+                              {processUserTrendsData(userTrendsData) && (
+                                <Line 
+                                  data={processUserTrendsData(userTrendsData)} 
+                                  options={getUserTrendsChartOptions()}
+                                />
+                              )}
+                            </Box>
+                            
+                            {/* Summary Statistics */}
+                            <Grid container spacing={2} sx={{ mt: 2 }}>
+                              <Grid item xs={12} md={4}>
+                                <Card variant="outlined">
+                                  <CardContent>
+                                    <Typography variant="subtitle2" color="textSecondary">
+                                      Total Consumed
+                                    </Typography>
+                                    <Typography variant="h5" color="primary">
+                                      {filteredData.reduce((sum, item) => sum + item.consumed_qty, 0).toFixed(0)} items
+                                    </Typography>
+                                    <Typography variant="body2" color="textSecondary">
+                                      ${filteredData.reduce((sum, item) => sum + item.consumed_cost, 0).toFixed(2)} total
+                                    </Typography>
+                                  </CardContent>
+                                </Card>
+                              </Grid>
+                              <Grid item xs={12} md={4}>
+                                <Card variant="outlined">
+                                  <CardContent>
+                                    <Typography variant="subtitle2" color="textSecondary">
+                                      Total Wasted
+                                    </Typography>
+                                    <Typography variant="h5" color="error">
+                                      {filteredData.reduce((sum, item) => sum + item.wasted_qty, 0).toFixed(0)} items
+                                    </Typography>
+                                    <Typography variant="body2" color="textSecondary">
+                                      ${filteredData.reduce((sum, item) => sum + item.wasted_cost, 0).toFixed(2)} total
+                                    </Typography>
+                                  </CardContent>
+                                </Card>
+                              </Grid>
+                              <Grid item xs={12} md={4}>
+                                <Card variant="outlined">
+                                  <CardContent>
+                                    <Typography variant="subtitle2" color="textSecondary">
+                                      Average % Wasted
+                                    </Typography>
+                                    <Typography variant="h5">
+                                      {filteredData.length > 0 
+                                        ? (filteredData.reduce((sum, item) => sum + item.percent_wasted, 0) / filteredData.length).toFixed(1)
+                                        : 0}%
+                                    </Typography>
+                                    <Typography variant="body2" color="textSecondary">
+                                      Across {filteredData.length} {
+                                        userTrendsPeriod === 'day' ? 'days' : 
+                                        userTrendsPeriod === 'week' ? 'weeks' : 
+                                        userTrendsPeriod === 'month' ? 'months' : 
+                                        'periods'
+                                      }
+                                    </Typography>
+                                  </CardContent>
+                                </Card>
+                              </Grid>
+                            </Grid>
+
+                            {/* Trends Table */}
+                            <Box sx={{ mt: 3 }}>
+                              <Typography variant="subtitle1" gutterBottom>
+                                Detailed Data
+                              </Typography>
+                              <TableContainer>
+                                <Table size="small">
+                                  <TableHead>
+                                    <TableRow>
+                                      <TableCell>
+                                        {userTrendsPeriod === 'day' ? 'Date' : 
+                                         userTrendsPeriod === 'week' ? 'Week Starting' : 
+                                         userTrendsPeriod === 'month' ? 'Month Starting' : 
+                                         'Month Starting'}
+                                      </TableCell>
+                                      <TableCell align="right">Consumed Items</TableCell>
+                                      <TableCell align="right">Wasted Items</TableCell>
+                                      <TableCell align="right">Consumed Cost</TableCell>
+                                      <TableCell align="right">Wasted Cost</TableCell>
+                                      <TableCell align="right">% Wasted</TableCell>
+                                    </TableRow>
+                                  </TableHead>
+                                  <TableBody>
+                                    {filteredData.map((row, index) => {
+                                      const date = new Date(row.bucket);
+                                      const dateLabel = userTrendsPeriod === 'month' || userTrendsPeriod === 'all'
+                                        ? date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                                        : date.toLocaleDateString();
+                                      
+                                      return (
+                                        <TableRow key={index}>
+                                          <TableCell>{dateLabel}</TableCell>
+                                          <TableCell align="right">{row.consumed_qty.toFixed(0)}</TableCell>
+                                          <TableCell align="right">{row.wasted_qty.toFixed(0)}</TableCell>
+                                          <TableCell align="right">${row.consumed_cost.toFixed(2)}</TableCell>
+                                          <TableCell align="right">${row.wasted_cost.toFixed(2)}</TableCell>
+                                          <TableCell align="right">
+                                            <Chip 
+                                              label={`${row.percent_wasted.toFixed(1)}%`}
+                                              size="small"
+                                              color={row.percent_wasted > 50 ? 'error' : row.percent_wasted > 25 ? 'warning' : 'success'}
+                                            />
+                                          </TableCell>
+                                        </TableRow>
+                                      );
+                                    })}
+                                  </TableBody>
+                                </Table>
+                              </TableContainer>
+                            </Box>
+                          </>
+                        );
+                      })()}
+                    </>
+                  ) : (
+                    <Alert severity="info">
+                      No trend data available for this user. They may not have any consumption logs yet.
+                    </Alert>
+                  )}
+                </CardContent>
+              </Card>
+            </Grid>
+          )}
+
+          {/* Empty State */}
+          {!trendsUser && (
+            <Grid item xs={12}>
+              <Card>
+                <CardContent>
+                  <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" minHeight="300px">
+                    <Typography variant="h6" color="textSecondary" gutterBottom>
+                      Select a user to view their waste trends
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      Use the search box above to find and select a user
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          )}
+        </Grid>
+      </TabPanel>
+
+      {/* Data Export Tab */}
+      <TabPanel value={tabValue} index={5}>
         <Typography variant="h6" gutterBottom>
           Export Data to CSV (Google Sheets Compatible)
         </Typography>
@@ -1525,7 +1963,7 @@ function AdminDashboard({ onLogout }) {
       </TabPanel>
 
       {/* Fake Data Management Tab */}
-      <TabPanel value={tabValue} index={5}>
+      <TabPanel value={tabValue} index={6}>
         <Typography variant="h6" gutterBottom>
           Fake Data Management
         </Typography>
@@ -1604,6 +2042,27 @@ function AdminDashboard({ onLogout }) {
             </Button>
           </Grid>
         </Grid>
+
+        {/* Trending Data for dtest User */}
+        <Card sx={{ mb: 3, bgcolor: '#e3f2fd' }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Generate Trending Data for "dtest" User
+            </Typography>
+            <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+              Creates data from August 23rd to today showing a progression from junk food with high waste to healthy food with low waste.
+              User will be created if it doesn't exist (password: testtest).
+            </Typography>
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={handleGenerateDtestTrendingData}
+              disabled={loadingFakeData}
+            >
+              Generate dtest Trending Data
+            </Button>
+          </CardContent>
+        </Card>
 
         {/* Status Message */}
         {fakeDataMessage && (
@@ -1710,7 +2169,7 @@ function AdminDashboard({ onLogout }) {
       </TabPanel>
 
       {/* Data Management Tab */}
-      <TabPanel value={tabValue} index={6}>
+      <TabPanel value={tabValue} index={7}>
         <Typography variant="h6" gutterBottom>
           User Data Management
         </Typography>

@@ -27,7 +27,8 @@ import query from "./TableQuery.js";
 import { 
   generateFakeUsersWithData, 
   cleanupFakeUsers, 
-  getFakeUsersCount 
+  getFakeUsersCount,
+  generateTrendingDataForUser
 } from "./fakeDataGenerator.js";
 
 // Initialize database and start server
@@ -544,16 +545,31 @@ app.get("/consumption-summary/week", requireUserId, async (req, res) => {
 
 // GET consumption trends (percentage wasted over time)
 app.get("/consumption-trends", requireUserId, async (req, res) => {
-  const { user_id, period = 'week', count } = req.query;
+  const { user_id, period = 'week', count, offset = 0 } = req.query;
   try {
-    if (period !== 'day' && period !== 'week') {
-      return res.status(400).json({ error: "period must be 'day' or 'week'" });
+    if (period !== 'day' && period !== 'week' && period !== 'month') {
+      return res.status(400).json({ error: "period must be 'day', 'week', or 'month'" });
     }
-    const buckets = parseInt(count || (period === 'day' ? 30 : 12), 10);
-    const trunc = period === 'day' ? 'day' : 'week';
-    const step = period === 'day' ? '1 day' : '1 week';
-    const end = period === 'day' ? moment.tz('America/New_York').endOf('day').toDate() : moment.tz('America/New_York').endOf('week').toDate();
-    const start = period === 'day' ? moment.tz(end, 'America/New_York').startOf('day').subtract(buckets - 1, 'days').toDate() : moment.tz(end, 'America/New_York').startOf('week').subtract(buckets - 1, 'weeks').toDate();
+    const buckets = parseInt(count || (period === 'day' ? 30 : period === 'week' ? 12 : 12), 10);
+    const offsetPeriods = parseInt(offset, 10) || 0;
+    
+    let trunc, step, end, start;
+    if (period === 'day') {
+      trunc = 'day';
+      step = '1 day';
+      end = moment.tz('America/New_York').subtract(offsetPeriods, 'days').endOf('day').toDate();
+      start = moment.tz(end, 'America/New_York').startOf('day').subtract(buckets - 1, 'days').toDate();
+    } else if (period === 'week') {
+      trunc = 'week';
+      step = '1 week';
+      end = moment.tz('America/New_York').subtract(offsetPeriods, 'weeks').endOf('week').toDate();
+      start = moment.tz(end, 'America/New_York').startOf('week').subtract(buckets - 1, 'weeks').toDate();
+    } else if (period === 'month') {
+      trunc = 'month';
+      step = '1 month';
+      end = moment.tz('America/New_York').subtract(offsetPeriods, 'months').endOf('month').toDate();
+      start = moment.tz(end, 'America/New_York').startOf('month').subtract(buckets - 1, 'months').toDate();
+    }
 
     // Build a full bucket series and left join aggregated totals based on purchase_date
     const q = `
@@ -1509,6 +1525,101 @@ app.get("/admin/analytics/purchase-trends", async (req, res) => {
   }
 });
 
+// GET user consumption trends (admin endpoint - allows querying any user)
+app.get("/admin/analytics/user-trends", async (req, res) => {
+  const { user_id, period = 'week' } = req.query;
+  
+  if (!user_id) {
+    return res.status(400).json({ error: "user_id is required" });
+  }
+
+  try {
+    if (period !== 'day' && period !== 'week' && period !== 'month' && period !== 'all') {
+      return res.status(400).json({ error: "period must be 'day', 'week', 'month', or 'all'" });
+    }
+    
+    // Get the earliest purchase date for this user (all timeframes show full range)
+    const earliestQuery = await pool.query(
+      `SELECT MIN(purchase_date) as earliest_date FROM purchases WHERE user_id = $1`,
+      [user_id]
+    );
+    const earliestDate = earliestQuery.rows[0]?.earliest_date;
+    
+    if (!earliestDate) {
+      // No data for this user
+      return res.json([]);
+    }
+    
+    let trunc, step, end, start;
+    
+    // Determine bucket granularity based on period
+    // All periods show the full data range, only granularity changes
+    if (period === 'day') {
+      trunc = 'day';
+      step = '1 day';
+      start = moment.tz(earliestDate, 'America/New_York').startOf('day').toDate();
+      // Exclude current incomplete day - end at end of yesterday
+      end = moment.tz('America/New_York').subtract(1, 'day').endOf('day').toDate();
+    } else if (period === 'week') {
+      trunc = 'week';
+      step = '1 week';
+      start = moment.tz(earliestDate, 'America/New_York').startOf('week').toDate();
+      // Exclude current incomplete week - end at end of previous week
+      end = moment.tz('America/New_York').subtract(1, 'week').endOf('week').toDate();
+    } else if (period === 'month' || period === 'all') {
+      trunc = 'month';
+      step = '1 month';
+      start = moment.tz(earliestDate, 'America/New_York').startOf('month').toDate();
+      // Exclude current incomplete month - end at end of previous month
+      end = moment.tz('America/New_York').subtract(1, 'month').endOf('month').toDate();
+    }
+
+    // Build a full bucket series and left join aggregated totals based on purchase_date
+    const q = `
+      WITH buckets AS (
+        SELECT generate_series(date_trunc('${trunc}', $2::timestamp), date_trunc('${trunc}', $3::timestamp), interval '${step}') AS bucket
+      ), per AS (
+        SELECT date_trunc('${trunc}', p.purchase_date) AS bucket,
+               SUM(CASE WHEN cl.action='consumed' THEN cl.quantity ELSE 0 END) AS consumed_qty,
+               SUM(CASE WHEN cl.action='wasted' THEN cl.quantity ELSE 0 END) AS wasted_qty,
+               SUM(CASE WHEN cl.action='consumed' THEN cl.cost_value ELSE 0 END) AS consumed_cost,
+               SUM(CASE WHEN cl.action='wasted' THEN cl.cost_value ELSE 0 END) AS wasted_cost
+        FROM consumption_logs cl
+        JOIN purchases p ON p.id = cl.purchase_id
+        WHERE cl.user_id = $1 AND p.purchase_date BETWEEN $2 AND $3
+        GROUP BY 1
+      )
+      SELECT b.bucket,
+             COALESCE(per.consumed_qty, 0) AS consumed_qty,
+             COALESCE(per.wasted_qty, 0) AS wasted_qty,
+             COALESCE(per.consumed_cost, 0) AS consumed_cost,
+             COALESCE(per.wasted_cost, 0) AS wasted_cost
+      FROM buckets b
+      LEFT JOIN per ON per.bucket = b.bucket
+      ORDER BY b.bucket ASC
+    `;
+    const r = await pool.query(q, [user_id, start, end]);
+    const rows = r.rows.map(row => {
+      const consumed = parseFloat(row.consumed_qty || 0);
+      const wasted = parseFloat(row.wasted_qty || 0);
+      const total = consumed + wasted;
+      const percent_wasted = total > 0 ? (wasted / total) * 100.0 : 0;
+      return {
+        bucket: row.bucket,
+        consumed_qty: consumed,
+        wasted_qty: wasted,
+        consumed_cost: parseFloat(row.consumed_cost || 0),
+        wasted_cost: parseFloat(row.wasted_cost || 0),
+        percent_wasted,
+      };
+    });
+    res.json(rows);
+  } catch (err) {
+    console.error("Error getting user trends:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // CSV Export Endpoints
 
 // Helper function to convert data to CSV
@@ -1744,6 +1855,40 @@ app.get("/admin/fake-users-count", async (req, res) => {
     });
   } catch (error) {
     console.error("Error getting fake users count:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Generate trending data for dtest user
+app.post("/admin/generate-dtest-trending-data", async (req, res) => {
+  try {
+    const username = 'dtest';
+    const startDate = '2025-08-23'; // August 23rd, 2025
+    
+    console.log('\n' + '='.repeat(60));
+    console.log('📡 ADMIN API CALL: Generate dtest trending data');
+    console.log('='.repeat(60));
+    
+    const result = await generateTrendingDataForUser(username, startDate);
+    
+    console.log('✅ API RESPONSE: Success');
+    console.log('='.repeat(60) + '\n');
+    
+    res.status(200).json({
+      message: `Successfully generated trending data for user ${username}`,
+      data: {
+        userId: result.userId,
+        purchases: result.purchases,
+        consumptionLogs: result.consumptionLogs,
+        startDate: result.startDate,
+        endDate: result.endDate
+      }
+    });
+  } catch (error) {
+    console.error('\n' + '='.repeat(60));
+    console.error('❌ API ERROR: Generate dtest trending data failed');
+    console.error('Error:', error.message);
+    console.error('='.repeat(60) + '\n');
     res.status(500).json({ error: error.message });
   }
 });

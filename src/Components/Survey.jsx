@@ -214,15 +214,15 @@ const Survey = ({ questions }) => {
       case "multiple_choice":
       case "rating":
         return (
-          <Stack spacing={3}>
+          <Stack spacing={2}>
             <Typography 
               variant="h6" 
               sx={{ 
                 color: 'rgba(0, 0, 0, 0.85)', 
                 fontWeight: 600, 
-                mb: 1,
-                fontSize: { xs: "1.2rem", sm: "1.35rem" },
-                lineHeight: 1.4,
+                mb: 0.5,
+                fontSize: { xs: "1.15rem", sm: "1.25rem" },
+                lineHeight: 1.3,
                 letterSpacing: '-0.01em'
               }}
             >
@@ -235,7 +235,7 @@ const Survey = ({ questions }) => {
                   xs: "repeat(auto-fit, minmax(120px, 1fr))", 
                   sm: "repeat(auto-fit, minmax(150px, 1fr))" 
                 },
-                gap: { xs: 2, sm: 2.5 },
+                gap: { xs: 1.5, sm: 2 },
                 width: "100%"
               }}
             >
@@ -251,9 +251,9 @@ const Survey = ({ questions }) => {
                     color={isSelected ? "primary" : "inherit"}
                     onClick={() => handleResponse(optionValue)}
                     sx={{
-                      minHeight: { xs: 52, sm: 60 },
+                      minHeight: { xs: 44, sm: 48 },
                       fontSize: { xs: "0.9rem", sm: "1rem" },
-                      padding: { xs: "12px 16px", sm: "14px 20px" },
+                      padding: { xs: "10px 14px", sm: "12px 16px" },
                       whiteSpace: "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
@@ -285,15 +285,15 @@ const Survey = ({ questions }) => {
       case "number":
       case "text":
         return (
-          <Stack spacing={2}>
+          <Stack spacing={1.5}>
             <Typography 
               variant="h6" 
               sx={{ 
                 color: 'rgba(0, 0, 0, 0.85)', 
                 fontWeight: 600, 
-                mb: 3,
-                fontSize: { xs: "1.2rem", sm: "1.35rem" },
-                lineHeight: 1.4,
+                mb: 1,
+                fontSize: { xs: "1.15rem", sm: "1.25rem" },
+                lineHeight: 1.3,
                 letterSpacing: '-0.01em'
               }}
             >
@@ -328,8 +328,8 @@ const Survey = ({ questions }) => {
                   }
                 },
                 '& .MuiInputBase-input': {
-                  fontSize: { xs: "1rem", sm: "1.1rem" },
-                  padding: { xs: "14px 16px", sm: "16px 18px" },
+                  fontSize: { xs: "1rem", sm: "1.05rem" },
+                  padding: { xs: "12px 14px", sm: "14px 16px" },
                   fontWeight: 500
                 }
               }}
@@ -338,15 +338,15 @@ const Survey = ({ questions }) => {
         );
       case "money":
         return (
-          <Stack spacing={2}>
+          <Stack spacing={1.5}>
             <Typography 
               variant="h6" 
               sx={{ 
                 color: 'rgba(0, 0, 0, 0.85)', 
                 fontWeight: 600, 
-                mb: 3,
-                fontSize: { xs: "1.2rem", sm: "1.35rem" },
-                lineHeight: 1.4,
+                mb: 1,
+                fontSize: { xs: "1.15rem", sm: "1.25rem" },
+                lineHeight: 1.3,
                 letterSpacing: '-0.01em'
               }}
             >
@@ -381,8 +381,8 @@ const Survey = ({ questions }) => {
                   }
                 },
                 '& .MuiInputBase-input': {
-                  fontSize: { xs: "1rem", sm: "1.1rem" },
-                  padding: { xs: "14px 16px", sm: "16px 18px" },
+                  fontSize: { xs: "1rem", sm: "1.05rem" },
+                  padding: { xs: "12px 14px", sm: "14px 16px" },
                   fontWeight: 500
                 }
               }}
@@ -472,7 +472,7 @@ const Survey = ({ questions }) => {
         sx={{
           maxWidth: { xs: "100%", sm: 600 },
           margin: "auto",
-          padding: { xs: 2, sm: 4 },
+          padding: { xs: 1.5, sm: 3 },
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -484,9 +484,9 @@ const Survey = ({ questions }) => {
           variant="h4" 
           gutterBottom
           sx={{ 
-            fontSize: { xs: "1.6rem", sm: "2.1rem" },
+            fontSize: { xs: "1.5rem", sm: "1.9rem" },
             textAlign: "center",
-            mb: { xs: 3, sm: 4 },
+            mb: { xs: 2, sm: 2.5 },
             fontWeight: 600,
             letterSpacing: '-0.02em',
             color: 'rgba(0, 0, 0, 0.85)'
@@ -498,7 +498,7 @@ const Survey = ({ questions }) => {
         <Paper 
           elevation={0}
           sx={{ 
-            padding: { xs: 4, sm: 5 }, 
+            padding: { xs: 3, sm: 3.5 }, 
             width: "100%", 
             color: "black",
             boxSizing: "border-box",
@@ -517,7 +517,7 @@ const Survey = ({ questions }) => {
               justifyContent: "space-between",
               alignItems: "center",
               gap: 2,
-              mt: { xs: 3, sm: 4 }
+              mt: { xs: 2.5, sm: 3 }
             }}
           >
             <Button

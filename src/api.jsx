@@ -169,6 +169,7 @@ export const adminAPI = {
   generateFakeData: (count) => api.post("/admin/generate-fake-data", { count }),
   getFakeUsersCount: () => api.get("/admin/fake-users-count"),
   cleanupFakeData: () => api.delete("/admin/cleanup-fake-data"),
+  generateDtestTrendingData: () => api.post("/admin/generate-dtest-trending-data", {}, { timeout: 120000 }), // 2 minute timeout
   
   // User Data Management endpoints
   deleteAllUsers: (confirm) => api.delete("/admin/delete-all-users", { data: { confirm } }),
@@ -177,7 +178,10 @@ export const adminAPI = {
   searchUser: (userId) => api.get(`/admin/search-user/${userId}`),
   deleteUser: (userId, confirm) => api.delete(`/admin/delete-user/${userId}`, { data: { confirm } }),
   deleteUserData: (userId, confirm) => api.delete(`/admin/delete-user-data/${userId}`, { data: { confirm } }),
-  deleteUserStreak: (userId, confirm) => api.delete(`/admin/delete-user-streak/${userId}`, { data: { confirm } })
+  deleteUserStreak: (userId, confirm) => api.delete(`/admin/delete-user-streak/${userId}`, { data: { confirm } }),
+  
+  // User Trends endpoint
+  getUserTrends: (userId, period = 'week') => api.get("/admin/analytics/user-trends", { params: { user_id: userId, period } })
 };
 
 export default api;
