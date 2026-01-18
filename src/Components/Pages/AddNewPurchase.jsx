@@ -24,6 +24,8 @@ import {
 import { useEffect, useState } from "react";
 import { foodPurchaseAPI, foodDataAPI } from "../../api";
 import FoodItemSearchDropdown from "../SearchFoodItems";
+import { getCurrentUserId } from "../../utils/authUtils";
+import { Alert, Snackbar } from "@mui/material";
 function AddNewPurchase({
   foodItems,
   fetchFoodItems,
@@ -37,6 +39,8 @@ function AddNewPurchase({
   const [hideNew, setHideNew] = useState(false);
   const [showDateConfirmation, setShowDateConfirmation] = useState(false);
   const [pendingFoodItem, setPendingFoodItem] = useState(null);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const initialNewFoodItem = {
     name: "",
@@ -49,37 +53,57 @@ function AddNewPurchase({
   const [newFoodItem, setNewFoodItem] = useState(initialNewFoodItem);
   const handleSubmit = async (event) => {
     event.preventDefault();
+    const userId = getCurrentUserId();
+    if (!userId) {
+      setError("You must be logged in to add food items.");
+      return;
+    }
+
     try {
-       await foodPurchaseAPI.addFoodItem({
-          ...newFoodItem,
-          user_id: JSON.parse(localStorage.getItem("userId")),
-        });
+      setLoading(true);
+      await foodPurchaseAPI.addFoodItem({
+        ...newFoodItem,
+        user_id: userId,
+      });
 
       setNewFoodItem(initialNewFoodItem);
       fetchFoodItems();
       setShowNewFoodForm(false);
+      setError(null);
     } catch (error) {
       console.error("Error adding food item:", error);
+      const errorMessage = error.response?.data?.error || error.message || "Failed to add food item. Please try again.";
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
   const fetchQuantityTypes = async () => {
+    const userId = getCurrentUserId();
+    if (!userId) return;
+    
     try {
-      const params = { user_id: localStorage.getItem("userId") };
+      const params = { user_id: userId };
       const response = await foodDataAPI.getQuantityTypes(params);
-      setQuantityTypes(response.data);
+      setQuantityTypes(response.data || []);
     } catch (error) {
       console.error("Error fetching quantity types:", error);
+      setError("Failed to load quantity types. Please refresh the page.");
     }
   };
 
   const fetchFoodCategories = async () => {
+    const userId = getCurrentUserId();
+    if (!userId) return;
+    
     try {
-      const params = { user_id: localStorage.getItem("userId") };
+      const params = { user_id: userId };
       const response = await foodDataAPI.getFoodCategories(params);
-      setFoodCategories(response.data);
+      setFoodCategories(response.data || []);
     } catch (error) {
       console.error("Error fetching food categories:", error);
+      setError("Failed to load food categories. Please refresh the page.");
     }
   };
 
@@ -101,10 +125,17 @@ function AddNewPurchase({
   };
 
   const addFoodToDate = async (foodItem, date) => {
+    const userId = getCurrentUserId();
+    if (!userId) {
+      setError("You must be logged in to add purchases.");
+      return;
+    }
+
     try {
+      setLoading(true);
       const purchaseDate = date.format('YYYY-MM-DD');
       const response = await foodPurchaseAPI.addPurchase({
-        user_id: localStorage.getItem("userId"),
+        user_id: userId,
         name: foodItem.name,
         category: foodItem.category,
         category_id: foodItem.category_id,
@@ -121,8 +152,13 @@ function AddNewPurchase({
       
       // Dispatch task completion event to update streak and task counts
       window.dispatchEvent(new CustomEvent('taskCompleted'));
+      setError(null);
     } catch (error) {
       console.error("Error adding purchase:", error);
+      const errorMessage = error.response?.data?.error || error.message || "Failed to add purchase. Please try again.";
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -332,15 +368,19 @@ function AddNewPurchase({
             type="submit"
             variant="contained"
             fullWidth
+            disabled={loading}
             sx={{
               mt: 1,
-              bgcolor: "#FFA500",
+              bgcolor: "#1976d2",
               color: "#fff",
               fontWeight: "bold",
+              '&:hover': {
+                bgcolor: "#1565c0",
+              },
             }}
           >
-            Add+
-                     </Button>
+            {loading ? "Adding..." : "Add+"}
+          </Button>
          </Box>
        </Modal>
 
@@ -436,6 +476,18 @@ function AddNewPurchase({
            </Button>
          </DialogActions>
        </Dialog>
+
+       {/* Error Snackbar */}
+       <Snackbar
+         open={!!error}
+         autoHideDuration={6000}
+         onClose={() => setError(null)}
+         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+       >
+         <Alert onClose={() => setError(null)} severity="error" sx={{ width: '100%' }}>
+           {error}
+         </Alert>
+       </Snackbar>
      </Box>
    );
  }

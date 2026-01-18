@@ -22,16 +22,19 @@ import SurveyGuard from './Components/SurveyGuard';
 import ErrorBoundary from './Components/ErrorBoundary';
 import AdminGuard from './Components/AdminGuard';
 import PWAProvider from './Components/PWAProvider';
+import UpdateProvider from './Components/UpdateProvider';
 import RouteTracker from './Components/RouteTracker';
+import ErrorPage from './Components/Pages/ErrorPage';
 
 function App() {
 
   return (
     <ErrorBoundary>
-      <PWAProvider>
-        <BrowserRouter>
-          <RouteTracker />
-          <Routes>
+      <UpdateProvider>
+        <PWAProvider>
+          <BrowserRouter>
+            <RouteTracker />
+            <Routes>
             {/* Admin routes (completely separate from user auth) */}
             <Route path="/admin" element={<AdminGuard />} />
             
@@ -46,6 +49,7 @@ function App() {
                       <Route path="/auth/login" element={<LoginPage />} />
                       <Route path="/auth/register" element={<RegisterPage />} />
                       <Route path="/terms" element={<TermsAndConditions />} />
+                      <Route path="/error" element={<ErrorPage />} />
                      
                       {/* SidebarLayout wrapped routes */}
                       <Route element={<SidebarLayout />}>
@@ -67,6 +71,7 @@ function App() {
           </Routes>
         </BrowserRouter>
       </PWAProvider>
+      </UpdateProvider>
     </ErrorBoundary>
   );
 }

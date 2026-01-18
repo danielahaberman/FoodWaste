@@ -28,6 +28,7 @@ import {
 } from "@mui/material";
 import PageWrapper from "../PageWrapper";
 import { useNavigate } from "react-router-dom";
+import { getCurrentUserId } from "../../utils/authUtils";
 import SwipeableViews from 'react-swipeable-views';
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import RestaurantIcon from "@mui/icons-material/Restaurant";
@@ -60,18 +61,24 @@ function ConsumeWaste({ onGoToDate }) {
   const [actionType, setActionType] = useState("consumed"); // or 'wasted'
   const [sliderUnits, setSliderUnits] = useState(0);
   const [manualQty, setManualQty] = useState("");
-  const userId = localStorage.getItem("userId");
 
   const fetchWeeklyPurchaseSummary = async () => {
+    const userId = getCurrentUserId();
+    if (!userId) {
+      setError("You must be logged in to view this data.");
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
-      const params = { user_id: localStorage.getItem("userId") };
+      const params = { user_id: userId };
       const response = await foodPurchaseAPI.getWeeklySummary(params);
-      setWeeklySummary(response.data);
+      setWeeklySummary(response.data || []);
     } catch (err) {
       console.error("Error fetching weekly summary:", err);
-      setError("Failed to load data.");
+      setError("Failed to load data. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -84,11 +91,12 @@ function ConsumeWaste({ onGoToDate }) {
   const purchasesFlat = useMemo(() => weeklySummary.flatMap(w => w.purchases), [weeklySummary]);
 
   const fetchBatchSummaries = async () => {
-    if (!purchasesFlat.length) return {};
+    const userId = getCurrentUserId();
+    if (!userId || !purchasesFlat.length) return {};
     const ids = purchasesFlat.map(p => p.id).join(",");
     const res = await consumptionAPI.getBatchSummary({ user_id: userId, purchase_ids: ids });
     const map = {};
-    res.data.forEach(r => { map[r.purchase_id] = r; });
+    (res.data || []).forEach(r => { map[r.purchase_id] = r; });
     return map;
   };
 
@@ -181,7 +189,8 @@ function ConsumeWaste({ onGoToDate }) {
 
   useEffect(() => {
     (async () => {
-      if (!weeklySummary.length) return;
+      const userId = getCurrentUserId();
+      if (!userId || !weeklySummary.length) return;
       // Preload overall pie
       const overallRes = await consumptionAPI.getOverall({ user_id: userId });
       const o = overallRes.data || {};
@@ -206,6 +215,8 @@ function ConsumeWaste({ onGoToDate }) {
   }, [weeklySummary]);
 
   const loadTrend = async (period, offset = 0) => {
+    const userId = getCurrentUserId();
+    if (!userId) return;
     const count = period === 'day' ? 30 : period === 'week' ? 12 : 12;
     const trendRes = await consumptionAPI.getTrends({ user_id: userId, period, count, offset });
     const t = trendRes.data || [];
@@ -247,6 +258,8 @@ function ConsumeWaste({ onGoToDate }) {
   }, [overallOpen, trendPeriod, trendOffset]);
 
   const ensureWeekChart = async (weekOf, refresh = false) => {
+    const userId = getCurrentUserId();
+    if (!userId) return;
     if (!weekCharts[weekOf] || refresh) {
       const res = await consumptionAPI.getWeek({ user_id: userId, week_start: weekOf });
       const d = res.data || {};
@@ -362,6 +375,11 @@ function ConsumeWaste({ onGoToDate }) {
   };
 
   const markWeekAsWasted = async (weekOf) => {
+    const userId = getCurrentUserId();
+    if (!userId) {
+      setError("You must be logged in to mark waste.");
+      return;
+    }
     try {
       console.log('Marking week as wasted:', weekOf);
       const response = await consumptionAPI.autoWasteWeek({ user_id: userId, week_start: weekOf });
@@ -386,6 +404,11 @@ function ConsumeWaste({ onGoToDate }) {
   };
 
   const markWeekAsConsumed = async (weekOf) => {
+    const userId = getCurrentUserId();
+    if (!userId) {
+      setError("You must be logged in to mark consumption.");
+      return;
+    }
     try {
       console.log('Marking week as consumed:', weekOf);
       const response = await consumptionAPI.autoConsumeWeek({ user_id: userId, week_start: weekOf });

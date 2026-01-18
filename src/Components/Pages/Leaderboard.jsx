@@ -25,6 +25,7 @@ import {
   Person as PersonIcon,
 } from "@mui/icons-material";
 import { leaderboardAPI } from "../../api";
+import { getCurrentUserId } from "../../utils/authUtils";
 
 const Leaderboard = () => {
   const [tabValue, setTabValue] = useState(0);
@@ -38,8 +39,6 @@ const Leaderboard = () => {
   const [isPulling, setIsPulling] = useState(false);
   const [startY, setStartY] = useState(0);
   const scrollContainerRef = useRef(null);
-
-  const userId = localStorage.getItem("userId");
 
   const fetchLeaderboardData = async (isPolling = false) => {
     try {
@@ -164,16 +163,19 @@ const Leaderboard = () => {
       );
     }
 
+    const currentUserId = getCurrentUserId();
+    const currentUserIdNum = currentUserId ? parseInt(currentUserId) : null;
+
     return (
       <List sx={{ p: 0 }}>
         {data.map((user, index) => (
           <ListItem
             key={`${user.username}-${index}`}
             sx={{
-              backgroundColor: user.user_id === parseInt(userId) ? "#e3f2fd" : "transparent",
+              backgroundColor: user.user_id === currentUserIdNum ? "#e3f2fd" : "transparent",
               borderRadius: 1,
               mb: 0.25,
-              border: user.user_id === parseInt(userId) ? "1px solid #2196f3" : "1px solid transparent",
+              border: user.user_id === currentUserIdNum ? "1px solid #2196f3" : "1px solid transparent",
               px: 1,
               py: 0.25,
               minHeight: 36,
@@ -213,7 +215,7 @@ const Leaderboard = () => {
                   >
                     {user.username || "Anonymous"}
                   </Typography>
-                  {user.user_id === parseInt(userId) && (
+                  {user.user_id === currentUserIdNum && (
                     <Chip 
                       label="You" 
                       size="small" 

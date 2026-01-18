@@ -34,7 +34,7 @@ const SidebarLayout = () => {
           margin: { xs: 0, sm: "0 auto" },
           px: { xs: 0, sm: 2 }, // No padding on mobile, padding on larger screens
           pt: { 
-            xs: `max(0px, env(safe-area-inset-top))`, // iOS safe area top padding on mobile
+            xs: `max(0px, env(safe-area-inset-top, 0px))`, // iOS safe area top padding on mobile
             sm: 3 
           },
           pb: { xs: 0, sm: 9 }, // No bottom padding on mobile for full height, padding on larger screens

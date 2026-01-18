@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import { readFileSync, writeFileSync } from 'fs';
-import { execSync } from 'child_process';
 
 const versionFile = 'version.json';
 const packageFile = 'package.json';
@@ -23,17 +22,18 @@ try {
   writeFileSync(versionFile, JSON.stringify(versionData, null, 2) + '\n');
   console.log(`✅ Updated version: ${currentVersion} → ${newVersion}`);
   
+  // Copy version.json to public/ for update detection
+  const publicVersionFile = 'public/version.json';
+  writeFileSync(publicVersionFile, JSON.stringify(versionData, null, 2) + '\n');
+  console.log(`✅ Copied version.json to public/`);
+  
   // Update package.json version
   const packageData = JSON.parse(readFileSync(packageFile, 'utf8'));
   packageData.version = newVersion;
   writeFileSync(packageFile, JSON.stringify(packageData, null, 2) + '\n');
   console.log(`✅ Updated package.json version to ${newVersion}`);
   
-  // Stage all files (git add .)
-  execSync('git add .', { stdio: 'inherit' });
-  console.log('✅ Staged all files');
-  
-  console.log(`\n📦 Version ${newVersion} ready to commit!`);
+  console.log(`\n📦 Version ${newVersion} updated successfully!`);
   
 } catch (error) {
   console.error('❌ Error updating version:', error.message);

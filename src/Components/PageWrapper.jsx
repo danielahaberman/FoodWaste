@@ -55,7 +55,7 @@ const PageWrapper = ({
         display: 'flex',
         justifyContent: 'center',
         paddingTop: { 
-          xs: `calc(${1 * 8}px + env(safe-area-inset-top))`, // Add safe area inset on iOS
+          xs: `calc(${1 * 8}px + env(safe-area-inset-top, 0px))`, // Add safe area inset on iOS
           sm: 1.25 
         },
         paddingBottom: { xs: 1, sm: 1.25 },

@@ -26,6 +26,7 @@ import {
   Close as CloseIcon,
 } from "@mui/icons-material";
 import { dailyTasksAPI } from "../api";
+import { getCurrentUserId } from "../utils/authUtils";
 
 const DailyTasks = ({ onClose, showCloseButton = true }) => {
   const navigate = useNavigate();
@@ -34,9 +35,13 @@ const DailyTasks = ({ onClose, showCloseButton = true }) => {
   const [loading, setLoading] = useState(true);
   const [showCelebration, setShowCelebration] = useState(false);
 
-  const userId = localStorage.getItem("userId");
-
   const fetchDailyTasks = async () => {
+    const userId = getCurrentUserId();
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const [tasksResponse, streakResponse] = await Promise.all([

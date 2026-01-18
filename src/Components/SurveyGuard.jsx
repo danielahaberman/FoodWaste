@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { surveyAPI } from "../api";
+import { getCurrentUserId } from "../utils/authUtils";
 import {
   Dialog,
   DialogTitle,
@@ -25,7 +26,7 @@ function SurveyGuard({ children }) {
 
   const checkSurveyStatus = async () => {
     try {
-      const userId = localStorage.getItem("userId");
+      const userId = getCurrentUserId();
       if (!userId) {
         setIsLoading(false);
         return;

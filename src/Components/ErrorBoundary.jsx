@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Button, Typography, Paper, Stack } from '@mui/material';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
 import HomeIcon from '@mui/icons-material/Home';
+import { logError } from '../utils/errorLogger';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -17,6 +18,13 @@ class ErrorBoundary extends React.Component {
   componentDidCatch(error, errorInfo) {
     // Log the error to console for debugging
     console.error('Error caught by boundary:', error, errorInfo);
+    
+    // Log error to localStorage
+    logError(error, {
+      component: 'ErrorBoundary',
+      errorInfo: errorInfo?.componentStack || null,
+    });
+    
     this.setState({
       error: error,
       errorInfo: errorInfo

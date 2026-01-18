@@ -8,6 +8,32 @@ export const PWA_STORAGE_KEYS = {
 };
 
 /**
+ * Detect if the device is running iOS
+ * Handles both older devices (iPad|iPhone|iPod) and newer iPads that identify as Macs
+ */
+export const isIOSDevice = () => {
+  const ua = navigator.userAgent;
+  // Check for iPhone, iPod, or iPad (older detection)
+  if (/iPad|iPhone|iPod/.test(ua)) {
+    return true;
+  }
+  // Check for newer iPads that identify as Macs but have touch support
+  // Modern iPads on iOS 13+ may report as Mac in user agent but have touch support
+  if (/Macintosh/.test(ua) && navigator.maxTouchPoints && navigator.maxTouchPoints > 1) {
+    return true;
+  }
+  return false;
+};
+
+/**
+ * Check if the app is running in standalone mode (installed as PWA)
+ */
+export const isStandaloneMode = () => {
+  return window.matchMedia('(display-mode: standalone)').matches || 
+         window.navigator.standalone === true;
+};
+
+/**
  * Reset all PWA installation prompt preferences
  * This allows users to see the prompt again if they change their mind
  */

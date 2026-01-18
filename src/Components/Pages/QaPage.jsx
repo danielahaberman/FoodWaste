@@ -14,6 +14,7 @@ import {
   CircularProgress,
 } from "@mui/material";
 import PageWrapper from "../PageWrapper";
+import { getCurrentUserId } from "../../utils/authUtils";
 
 dayjs.extend(weekOfYear);
 dayjs.extend(isSameOrAfter);
@@ -33,7 +34,12 @@ function QaPage() {
     const fetchSurveyStatus = async () => {
       try {
         setLoadingStatus(true);
-        const userId = localStorage.getItem("userId");
+        const userId = getCurrentUserId();
+        if (!userId) {
+          setErrorStatus("You must be logged in to view surveys.");
+          setLoadingStatus(false);
+          return;
+        }
         const res = await surveyAPI.getSurveyStatus(userId);
 
         setInitialCompleted(res.data.initialCompleted);

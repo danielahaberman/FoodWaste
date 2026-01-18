@@ -24,16 +24,22 @@ import {
   Close as CloseIcon,
 } from "@mui/icons-material";
 import { dailyTasksAPI } from "../api";
+import { getCurrentUserId } from "../utils/authUtils";
 
 const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
   const navigate = useNavigate();
   const [dailyTasks, setDailyTasks] = useState(null);
   const [streak, setStreak] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  const userId = localStorage.getItem("userId");
+  const [showIntro, setShowIntro] = useState(false);
 
   const fetchDailyTasks = async () => {
+    const userId = getCurrentUserId();
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const [tasksResponse, streakResponse] = await Promise.all([
@@ -52,10 +58,20 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
 
   useEffect(() => {
     if (open) {
+      const userId = getCurrentUserId();
+      // Check if this is the first time user sees the streaks popup
+      if (userId) {
+        const streakIntroSeenKey = `streakIntroSeen_${userId}`;
+        const hasSeenIntro = localStorage.getItem(streakIntroSeenKey);
+        if (!hasSeenIntro) {
+          setShowIntro(true);
+        }
+      }
       fetchDailyTasks();
       // Notify that daily tasks popup is open
       window.dispatchEvent(new CustomEvent('dailyTasksPopupOpen'));
     } else {
+      setShowIntro(false);
       // Notify that daily tasks popup is closed
       window.dispatchEvent(new CustomEvent('dailyTasksPopupClose'));
     }
@@ -92,6 +108,12 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
   };
 
   const handleDismiss = async () => {
+    const userId = getCurrentUserId();
+    if (!userId) {
+      onClose();
+      return;
+    }
+
     try {
       // Save dismiss datetime to localStorage (10 minutes cooldown)
       const dismissTime = Date.now();
@@ -109,10 +131,23 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
   };
 
   const handleClose = () => {
+    const userId = getCurrentUserId();
     // Treat closing as dismiss - save dismiss time
-    const dismissTime = Date.now();
-    localStorage.setItem(`dailyTasksPopupDismissed_${userId}`, dismissTime.toString());
+    if (userId) {
+      const dismissTime = Date.now();
+      localStorage.setItem(`dailyTasksPopupDismissed_${userId}`, dismissTime.toString());
+    }
     onClose();
+  };
+
+  const handleIntroContinue = () => {
+    // Mark intro as seen
+    const userId = getCurrentUserId();
+    if (userId) {
+      const streakIntroSeenKey = `streakIntroSeen_${userId}`;
+      localStorage.setItem(streakIntroSeenKey, "true");
+    }
+    setShowIntro(false);
   };
 
   const getTaskCompletionCount = () => {
@@ -161,6 +196,114 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
 
     return tasks.filter(task => !task.completed);
   };
+
+  // Intro screen for first-time users
+  if (showIntro && !loading) {
+    return (
+      <Dialog 
+        open={open} 
+        onClose={handleClose} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            zIndex: 1501,
+          }
+        }}
+        sx={{
+          zIndex: 1500,
+          '& .MuiBackdrop-root': {
+            zIndex: 1499,
+            backgroundColor: 'rgba(0, 0, 0, 0.3)',
+          }
+        }}
+      >
+        <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <FireIcon sx={{ color: "#1976d2", fontSize: 28 }} />
+            <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+              Welcome to Daily Tasks!
+            </Typography>
+          </Box>
+          <IconButton onClick={handleClose} size="small">
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        
+        <DialogContent>
+          <Stack spacing={3} sx={{ py: 2 }}>
+            <Box sx={{ textAlign: "center" }}>
+              <FireIcon sx={{ fontSize: 64, color: "#1976d2", mb: 2 }} />
+              <Typography variant="h6" sx={{ fontWeight: "bold", mb: 2, color: "#1976d2" }}>
+                Build Your Streak!
+              </Typography>
+            </Box>
+
+            <Box>
+              <Typography variant="body1" sx={{ mb: 2, lineHeight: 1.6 }}>
+                Complete daily tasks to build and maintain your streak. The longer your streak, the more you're helping reduce food waste!
+              </Typography>
+              
+              <Stack spacing={2} sx={{ mt: 3 }}>
+                <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
+                  <Box sx={{ mt: 0.5 }}>
+                    <FireIcon sx={{ color: "#1976d2" }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: "bold", mb: 0.5 }}>
+                      Daily Tasks
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Complete 3 tasks each day: log food, complete surveys, and track waste
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
+                  <Box sx={{ mt: 0.5 }}>
+                    <FireIcon sx={{ color: "#1976d2" }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: "bold", mb: 0.5 }}>
+                      Streak Counter
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Your streak increases each day you complete all tasks. Miss a day and it resets to zero
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
+                  <Box sx={{ mt: 0.5 }}>
+                    <CheckIcon sx={{ color: "#2e7d32" }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: "bold", mb: 0.5 }}>
+                      Track Progress
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      See your progress at a glance and stay motivated to keep your streak going!
+                    </Typography>
+                  </Box>
+                </Box>
+              </Stack>
+            </Box>
+          </Stack>
+        </DialogContent>
+        
+        <DialogActions sx={{ justifyContent: "center", px: 3, pb: 3 }}>
+          <Button 
+            onClick={handleIntroContinue} 
+            variant="contained" 
+            size="large"
+            sx={{ minWidth: 200 }}
+          >
+            Get Started
+          </Button>
+        </DialogActions>
+      </Dialog>
+    );
+  }
 
   if (loading) {
     return (

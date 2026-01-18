@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { isAuthenticated, setIntendedDestination } from "../utils/authUtils";
+import { isAuthenticated, setIntendedDestination, getLastRoute } from "../utils/authUtils";
 
 function AuthGuard({ children }) {
   const [isUserAuthenticated, setIsUserAuthenticated] = useState(null);
@@ -60,6 +60,13 @@ function AuthGuard({ children }) {
       return children;
     }
     // For protected pages, return null (will show white screen briefly, but timeout will handle it)
+    return null;
+  }
+
+  // If authenticated and trying to access public pages (login/register/landing), redirect to dashboard
+  if (isUserAuthenticated && publicPages.includes(location.pathname)) {
+    const lastRoute = getLastRoute();
+    navigate(lastRoute, { replace: true });
     return null;
   }
 

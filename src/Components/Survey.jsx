@@ -14,7 +14,10 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Snackbar,
+  Alert,
 } from "@mui/material";
+import { getCurrentUserId } from "../utils/authUtils";
 
 const Survey = ({ questions }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -22,9 +25,10 @@ const Survey = ({ questions }) => {
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingProgress, setIsLoadingProgress] = useState(true);
+  const [error, setError] = useState(null);
   
   const surveyTitle = questions[0]?.stage || 'Survey';
-  const userId = localStorage.getItem("userId");
+  const userId = getCurrentUserId();
   
   // Load saved responses from backend on mount
   useEffect(() => {
@@ -83,9 +87,15 @@ const Survey = ({ questions }) => {
     (typeof currentResponse === "string" && currentResponse.trim() === "");
 
   const submitResponse = async ({ questionId, response }, retries = 2) => {
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId) {
+      setError("You must be logged in to save responses.");
+      throw new Error("User not authenticated");
+    }
+
     try {
       await surveyAPI.submitSurveyResponse({
-        userId: localStorage.getItem("userId"),
+        userId: currentUserId,
         questionId,
         response,
       });
@@ -102,9 +112,9 @@ const Survey = ({ questions }) => {
       // Show user-friendly error message
       const errorMessage = error.code === 'ERR_NETWORK' || error.message === 'Network Error'
         ? "Network error. Please check your connection and try again."
-        : "Failed to save response. Please try again.";
+        : error.response?.data?.error || "Failed to save response. Please try again.";
       
-      alert(errorMessage);
+      setError(errorMessage);
       throw error; // Re-throw to allow caller to handle
     }
   };
@@ -688,6 +698,18 @@ const Survey = ({ questions }) => {
            </Button>
          </DialogActions>
        </Dialog>
+
+       {/* Error Snackbar */}
+       <Snackbar
+         open={!!error}
+         autoHideDuration={6000}
+         onClose={() => setError(null)}
+         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+       >
+         <Alert onClose={() => setError(null)} severity="error" sx={{ width: '100%' }}>
+           {error}
+         </Alert>
+       </Snackbar>
     </>
   );
 };

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { PWA_STORAGE_KEYS, isPWAPermanentlyDismissed, canShowPWAPromptAgain } from '../utils/pwaUtils';
+import { PWA_STORAGE_KEYS, isPWAPermanentlyDismissed, canShowPWAPromptAgain, isIOSDevice, isStandaloneMode } from '../utils/pwaUtils';
 import { surveyAPI } from '../api';
+import { getCurrentUserId } from '../utils/authUtils';
 
 export const usePWAInstall = () => {
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
@@ -13,7 +14,7 @@ export const usePWAInstall = () => {
     // Check if initial survey is completed
     const checkSurveyStatus = async () => {
       try {
-        const userId = localStorage.getItem("userId");
+        const userId = getCurrentUserId();
         if (userId) {
           const response = await surveyAPI.getSurveyStatus(userId);
           const completed = response.data?.initialCompleted ?? true;
@@ -29,13 +30,12 @@ export const usePWAInstall = () => {
       }
     };
 
-    // Check if running on iOS
-    const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    // Check if running on iOS (using improved detection)
+    const iOS = isIOSDevice();
     setIsIOS(iOS);
 
     // Check if already installed (standalone mode)
-    const standalone = window.matchMedia('(display-mode: standalone)').matches || 
-                      window.navigator.standalone === true;
+    const standalone = isStandaloneMode();
     setIsStandalone(standalone);
 
     // Function to check if we should show the prompt

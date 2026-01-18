@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Button, Typography, Container, Paper, Divider } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../../utils/authUtils';
@@ -12,6 +12,38 @@ import versionData from '../../../version.json';
 
 const Settings = () => {
   const navigate = useNavigate();
+  const [tapCount, setTapCount] = useState(0);
+  const [lastTapTime, setLastTapTime] = useState(0);
+
+  useEffect(() => {
+    // Reset tap count after 2 seconds of inactivity
+    const timer = setTimeout(() => {
+      if (tapCount > 0) {
+        setTapCount(0);
+      }
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [tapCount]);
+
+  const handleVersionTap = () => {
+    const now = Date.now();
+    
+    // Reset if more than 2 seconds passed since last tap
+    if (now - lastTapTime > 2000) {
+      setTapCount(1);
+    } else {
+      const newCount = tapCount + 1;
+      setTapCount(newCount);
+      
+      if (newCount >= 3) {
+        navigate('/error');
+        setTapCount(0);
+      }
+    }
+    
+    setLastTapTime(now);
+  };
 
   const handleLogout = () => {
     logout();
@@ -105,14 +137,35 @@ const Settings = () => {
         >
           <Typography
             variant="caption"
+            onClick={handleVersionTap}
             sx={{
               color: 'text.secondary',
               fontSize: '0.75rem',
-              fontWeight: 400
+              fontWeight: 400,
+              cursor: 'pointer',
+              userSelect: 'none',
+              transition: 'opacity 0.2s',
+              '&:active': {
+                opacity: 0.6
+              }
             }}
           >
             Version {versionData.version}
           </Typography>
+          {tapCount > 0 && tapCount < 3 && (
+            <Typography
+              variant="caption"
+              sx={{
+                display: 'block',
+                color: 'primary.main',
+                fontSize: '0.7rem',
+                mt: 0.5,
+                opacity: 0.7
+              }}
+            >
+              {3 - tapCount} more tap{3 - tapCount !== 1 ? 's' : ''}...
+            </Typography>
+          )}
         </Box>
       </Container>
     </PageWrapper>

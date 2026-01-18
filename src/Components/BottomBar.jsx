@@ -11,6 +11,7 @@ import {
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { dailyTasksAPI } from "../api";
+import { getCurrentUserId } from "../utils/authUtils";
 
 function BottomBar() {
   const navigate = useNavigate();
@@ -18,9 +19,10 @@ function BottomBar() {
   const [taskCompletionStatus, setTaskCompletionStatus] = useState({ completed: 0, total: 3 });
   const [showDailyTasksIndicator, setShowDailyTasksIndicator] = useState(false);
 
-  const userId = localStorage.getItem("userId");
-
   const fetchTaskStatus = async () => {
+    const userId = getCurrentUserId();
+    if (!userId) return;
+    
     try {
       const response = await dailyTasksAPI.getTodayTasks({ user_id: userId });
       const tasks = response.data;

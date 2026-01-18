@@ -1,6 +1,7 @@
 // @ts-nocheck
 // src/api.js
 import axios from "axios";
+import { logError } from "./utils/errorLogger";
 
 // Use relative URLs if VITE_API_URL is not set (same origin)
 // This prevents CORS issues when frontend and backend are on the same domain
@@ -65,6 +66,14 @@ api.interceptors.response.use(
       console.error('   2. Vite dev server proxy is configured correctly');
       console.error('   3. Both servers are accessible from your network');
       
+      // Log network errors
+      logError(error, {
+        component: 'APIInterceptor',
+        type: 'NetworkError',
+        url: attemptedURL,
+        method: error.config?.method,
+      });
+      
       // Show user-friendly error
       if (error.config?.url?.includes('/survey-response')) {
         console.error('Survey submission failed - network error. Please check your connection and try again.');
@@ -74,11 +83,24 @@ api.interceptors.response.use(
     if (error.response) {
       const status = error.response.status;
 
-      // Only redirect to login if it's NOT already a login/register request
-      // This prevents redirecting when user is already on login page with wrong credentials
+      // Log API errors (but not auth errors to avoid spam)
       const isAuthRequest = error.config?.url?.includes('/auth/login') || 
                            error.config?.url?.includes('/auth/register');
       
+      if (!isAuthRequest && status >= 500) {
+        // Log server errors
+        logError(new Error(`API Error ${status}: ${error.response.data?.error || error.message}`), {
+          component: 'APIInterceptor',
+          type: 'ServerError',
+          status: status,
+          url: error.config?.url,
+          method: error.config?.method,
+          responseData: error.response.data,
+        });
+      }
+      
+      // Only redirect to login if it's NOT already a login/register request
+      // This prevents redirecting when user is already on login page with wrong credentials
       if ((status === 401 || status === 403) && !isAuthRequest) {
         console.warn("Redirecting to login...");
         window.location.href = "/";
@@ -155,7 +177,13 @@ export const adminAPI = {
   getOverview: () => api.get("/admin/analytics/overview"),
   getDemographics: () => api.get("/admin/analytics/demographics"),
   getSurveyResponses: (stage) => api.get(`/admin/analytics/survey-responses${stage ? `?stage=${stage}` : ''}`),
-  getQuestionResponses: (questionId, stage) => api.get(`/admin/analytics/question-responses${questionId ? `?questionId=${questionId}` : ''}${stage ? `&stage=${stage}` : ''}`),
+  getQuestionResponses: (questionId, stage) => {
+    const params = new URLSearchParams();
+    if (questionId) params.append('questionId', questionId);
+    if (stage) params.append('stage', stage);
+    const queryString = params.toString();
+    return api.get(`/admin/analytics/question-responses${queryString ? `?${queryString}` : ''}`);
+  },
   getWastePatterns: () => api.get("/admin/analytics/waste-patterns"),
   getPurchaseTrends: () => api.get("/admin/analytics/purchase-trends"),
   

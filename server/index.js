@@ -732,6 +732,9 @@ app.patch("/consumption-log/:id", requireUserId, async (req, res) => {
 
     const q = `UPDATE consumption_logs SET ${fields.join(", ")} WHERE id = $${idx++} AND user_id = $${idx} RETURNING *`;
     const u = await pool.query(q, params);
+    if (u.rows.length === 0) {
+      return res.status(404).json({ error: "Log not found or not owned by user" });
+    }
     res.json(u.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1067,7 +1070,8 @@ app.post("/survey-response", async (req, res) => {
     
     res.status(200).json({ message: "Response saved", responseId: result.rows[0].id });
   } catch (e) {
-    res.status(500).json({ error: e });
+    console.error("Error saving survey response:", e);
+    res.status(500).json({ error: e.message || "Error saving survey response" });
   }
 });
 

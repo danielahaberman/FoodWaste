@@ -9,9 +9,10 @@ self.addEventListener('install', (event) => {
 
 // Fetch event - don't intercept, let all requests pass through to network
 self.addEventListener('fetch', (event) => {
-  // Do nothing - let browser handle all requests normally
+  // Explicitly pass through to network without caching
+  // If we don't call event.respondWith(), the browser handles the request normally
   // This ensures no caching and no interference with asset loading
-  return;
+  event.respondWith(fetch(event.request));
 });
 
 // Activate event - clean up all old caches

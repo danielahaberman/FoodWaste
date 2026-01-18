@@ -22,7 +22,7 @@ import {
   PhoneAndroid as AndroidIcon,
   PhoneIphone as IOSIcon
 } from '@mui/icons-material';
-import { PWA_STORAGE_KEYS } from '../utils/pwaUtils';
+import { PWA_STORAGE_KEYS, isIOSDevice, isStandaloneMode } from '../utils/pwaUtils';
 
 const PWAInstallPrompt = ({ open, onClose }) => {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -31,8 +31,8 @@ const PWAInstallPrompt = ({ open, onClose }) => {
   const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
-    // Check if running on iOS
-    const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    // Check if running on iOS (using improved detection)
+    const iOS = isIOSDevice();
     // Check if it's Chrome on iOS (which doesn't support PWA installation)
     const isChromeOnIOS = iOS && /CriOS|FxiOS|OPiOS/.test(navigator.userAgent);
     // Only Safari on iOS supports PWA installation
@@ -44,8 +44,7 @@ const PWAInstallPrompt = ({ open, onClose }) => {
     setSelectedPlatform(iOS && !isChromeOnIOS ? 'ios' : 'android');
 
     // Check if already installed (standalone mode)
-    const standalone = window.matchMedia('(display-mode: standalone)').matches || 
-                      window.navigator.standalone === true;
+    const standalone = isStandaloneMode();
     setIsStandalone(standalone);
 
     // Listen for the beforeinstallprompt event (Android)
@@ -297,7 +296,7 @@ const PWAInstallPrompt = ({ open, onClose }) => {
           // Android Instructions (or Chrome on iOS)
           <Box>
             {(() => {
-              const isChromeOnIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && /CriOS|FxiOS|OPiOS/.test(navigator.userAgent);
+              const isChromeOnIOS = isIOSDevice() && /CriOS|FxiOS|OPiOS/.test(navigator.userAgent);
               
               if (isChromeOnIOS) {
                 return (

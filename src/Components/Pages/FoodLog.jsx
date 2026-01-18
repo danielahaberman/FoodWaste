@@ -39,32 +39,38 @@ const FoodLog = () => {
     foodPurchases.map(purchase => dayjs(purchase.purchase_date).format('YYYY-MM-DD'))
   )];
   const fetchFoodItems = async () => {
+    const userId = getCurrentUserId();
+    if (!userId) return;
+    
     try {
-      const params = { user_id: localStorage.getItem("userId") };
+      const params = { user_id: userId };
       const response = await foodPurchaseAPI.getFoodItems(params);
-      setFoodItems(response.data);
+      setFoodItems(response.data || []);
     } catch (error) {
       console.error("Error fetching food items:", error);
     }
   };
    const fetchFoodPurchases = async () => {
+    const userId = getCurrentUserId();
+    if (!userId) return;
+    
     try {
-      const params = { user_id: localStorage.getItem("userId") };
+      const params = { user_id: userId };
       const response = await foodPurchaseAPI.getFoodPurchases(params);
-      setFoodPurchases(response.data);
+      setFoodPurchases(response.data || []);
     } catch (error) {
       console.error("Error fetching food purchases:", error);
     }
   };
 const deletePurchase = async (purchaseId) => {
+  const userId = getCurrentUserId();
+  if (!userId) return;
+  
   try {
-    const userId = localStorage.getItem("userId");
     // Send DELETE request with user_id as query param
     const response = await foodPurchaseAPI.deletePurchase(purchaseId, { user_id: userId });
     console.log("Delete purchase response:", response.data);
     fetchFoodPurchases()
-    // Optionally, refresh your purchase list here if you have one:
-    // await fetchPurchases();
   } catch (error) {
     console.error("Error deleting purchase:", error);
   }
@@ -84,7 +90,8 @@ const deletePurchase = async (purchaseId) => {
       
       if (!popupShownToday) {
         try {
-          const userId = localStorage.getItem("userId");
+          const userId = getCurrentUserId();
+          if (!userId) return;
           
           // Check if popup was dismissed within the last 10 minutes
           const dismissTime = localStorage.getItem(`dailyTasksPopupDismissed_${userId}`);

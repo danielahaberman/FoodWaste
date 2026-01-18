@@ -4,6 +4,7 @@ import { Button, Box, Typography, Paper, Divider, IconButton, Tooltip } from "@m
 import { GetApp as InstallIcon, Refresh as RefreshIcon } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import PWAInstallPrompt from "../PWAInstallPrompt";
+import { isStandaloneMode } from "../../utils/pwaUtils";
 import versionData from '../../../version.json';
 // import FoodEmojiBackground from "../FoodEmojiBackground";
 
@@ -18,8 +19,7 @@ function LandingPage() {
   
   useEffect(() => {
     // Check if running as PWA (standalone mode)
-    const standalone = window.matchMedia('(display-mode: standalone)').matches || 
-                      window.navigator.standalone === true;
+    const standalone = isStandaloneMode();
     setIsStandalone(standalone);
   }, []);
 
