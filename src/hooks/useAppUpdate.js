@@ -31,7 +31,6 @@ export const useAppUpdate = () => {
       }
     } catch (error) {
       // Silently fail - don't break app for existing users
-      console.error('Update check failed:', error);
       setUpdateAvailable(false);
     } finally {
       setIsChecking(false);
