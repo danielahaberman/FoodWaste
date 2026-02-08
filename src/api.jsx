@@ -148,8 +148,10 @@ export const surveyAPI = {
 // Consumption/Waste endpoints
 export const consumptionAPI = {
   log: (data) => api.post("/consumption-log", data),
+  logSplit: (data) => api.post("/consumption-log/split", data),
   getSummary: (params) => api.get("/consumption-summary", { params }),
   getBatchSummary: (params) => api.get("/consumption-summary/batch", { params }),
+  resetPurchaseLogs: (params) => api.delete("/consumption-logs", { params }),
   autoWasteWeek: (data) => api.post("/consumption-log/auto-waste-week", data),
   autoConsumeWeek: (data) => api.post("/consumption-log/auto-consume-week", data),
   getOverall: (params) => api.get("/consumption-summary/overall", { params }),

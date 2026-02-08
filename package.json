@@ -12,7 +12,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "server": "npm --prefix server run start",
-    "dev:api": "npm --prefix server run start",
+    "dev:api": "node scripts/dev-api.js",
     "dev:all": "concurrently -n api,web -c cyan,green \"npm:dev:api\" \"npm:dev:web:wait\"",
     "devhost:all": "node scripts/get-local-ip.js && concurrently -n api,web -c cyan,green \"npm:dev:api\" \"npm:dev:web:wait\"",
     "live": "vite --mode live",

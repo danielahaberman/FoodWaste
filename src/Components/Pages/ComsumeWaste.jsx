@@ -18,6 +18,7 @@ import {
   DialogActions,
   TextField,
   Stack,
+  Chip,
   ToggleButtonGroup,
   ToggleButton,
   Menu,
@@ -60,10 +61,22 @@ function ConsumeWaste({ onGoToDate }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedPurchase, setSelectedPurchase] = useState(null);
-  const [actionType, setActionType] = useState("consumed"); // or 'wasted'
-  const [sliderUnits, setSliderUnits] = useState(0);
-  const [manualQty, setManualQty] = useState("");
+  // Two explicit sliders is clearer than a 2-thumb "boundary" slider:
+  // users directly set how much they consumed vs wasted right now.
+  const [consumedNow, setConsumedNow] = useState(0);
+  const [wastedNow, setWastedNow] = useState(0);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'error' });
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [resetting, setResetting] = useState(false);
+
+  const getStepForRemaining = (remaining) => {
+    const r = Number(remaining) || 0;
+    if (r <= 0) return 0.1;
+    if (r <= 1) return 0.01;
+    if (r <= 5) return 0.05;
+    if (r <= 20) return 0.1;
+    return 0.25;
+  };
 
   const fetchWeeklyPurchaseSummary = async () => {
     const userId = getCurrentUserId();
@@ -313,51 +326,47 @@ function ConsumeWaste({ onGoToDate }) {
     setActiveWeekOf(weekOf);
   };
 
-  const openLogDialog = (purchase, action) => {
+  const openLogDialog = (purchase) => {
     setSelectedPurchase(purchase);
-    setActionType(action);
-    // Prefill based on existing logs to allow editing by lowering
-    const s = summaryMap[purchase.id] || {};
-    const base = parseFloat(purchase.quantity) || 0;
-    const used = (parseFloat(s.consumed_qty || 0) + parseFloat(s.wasted_qty || 0)) || 0;
-    const remaining = Math.max(0, base - used);
-    const currentForAction = action === 'consumed' ? parseFloat(s.consumed_qty || 0) : parseFloat(s.wasted_qty || 0);
-    const stepSize = remaining > 0 ? remaining / 10 : (base > 0 ? base / 10 : 0.1);
-    // Set slider to current logged amount for this action, clamped to max allowed (current + remaining)
-    const maxAllowed = currentForAction + remaining;
-    const startVal = Math.min(currentForAction, maxAllowed);
-
-    setSliderUnits(Number((Math.round(startVal / stepSize) * stepSize).toFixed(4)) || 0);
-    // Leave manual empty so slider controls initial value; user can type to override
-    setManualQty("");
+    setConsumedNow(0);
+    setWastedNow(0);
   };
 
   const closeDialog = () => {
     setSelectedPurchase(null);
+    setResetConfirmOpen(false);
+    setResetting(false);
   };
 
-  const submitLog = async (desiredAbsoluteOverride) => {
+  const submitLog = async () => {
     if (!selectedPurchase) return;
     const userId = getCurrentUserId();
     if (!userId) {
       setSnackbar({ open: true, message: "You must be logged in to save.", severity: "error" });
       return;
     }
-    const payload = {
-      user_id: userId,
-      purchase_id: selectedPurchase.id,
-      action: actionType,
-    };
-    // Compute desired absolute amount for this action and convert to delta for logging
     const s = summaryMap[selectedPurchase.id] || {};
-    const currentForAction = actionType === 'consumed' ? parseFloat(s.consumed_qty || 0) : parseFloat(s.wasted_qty || 0);
-    const desiredAbsolute = (desiredAbsoluteOverride !== undefined && desiredAbsoluteOverride !== null)
-      ? desiredAbsoluteOverride
-      : (manualQty !== "" ? parseFloat(manualQty) : sliderUnits);
-    const delta = (desiredAbsolute || 0) - (currentForAction || 0);
-    payload.quantity = delta;
+    const baseQty = parseFloat(selectedPurchase.quantity) || 0;
+    const already =
+      (parseFloat(s.consumed_qty || 0) || 0) +
+      (parseFloat(s.wasted_qty || 0) || 0);
+    const remaining = Math.max(0, baseQty - already);
+    const consumed = Math.min(Math.max(parseFloat(consumedNow || 0) || 0, 0), remaining);
+    const wasted = Math.min(
+      Math.max(parseFloat(wastedNow || 0) || 0, 0),
+      Math.max(0, remaining - consumed)
+    );
+    const consumedQty = Number(consumed.toFixed(4));
+    const wastedQty = Number(wasted.toFixed(4));
+    if (consumedQty <= 0 && wastedQty <= 0) return;
+
     try {
-      await consumptionAPI.log(payload);
+      await consumptionAPI.logSplit({
+        user_id: userId,
+        purchase_id: selectedPurchase.id,
+        consumed_quantity: consumedQty,
+        wasted_quantity: wastedQty,
+      });
     } catch (e) {
       setSnackbar({ open: true, message: e?.response?.data?.error || "Failed to log", severity: 'error' });
       return;
@@ -372,6 +381,34 @@ function ConsumeWaste({ onGoToDate }) {
     
     // Dispatch task completion event to update streak and task counts
     window.dispatchEvent(new CustomEvent('taskCompleted'));
+  };
+
+  const resetMarksForSelected = async () => {
+    if (!selectedPurchase) return;
+    const userId = getCurrentUserId();
+    if (!userId) {
+      setSnackbar({ open: true, message: "You must be logged in to reset.", severity: "error" });
+      return;
+    }
+    try {
+      setResetting(true);
+      await consumptionAPI.resetPurchaseLogs({ user_id: userId, purchase_id: selectedPurchase.id });
+      // Refresh summaries and keep dialog open so user can re-mark immediately.
+      await fetchWeeklyPurchaseSummary();
+      const m = await fetchBatchSummaries();
+      setSummaryMap(m);
+      if (activeWeekOf) {
+        await ensureWeekChart(activeWeekOf, true);
+      }
+      setConsumedNow(0);
+      setWastedNow(0);
+      setResetConfirmOpen(false);
+      setSnackbar({ open: true, message: "Reset to unmarked.", severity: "success" });
+    } catch (e) {
+      setSnackbar({ open: true, message: e?.response?.data?.error || "Failed to reset.", severity: "error" });
+    } finally {
+      setResetting(false);
+    }
   };
 
   const markWeekAsWasted = async (weekOf) => {
@@ -560,21 +597,36 @@ function ConsumeWaste({ onGoToDate }) {
           elevation={0}
           sx={{
             mb: 2,
-            p: { xs: 1.5, sm: 2 }, // Responsive padding
-            borderRadius: 2,
+            p: { xs: 1.75, sm: 2.25 },
+            borderRadius: 2.5,
             width: "100%", // Use percentage instead of viewport units
             maxWidth: "100%", // Ensure it doesn't overflow
             cursor: 'pointer',
-            border: 2,
+            border: 1,
             borderColor: showCompletion ? "success.main" : "divider",
             position: 'relative',
             boxSizing:"border-box",
-            boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-            transition: 'all 0.2s ease-in-out',
+            backgroundColor: 'background.paper',
+            boxShadow: '0px 2px 10px rgba(0,0,0,0.06)',
+            transition: 'transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease',
             '&:hover': {
-              transform: 'translateY(-1px)',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.12)'
-            }
+              transform: 'translateY(-2px)',
+              boxShadow: '0px 8px 20px rgba(0,0,0,0.10)',
+            },
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              right: 0,
+              height: 4,
+              borderTopLeftRadius: 10,
+              borderTopRightRadius: 10,
+              backgroundColor: showCompletion
+                ? 'success.main'
+                : (isEmpty ? 'grey.400' : 'primary.main'),
+              opacity: 0.9,
+            },
           }}
           onClick={() => {
             if (isEmpty) {
@@ -589,37 +641,26 @@ function ConsumeWaste({ onGoToDate }) {
             }
           }}
         >
-          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.25, pt: 0.5 }}>
             <Typography
-              variant="h6"
-              fontWeight={700}
-              color="var(--color-primary)"
-              gutterBottom
-              sx={{ borderBottom: 2, borderColor: "primary.main", pb: 0.5 }}
+              variant="subtitle1"
+              sx={{
+                fontWeight: 800,
+                lineHeight: 1.15,
+                letterSpacing: '-0.2px',
+                color: 'text.primary',
+              }}
             >
               {formatWeekRange(week.weekOf)}
             </Typography>
             {showCompletion && (
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: 0.5,
-                backgroundColor: 'success.main',
-                color: 'white',
-                px: 1,
-                py: 0.25,
-                borderRadius: 1,
-                fontSize: '0.75rem',
-                fontWeight: 'bold',
-                whiteSpace:"nowrap",
-                position:"absolute", top:"-10px",
-                boxSizing:"border-box"
-              }}>
-                ✓ Complete
-              </Box>
+              <Chip
+                label="Complete"
+                size="small"
+                color="success"
+                sx={{ fontWeight: 700 }}
+              />
             )}
-          </Box>
           </Stack>
           
           {/* Clear tap instruction */}
@@ -629,26 +670,33 @@ function ConsumeWaste({ onGoToDate }) {
             gap: 1, 
             mb: 1,
             p: 1,
-            backgroundColor: isEmpty ? 'grey.100' : 'primary.50',
-            borderRadius: 1,
+            backgroundColor: isEmpty ? 'grey.50' : 'primary.50',
+            borderRadius: 1.5,
             border: '1px solid',
-            borderColor: isEmpty ? 'grey.300' : 'primary.200'
+            borderColor: isEmpty ? 'grey.200' : 'primary.200'
           }}>
-            <Typography variant="body2" sx={{ color: isEmpty ? 'text.secondary' : 'primary.main', fontWeight: 500 }}>
-              {isEmpty ? '📅 No food added yet - Tap to add food' : '👆 Tap to manage food waste/consumption'}
+            <Typography variant="body2" sx={{ color: isEmpty ? 'text.secondary' : 'primary.main', fontWeight: 650 }}>
+              {isEmpty ? 'Tap to add food' : 'Tap to manage consume / waste'}
             </Typography>
           </Box>
-          {/* Summary line with icons */}
-          <Typography variant="body2" color="text.primary" display="flex" alignItems="center" gap={2}>
-            <Box component="span" display="inline-flex" alignItems="center" gap={0.5}>
-              <ShoppingCartIcon sx={{ color: 'primary.main', fontSize: 18 }} />
-              {week.purchases.length} {week.purchases.length === 1 ? 'item' : 'items'}
-            </Box>
+          {/* Stats */}
+          <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 0.25 }}>
+            <Chip
+              size="small"
+              icon={<ShoppingCartIcon sx={{ fontSize: 18 }} />}
+              label={`${week.purchases.length} ${week.purchases.length === 1 ? 'item' : 'items'}`}
+              variant="outlined"
+              sx={{ fontWeight: 650 }}
+            />
+
             {isEmpty ? (
-              <Box component="span" display="inline-flex" alignItems="center" gap={0.5}>
-                <FastfoodIcon sx={{ color: 'grey.400', fontSize: 18 }} />
-                No food added yet
-              </Box>
+              <Chip
+                size="small"
+                icon={<FastfoodIcon sx={{ fontSize: 18 }} />}
+                label="No food yet"
+                variant="outlined"
+                sx={{ color: 'text.secondary' }}
+              />
             ) : (() => {
               const ids = week.purchases.map(p => p.id);
               let c = 0, w = 0, cc = 0, wc = 0, unloggedCost = 0;
@@ -673,32 +721,37 @@ function ConsumeWaste({ onGoToDate }) {
                 }
               });
               
-              // Check if there's any consumption data
               const hasConsumptionData = c > 0 || w > 0;
               
               if (hasConsumptionData) {
                 return (
                   <>
-                    <Box component="span" display="inline-flex" alignItems="center" gap={0.5}>
-                      <RestaurantIcon sx={{ color: 'success.main', fontSize: 18 }} />
-                      {formatNum(c)} ({formatMoney(cc)})
-                    </Box>
-                    <Box component="span" display="inline-flex" alignItems="center" gap={0.5}>
-                      <DeleteForeverIcon sx={{ color: 'error.main', fontSize: 18 }} />
-                      {formatNum(w)} ({formatMoney(wc)})
-                    </Box>
+                    <Chip
+                      size="small"
+                      icon={<RestaurantIcon sx={{ fontSize: 18 }} />}
+                      label={`${formatNum(c)} (${formatMoney(cc)})`}
+                      sx={{ bgcolor: 'success.50', color: 'success.dark', fontWeight: 700 }}
+                    />
+                    <Chip
+                      size="small"
+                      icon={<DeleteForeverIcon sx={{ fontSize: 18 }} />}
+                      label={`${formatNum(w)} (${formatMoney(wc)})`}
+                      sx={{ bgcolor: 'error.50', color: 'error.dark', fontWeight: 700 }}
+                    />
                   </>
                 );
-              } else {
-                return (
-                  <Box component="span" display="inline-flex" alignItems="center" gap={0.5}>
-                    <FastfoodIcon sx={{ color: 'warning.main', fontSize: 18 }} />
-                    Unlogged: {formatMoney(unloggedCost)}
-                  </Box>
-                );
               }
+              
+              return (
+                <Chip
+                  size="small"
+                  icon={<FastfoodIcon sx={{ fontSize: 18 }} />}
+                  label={`Unmarked ${formatMoney(unloggedCost)}`}
+                  sx={{ bgcolor: 'warning.50', color: 'warning.dark', fontWeight: 700 }}
+                />
+              );
             })()}
-          </Typography>
+          </Stack>
         </Paper>
         );
         })}
@@ -1079,8 +1132,7 @@ function ConsumeWaste({ onGoToDate }) {
                 
                 return (
                   <>
-                    <MenuItem onClick={()=>{ handleItemMenuClose(); if(itemMenuTarget) openLogDialog(itemMenuTarget,'consumed'); }}>Mark Consumed</MenuItem>
-                    <MenuItem onClick={()=>{ handleItemMenuClose(); if(itemMenuTarget) openLogDialog(itemMenuTarget,'wasted'); }}>Mark Wasted</MenuItem>
+                    <MenuItem onClick={()=>{ handleItemMenuClose(); if(itemMenuTarget) openLogDialog(itemMenuTarget); }}>Log consumed / wasted</MenuItem>
                   </>
                 );
               })()}
@@ -1090,73 +1142,196 @@ function ConsumeWaste({ onGoToDate }) {
       })()}
 
       <Dialog open={!!selectedPurchase} onClose={closeDialog} fullWidth maxWidth="sm">
-        <DialogTitle>{actionType === 'consumed' ? 'Log Consumed' : 'Log Wasted'} - {selectedPurchase?.name}</DialogTitle>
+        <DialogTitle>Log Consumed / Wasted - {selectedPurchase?.name}</DialogTitle>
         <DialogContent>
           {selectedPurchase && (() => {
             const s = summaryMap[selectedPurchase.id] || {};
             const base = parseFloat(selectedPurchase.quantity) || 0;
-            const used = (parseFloat(s.consumed_qty || 0) + parseFloat(s.wasted_qty || 0)) || 0;
+            const consumedSoFar = parseFloat(s.consumed_qty || 0) || 0;
+            const wastedSoFar = parseFloat(s.wasted_qty || 0) || 0;
+            const used = consumedSoFar + wastedSoFar;
             const remaining = Math.max(0, base - used);
-            // Slider granularity: always in tenths of remaining (1/10th of max allowed)
-            const stepSize = remaining > 0 ? remaining / 10 : (base > 0 ? base / 10 : 0.1);
-            const qtyNum = manualQty === "" ? NaN : parseFloat(manualQty);
-            const otherForAction = actionType === 'consumed' ? parseFloat(s.wasted_qty || 0) : parseFloat(s.consumed_qty || 0);
-            const currentForAction = actionType === 'consumed' ? parseFloat(s.consumed_qty || 0) : parseFloat(s.wasted_qty || 0);
-            const sliderMax = Math.max(0, base - otherForAction); // absolute max allowed for this action
-            const sliderClamped = Math.min(Math.max(sliderUnits, 0), sliderMax);
-            const chosen = isNaN(qtyNum) ? sliderClamped : Math.min(qtyNum, sliderMax);
-            const overQty = !isNaN(qtyNum) && qtyNum > sliderMax + 1e-9;
-            const disableSave = chosen <= 0 && currentForAction <= 0 && remaining <= 0;
+            const stepSize = getStepForRemaining(remaining);
+            // Clamp deterministically so:
+            // consumed + wasted <= remaining
+            // and each is >= 0.
+            const rawConsumed = Math.max(0, parseFloat(consumedNow || 0) || 0);
+            const rawWasted = Math.max(0, parseFloat(wastedNow || 0) || 0);
+
+            // First clamp consumed to remaining, then wasted to leftover,
+            // then re-clamp consumed to leftover after wasted (symmetry).
+            const c1 = Math.min(rawConsumed, remaining);
+            const w1 = Math.min(rawWasted, Math.max(0, remaining - c1));
+            const safeConsumedNow = Math.min(c1, Math.max(0, remaining - w1));
+            const safeWastedNow = Math.min(w1, Math.max(0, remaining - safeConsumedNow));
+            const unmarkedNow = Math.max(0, remaining - safeConsumedNow - safeWastedNow);
+            const disableSave = (safeConsumedNow <= 0 && safeWastedNow <= 0) || remaining <= 0;
 
             return (
               <Stack spacing={2}>
                 <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                   Remaining: {remaining.toFixed(2)} of {base.toFixed(2)}
                 </Typography>
-                <Box px={1}>
-                  <Slider
-                    value={sliderClamped}
-                    onChange={(_, v) => {
-                      const num = Array.isArray(v) ? v[0] : v;
-                      const safe = Math.max(0, Math.min(Number(num) || 0, sliderMax));
-                      const quant = stepSize > 0 ? Math.round(safe / stepSize) * stepSize : safe;
-                      setSliderUnits(Number(quant.toFixed(4)));
-                    }}
-                    valueLabelDisplay="auto"
-                    min={0}
-                    max={sliderMax}
-                    step={stepSize}
-                  />
-                </Box>
-                <TextField
-                  label={`Units (max ${sliderMax.toFixed(2)})`}
-                  type="number"
-                  value={manualQty}
-                  onChange={(e) => {
-                    const val = parseFloat(e.target.value);
-                    if (isNaN(val)) { setManualQty(""); return; }
-                    const clamped = Math.max(0, Math.min(val, sliderMax));
-                    const quant = stepSize > 0 ? Math.round(clamped / stepSize) * stepSize : clamped;
-                    setManualQty(String(Number(quant.toFixed(4))));
-                  }}
-                  inputProps={{ min: 0, max: sliderMax, step: stepSize }}
-                  error={overQty}
-                  helperText={overQty ? `Exceeds allowed: ${sliderMax.toFixed(2)}` : ""}
-                  fullWidth
-                  size="small"
-                />
-				<DialogActions sx={{ px: 0, justifyContent:'flex-end' }}>
-					<Box sx={{ display:'flex', gap: 1 }}>
-                    <Button variant="text" onClick={() => submitLog(currentForAction + remaining)} disabled={remaining <= 0}>
-                      Mark remaining as {actionType === 'consumed' ? 'consumed' : 'wasted'}
-                    </Button>
-                    <Button variant="contained" onClick={() => submitLog()} disabled={disableSave}>Save</Button>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                  Already logged: {consumedSoFar.toFixed(2)} consumed, {wastedSoFar.toFixed(2)} wasted
+                </Typography>
+
+                {remaining <= 0 ? (
+                  <Box sx={{ py: 1.5 }}>
+                    <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                      All of this item has already been marked as consumed/wasted.
+                    </Typography>
                   </Box>
-                </DialogActions>
+                ) : (
+                  <>
+                    {(() => {
+                      const maxConsume = Math.max(0, remaining - safeWastedNow);
+                      const value = Math.min(safeConsumedNow, maxConsume);
+                      return (
+                        <Box sx={{ px: 1 }}>
+                          <Typography variant="caption" sx={{ color: "success.dark", fontWeight: 700 }}>
+                            Consumed now
+                          </Typography>
+                          <Slider
+                            key={`consume-${selectedPurchase?.id || "x"}-${maxConsume.toFixed(4)}`}
+                            value={value}
+                            onChange={(_, v) => {
+                              const num = Array.isArray(v) ? v[0] : v;
+                              const next = Math.max(0, Math.min(Number(num) || 0, maxConsume));
+                              setConsumedNow(Number(next.toFixed(4)));
+                              // Clamp wasted if needed
+                              setWastedNow((prev) => {
+                                const maxWaste = Math.max(0, remaining - next);
+                                if (maxWaste <= 1e-9) return 0;
+                                return Math.min(Number(prev || 0), maxWaste);
+                              });
+                            }}
+                            valueLabelDisplay="auto"
+                            min={0}
+                            max={maxConsume}
+                            step={stepSize}
+                            disabled={maxConsume <= 1e-9}
+                            sx={{
+                              '& .MuiSlider-thumb': {
+                                bgcolor: 'success.main',
+                                border: '2px solid',
+                                borderColor: 'success.dark',
+                                boxShadow: '0 2px 10px rgba(46, 125, 50, 0.35)',
+                              },
+                              '& .MuiSlider-track': { bgcolor: 'success.main' },
+                              '& .MuiSlider-rail': { opacity: 0.35 },
+                            }}
+                          />
+                        </Box>
+                      );
+                    })()}
+                    <Box sx={{ px: 1 }}>
+                      <Typography variant="caption" sx={{ color: "error.dark", fontWeight: 700 }}>
+                        Wasted now
+                      </Typography>
+                      {(() => {
+                        const maxWaste = Math.max(0, remaining - safeConsumedNow);
+                        const value = Math.min(safeWastedNow, maxWaste);
+                        return (
+                      <Slider
+                        key={`waste-${selectedPurchase?.id || "x"}-${maxWaste.toFixed(4)}`}
+                        value={value}
+                        onChange={(_, v) => {
+                          const num = Array.isArray(v) ? v[0] : v;
+                          const maxWaste = Math.max(0, remaining - safeConsumedNow);
+                          const next = Math.max(0, Math.min(Number(num) || 0, maxWaste));
+                          setWastedNow(Number(next.toFixed(4)));
+                          // Clamp consumed if needed
+                          setConsumedNow((prev) => {
+                            const maxConsume = Math.max(0, remaining - next);
+                            if (maxConsume <= 1e-9) return 0;
+                            return Math.min(Number(prev || 0), maxConsume);
+                          });
+                        }}
+                        valueLabelDisplay="auto"
+                        min={0}
+                        max={maxWaste}
+                        step={stepSize}
+                        disabled={maxWaste <= 1e-9}
+                        sx={{
+                          '& .MuiSlider-thumb': {
+                            bgcolor: 'error.main',
+                            border: '2px solid',
+                            borderColor: 'error.dark',
+                            boxShadow: '0 2px 10px rgba(211, 47, 47, 0.35)',
+                          },
+                          '& .MuiSlider-track': { bgcolor: 'error.main' },
+                          '& .MuiSlider-rail': { opacity: 0.35 },
+                        }}
+                      />
+                        );
+                      })()}
+                    </Box>
+                    <Stack direction="row" spacing={1} sx={{ mt: -0.5, flexWrap: 'wrap' }}>
+                      <Typography variant="caption" sx={{ color: 'success.main', fontWeight: 600 }}>
+                        Consumed now: {safeConsumedNow.toFixed(2)}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'error.main', fontWeight: 600 }}>
+                        Wasted now: {safeWastedNow.toFixed(2)}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                        Unmarked: {unmarkedNow.toFixed(2)}
+                      </Typography>
+                    </Stack>
+                  </>
+                )}
+				<DialogActions sx={{ px: 0, justifyContent:'space-between' }}>
+          <Button
+            color="error"
+            variant="outlined"
+            onClick={() => setResetConfirmOpen(true)}
+            disabled={used <= 0 || resetting}
+            sx={{ textTransform: "none" }}
+          >
+            Reset to unmarked
+          </Button>
+					<Box sx={{ display:'flex', gap: 1 }}>
+            <Button
+              variant="contained"
+              onClick={() => submitLog()}
+              disabled={disableSave || resetting}
+            >
+              Save
+            </Button>
+          </Box>
+        </DialogActions>
               </Stack>
             );
           })()}
         </DialogContent>
+      </Dialog>
+
+      {/* Confirm reset */}
+      <Dialog
+        open={resetConfirmOpen}
+        onClose={() => (resetting ? null : setResetConfirmOpen(false))}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Reset this item?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            This will delete all consumed/wasted marks for this item and make it fully unmarked again.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setResetConfirmOpen(false)} disabled={resetting}>
+            Cancel
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={resetMarksForSelected}
+            disabled={resetting}
+          >
+            Reset
+          </Button>
+        </DialogActions>
       </Dialog>
 
 		{/* Overall trends dialog */}

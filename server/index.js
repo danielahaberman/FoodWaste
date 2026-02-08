@@ -931,6 +931,110 @@ app.post("/consumption-log", requireUserId, async (req, res) => {
   }
 });
 
+// POST log consumed + wasted in one request (transactional)
+// This supports a "3-way" UI: consumed / wasted / unmarked, where users log partial amounts over time.
+app.post("/consumption-log/split", requireUserId, async (req, res) => {
+  const { user_id, purchase_id, consumed_quantity, wasted_quantity } = req.body;
+
+  if (!purchase_id) {
+    return res.status(400).json({ error: "purchase_id is required" });
+  }
+
+  const consumedQty = parseFloat(consumed_quantity || 0) || 0;
+  const wastedQty = parseFloat(wasted_quantity || 0) || 0;
+  if (consumedQty < 0 || wastedQty < 0) {
+    return res.status(400).json({ error: "Quantities must be non-negative" });
+  }
+
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const pRes = await client.query(
+        "SELECT id, quantity, quantity_type, price, purchase_date FROM purchases WHERE id = $1 AND user_id = $2",
+        [purchase_id, user_id]
+      );
+      if (pRes.rows.length === 0) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ error: "Purchase not found" });
+      }
+      const purchase = pRes.rows[0];
+
+      const sumRes = await client.query(
+        `SELECT COALESCE(SUM(quantity),0) AS total
+         FROM consumption_logs WHERE user_id = $1 AND purchase_id = $2`,
+        [user_id, purchase_id]
+      );
+      const already = parseFloat(sumRes.rows[0].total || 0) || 0;
+
+      const baseQty = parseFloat(purchase.quantity) || 0;
+      const remaining = baseQty - already;
+      const totalToLog = consumedQty + wastedQty;
+      if (totalToLog > remaining + 1e-9) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ error: "Exceeds remaining quantity for this purchase", remaining });
+      }
+
+      const unitCost =
+        (parseFloat(purchase.price) && parseFloat(purchase.quantity))
+          ? (parseFloat(purchase.price) / parseFloat(purchase.quantity))
+          : null;
+
+      const insertQ = `
+        INSERT INTO consumption_logs (user_id, purchase_id, action, quantity, quantity_type, percentage, cost_value, logged_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING id, logged_at
+      `;
+
+      const inserted = [];
+      const loggedAt = purchase.purchase_date || new Date();
+
+      if (consumedQty > 0) {
+        const costValue = unitCost !== null && !isNaN(unitCost) ? unitCost * consumedQty : null;
+        const ins = await client.query(insertQ, [
+          user_id,
+          purchase_id,
+          "consumed",
+          consumedQty,
+          purchase.quantity_type,
+          null,
+          costValue,
+          loggedAt,
+        ]);
+        inserted.push({ action: "consumed", id: ins.rows[0].id, logged_at: ins.rows[0].logged_at });
+      }
+
+      if (wastedQty > 0) {
+        const costValue = unitCost !== null && !isNaN(unitCost) ? unitCost * wastedQty : null;
+        const ins = await client.query(insertQ, [
+          user_id,
+          purchase_id,
+          "wasted",
+          wastedQty,
+          purchase.quantity_type,
+          null,
+          costValue,
+          loggedAt,
+        ]);
+        inserted.push({ action: "wasted", id: ins.rows[0].id, logged_at: ins.rows[0].logged_at });
+      }
+
+      await client.query("COMMIT");
+      return res.status(201).json({ inserted, remaining: Math.max(0, remaining - totalToLog) });
+    } catch (err) {
+      try { await client.query("ROLLBACK"); } catch (_) {}
+      console.error("consumption-log/split error", err);
+      return res.status(500).json({ error: err.message });
+    } finally {
+      client.release();
+    }
+  } catch (outerErr) {
+    console.error("consumption-log/split outer error", outerErr);
+    return res.status(500).json({ error: outerErr.message });
+  }
+});
+
 // GET summary of consumption/waste totals per purchase
 app.get("/consumption-summary", requireUserId, async (req, res) => {
   const { user_id, purchase_id } = req.query;
@@ -1209,6 +1313,24 @@ app.get("/consumption-logs", requireUserId, async (req, res) => {
                ORDER BY logged_at DESC`;
     const r = await pool.query(q, [user_id, purchase_id]);
     res.json(r.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Reset all logs for a purchase (make it fully "unmarked" again)
+app.delete("/consumption-logs", requireUserId, async (req, res) => {
+  const userId = req.user_id;
+  const { purchase_id } = req.query;
+  if (!purchase_id) {
+    return res.status(400).json({ error: "purchase_id is required" });
+  }
+  try {
+    const d = await pool.query(
+      `DELETE FROM consumption_logs WHERE user_id = $1 AND purchase_id = $2`,
+      [userId, purchase_id]
+    );
+    res.json({ ok: true, deleted: d.rowCount });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
