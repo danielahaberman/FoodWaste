@@ -338,6 +338,11 @@ function ConsumeWaste({ onGoToDate }) {
 
   const submitLog = async (desiredAbsoluteOverride) => {
     if (!selectedPurchase) return;
+    const userId = getCurrentUserId();
+    if (!userId) {
+      setSnackbar({ open: true, message: "You must be logged in to save.", severity: "error" });
+      return;
+    }
     const payload = {
       user_id: userId,
       purchase_id: selectedPurchase.id,

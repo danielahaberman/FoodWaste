@@ -98,9 +98,10 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
         onClose();
         break;
       case "consume_waste":
+        // Route to the Consume/Waste page.
+        // (Previously this dispatched an event with no listener, so the button did nothing.)
+        navigate("/summary");
         onClose();
-        // Trigger the consume/waste modal
-        window.dispatchEvent(new CustomEvent('openConsumeWaste'));
         break;
       default:
         break;

@@ -86,10 +86,10 @@ const DailyTasks = ({ onClose, showCloseButton = true }) => {
         navigate("/survey");
         break;
       case "consume_waste":
-        // This will be handled by the parent component
+        // Route to the Consume/Waste page.
+        // (Previously this dispatched an event with no listener, so the button did nothing.)
+        navigate("/summary");
         if (onClose) onClose();
-        // Trigger the consume/waste modal
-        window.dispatchEvent(new CustomEvent('openConsumeWaste'));
         break;
       default:
         break;
