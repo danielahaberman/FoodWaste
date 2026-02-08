@@ -45,14 +45,29 @@ function RegisterPage() {
     try {
       setLoading(true);
       setError("");
-      const response = await authAPI.register({ username, password, name });
-      const data = response.data;
-      console.log("User registered successfully:", data);
+      await authAPI.register({ username, password, name });
       // Save username for auto-fill on login page
       saveUsername(username);
       navigate("/auth/login");
     } catch (err) {
-      setError("Registration failed. Please try again.");
+      console.error("Registration error:", err);
+      if (err.response) {
+        const status = err.response.status;
+        const responseData = err.response.data || {};
+        const serverMessage = responseData.error || responseData.message;
+
+        if (status === 409) {
+          setError(serverMessage || "That username is already taken.");
+        } else if (status === 400) {
+          setError(serverMessage || "Please fill in all fields.");
+        } else {
+          setError(serverMessage || "Registration failed. Please try again.");
+        }
+      } else if (err.request) {
+        setError("Network error. Please check your connection and try again.");
+      } else {
+        setError(err.message || "Registration failed. Please try again.");
+      }
     } finally {
       setLoading(false);
     }

@@ -46,17 +46,10 @@ function LoginPage() {
         password,
       });
       
-      console.log("response", response);
       // Save username for auto-fill next time
       saveUsername(email);
       // Set authentication first
       setAuthenticated(response.data.user_id, email);
-      
-      // Verify authentication was set correctly
-      const userId = localStorage.getItem("userId");
-      const expiryTime = localStorage.getItem("authExpiry");
-      const loginDate = localStorage.getItem("loginDate");
-      console.log("[Login] Auth check after login:", { userId, expiryTime, loginDate });
       
       // Check if there's a stored intended destination
       const intendedDestination = getIntendedDestination();
@@ -74,16 +67,16 @@ function LoginPage() {
         // Server responded with error status
         const status = err.response.status;
         const responseData = err.response.data || {};
-        const errorMessage = responseData.error || responseData.message || err.message;
+        const serverMessage = responseData.error || responseData.message;
         
         if (status === 401) {
-          setError(errorMessage || "Invalid username or password");
+          setError(serverMessage || "Invalid username or password");
         } else if (status === 404) {
-          setError(errorMessage || "User not found");
+          setError(serverMessage || "User not found");
         } else if (status === 400) {
-          setError(errorMessage || "Please fill in all fields");
+          setError(serverMessage || "Please fill in all fields");
         } else {
-          setError(errorMessage || "Server error. Please try again.");
+          setError(serverMessage || "Server error. Please try again.");
         }
       } else if (err.request) {
         // Request was made but no response received

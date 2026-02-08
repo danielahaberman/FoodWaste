@@ -55,7 +55,7 @@ const FoodPurchaseList = ({ purchases, deletePurchase, canModify = true }) => {
 
   return (
     <List ref={listRef} disablePadding>
-      {purchases.map(({ id, name, emoji, quantity, quantity_type, price, purchase_date, category, category_name }) => {
+      {purchases.map(({ id, name, emoji, image, quantity, quantity_type, price, purchase_date, category, category_name }) => {
         const isActive = activeId === id;
         const cat = category || category_name;
         const displayEmoji = emoji || (cat ? categoryEmojiMap[cat] : null) || "🍽️";
@@ -79,10 +79,42 @@ const FoodPurchaseList = ({ purchases, deletePurchase, canModify = true }) => {
               <ListItemText
                 primary={
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    {/* Emoji or category fallback */}
-                    <Box component="span" aria-label="emoji" role="img" sx={{ fontSize: "1.3em", display:'inline-flex', alignItems:'center' }}>
-                      {displayEmoji}
-                    </Box>
+                    {/* Image if available, otherwise emoji or category fallback */}
+                    {image ? (
+                      <Box
+                        component="span"
+                        sx={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: 1,
+                          overflow: 'hidden',
+                          backgroundColor: '#f5f5f5',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <img
+                          src={image}
+                          alt={name}
+                          style={{
+                            maxWidth: '100%',
+                            maxHeight: '100%',
+                            objectFit: 'contain',
+                          }}
+                          onError={(e) => {
+                            // Fallback to emoji if image fails
+                            e.target.style.display = 'none';
+                            e.target.parentElement.innerHTML = `<span style="font-size: 1.3em;">${displayEmoji}</span>`;
+                          }}
+                        />
+                      </Box>
+                    ) : (
+                      <Box component="span" aria-label="emoji" role="img" sx={{ fontSize: "1.3em", display:'inline-flex', alignItems:'center' }}>
+                        {displayEmoji}
+                      </Box>
+                    )}
                     <Typography
                       variant="subtitle2"
                       fontWeight="bold"

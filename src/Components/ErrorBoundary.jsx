@@ -46,7 +46,7 @@ function ErrorFallback() {
     "There was a food fight in the server farm! 🍎",
     "The grocery scanner went on vacation! 🛒",
     "The food database had a midnight snack! 🍕",
-    "The calorie counter got tired of counting! 🔢",
+    "Something went wrong! 🔢",
     "The meal planner took a lunch break! 📅",
     "The nutrition tracker went to the gym! 💪",
     "The food waste monitor fell asleep! 😴",

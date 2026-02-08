@@ -7,85 +7,57 @@ export default {
     port: 5173,
     strictPort: false,
     proxy: {
-      // Proxy API requests to the backend server
-      '/auth': {
-        target: 'http://localhost:5001',
-        changeOrigin: true,
-        secure: false,
-        ws: true, // Enable websocket proxying
-        configure: (proxy, _options) => {
+      // Shared proxy options (avoid repeating config everywhere)
+      // NOTE: Vite proxy keys are path prefixes. (Regex keys are unreliable across versions.)
+      // We use broader prefixes so new endpoints work automatically.
+      // Keep /admin as a special case: the exact /admin route is a frontend page,
+      // but /admin/* are backend API endpoints.
+      ...(() => {
+        const target = 'http://localhost:5001';
+
+        const configure = (proxy, _options) => {
           proxy.on('error', (err, _req, _res) => {
             console.log('❌ Proxy error:', err.message);
           });
           proxy.on('proxyReq', (proxyReq, req, _res) => {
-            console.log(`🔄 Proxying ${req.method} ${req.url} -> http://localhost:5001${proxyReq.path}`);
+            console.log(`🔄 Proxying ${req.method} ${req.url} -> ${target}${proxyReq.path}`);
             console.log(`   Origin: ${req.headers.origin || 'no origin'}`);
           });
           proxy.on('proxyRes', (proxyRes, req, _res) => {
             console.log(`✅ Proxy response: ${req.method} ${req.url} -> ${proxyRes.statusCode}`);
           });
-        },
-      },
-      '/api': {
-        target: 'http://localhost:5001',
-        changeOrigin: true,
-      },
-      '/purchases': {
-        target: 'http://localhost:5001',
-        changeOrigin: true,
-      },
-      '/food-purchases': {
-        target: 'http://localhost:5001',
-        changeOrigin: true,
-      },
-      '/food-items': {
-        target: 'http://localhost:5001',
-        changeOrigin: true,
-      },
-      '/add-food-item': {
-        target: 'http://localhost:5001',
-        changeOrigin: true,
-      },
-      '/purchase': {
-        target: 'http://localhost:5001',
-        changeOrigin: true,
-      },
-      '/quantity-types': {
-        target: 'http://localhost:5001',
-        changeOrigin: true,
-      },
-      '/food-categories': {
-        target: 'http://localhost:5001',
-        changeOrigin: true,
-      },
-      '/survey-questions': {
-        target: 'http://localhost:5001',
-        changeOrigin: true,
-      },
-      '/survey-response': {
-        target: 'http://localhost:5001',
-        changeOrigin: true,
-      },
-      '/consumption-log': {
-        target: 'http://localhost:5001',
-        changeOrigin: true,
-      },
-      '/consumption-summary': {
-        target: 'http://localhost:5001',
-        changeOrigin: true,
-      },
-      '/consumption-trends': {
-        target: 'http://localhost:5001',
-        changeOrigin: true,
-      },
-      '/consumption-by-category': {
-        target: 'http://localhost:5001',
-        changeOrigin: true,
-      },
-      '/consumption-logs': {
-        target: 'http://localhost:5001',
-        changeOrigin: true,
-      },
+        };
+
+        const proxyFor = () => ({
+          target,
+          changeOrigin: true,
+          secure: false,
+          ws: true,
+          configure,
+        });
+
+        // Broad prefixes that cover essentially all backend endpoints.
+        const prefixes = [
+          '/auth',
+          '/api',
+          '/admin', // still proxied for /admin/* (bypass below handles exact /admin)
+          '/purchase',
+          '/purchases',
+          '/food',       // covers /food-items, /food-purchases, etc.
+          '/popular-food-items',
+          '/recent-purchases',
+          '/quantity',   // covers /quantity-types
+          '/survey',     // covers /survey-questions, /survey-response
+          '/consumption',// covers /consumption-log, /consumption-summary, etc.
+          '/health',
+          '/today',      // daily-tasks "today" endpoint in this app
+        ];
+
+        return Object.fromEntries(prefixes.map((p) => [p, proxyFor()]));
+      })(),
+
+      // Keep /admin as a special case: the exact /admin route is a frontend page,
+      // but /admin/* are backend API endpoints.
       '/admin': {
         target: 'http://localhost:5001',
         changeOrigin: true,
@@ -100,10 +72,6 @@ export default {
           // Continue proxying for /admin/* API paths
           return null;
         },
-      },
-      '/health': {
-        target: 'http://localhost:5001',
-        changeOrigin: true,
       },
     },
   },

@@ -1,7 +1,8 @@
 // @ts-nocheck
 import React, { useState, useEffect } from "react";
+import ReactDOM from "react-dom";
 import dayjs from "dayjs";
-import { foodPurchaseAPI, surveyAPI } from "../../api";
+import { foodPurchaseAPI, surveyAPI, dailyTasksAPI } from "../../api";
 // MUI components
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
@@ -68,8 +69,7 @@ const deletePurchase = async (purchaseId) => {
   
   try {
     // Send DELETE request with user_id as query param
-    const response = await foodPurchaseAPI.deletePurchase(purchaseId, { user_id: userId });
-    console.log("Delete purchase response:", response.data);
+    await foodPurchaseAPI.deletePurchase(purchaseId, { user_id: userId });
     fetchFoodPurchases()
   } catch (error) {
     console.error("Error deleting purchase:", error);
@@ -120,8 +120,8 @@ const deletePurchase = async (purchaseId) => {
           }
           
           // Check if user has incomplete tasks
-          const response = await fetch(`${import.meta.env.VITE_API_URL}/api/daily-tasks/today?user_id=${userId}`);
-          const tasks = await response.json();
+          const response = await dailyTasksAPI.getTodayTasks({ user_id: userId });
+          const tasks = response.data;
           
           const completed = (tasks.log_food_completed ? 1 : 0) + 
                           (tasks.complete_survey_completed ? 1 : 0) + 
@@ -156,8 +156,6 @@ const deletePurchase = async (purchaseId) => {
     const purchaseDate = dayjs(purchase.purchase_date);
     return purchaseDate.isSame(selectedDate, "day");
   });
-
-  // Debug logging can be removed once everything is working
 
   // Check if selected date is within 7 days (can add/delete)
   const isWithin7Days = dayjs().subtract(7, 'day').isSameOrBefore(selectedDate, 'day');
@@ -237,28 +235,37 @@ const deletePurchase = async (purchaseId) => {
         </Box>
 
         {loggingPurchase && (
-          <Paper
-            style={{
-              position: "fixed",
-              height: "100vh",
-              top: "0vh",
-              width: "100vw",
-              maxWidth:"600px",
-              zIndex: 1500,
-              boxSizing:"border-box",
-              left:"50%",
-              transform: "translateX(-50%)",
-              backgroundColor: "#fafafa"
-            }}
-          >
-            <AddNewPurchase
-              setLoggingPurchase={setLoggingPurchase}
-              foodItems={foodItems}
-              fetchFoodItems={fetchFoodItems}
-              fetchFoodPurchases={fetchFoodPurchases}
-              selectedDate={selectedDate}
-            />
-          </Paper>
+          ReactDOM.createPortal(
+            <Paper
+              sx={{
+                position: "fixed",
+                height: "100vh",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                width: "100vw",
+                maxWidth: "100%",
+                zIndex: 1500, // Higher than BottomBar (1400) to render on top
+                boxSizing: "border-box",
+                backgroundColor: "#fafafa",
+                overflow: "hidden",
+                display: "flex",
+                flexDirection: "column",
+                margin: 0,
+                padding: 0,
+              }}
+            >
+              <AddNewPurchase
+                setLoggingPurchase={setLoggingPurchase}
+                foodItems={foodItems}
+                fetchFoodItems={fetchFoodItems}
+                fetchFoodPurchases={fetchFoodPurchases}
+                selectedDate={selectedDate}
+              />
+            </Paper>,
+            document.body
+          )
         )}
 
         {/* Daily Tasks Popup */}

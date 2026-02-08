@@ -24,6 +24,7 @@ import moment from "moment-timezone";
 import questions from "./SurveyQuestions.js";
 import foodItems from "./FoodItems.js";
 import query from "./TableQuery.js";
+import { searchOffCategories } from "./utils/openFoodFactsTaxonomy.js";
 import { 
   generateFakeUsersWithData, 
   cleanupFakeUsers, 
@@ -224,23 +225,341 @@ app.get("/food-categories", async (req, res) => {
   }
 });
 
+// Helper function to find or create a category by name
+async function findOrCreateCategory(categoryName) {
+  if (!categoryName || typeof categoryName !== 'string' || categoryName.trim().length === 0) {
+    return null;
+  }
+
+  const normalizedName = categoryName.trim();
+  
+  try {
+    // First, try to find existing category
+    const findResult = await pool.query(
+      'SELECT id, name FROM categories WHERE LOWER(name) = LOWER($1)',
+      [normalizedName]
+    );
+
+    if (findResult.rows.length > 0) {
+      return findResult.rows[0].id;
+    }
+
+    // Category doesn't exist, create it
+    const createResult = await pool.query(
+      'INSERT INTO categories (name) VALUES ($1) ON CONFLICT (name) DO NOTHING RETURNING id',
+      [normalizedName]
+    );
+
+    if (createResult.rows.length > 0) {
+      console.log(`✅ Auto-created category: "${normalizedName}" (id: ${createResult.rows[0].id})`);
+      return createResult.rows[0].id;
+    }
+
+    // If conflict occurred (race condition), fetch the existing one
+    const retryResult = await pool.query(
+      'SELECT id FROM categories WHERE LOWER(name) = LOWER($1)',
+      [normalizedName]
+    );
+
+    if (retryResult.rows.length > 0) {
+      return retryResult.rows[0].id;
+    }
+
+    return null;
+  } catch (err) {
+    console.error(`Error finding/creating category "${normalizedName}":`, err);
+    return null;
+  }
+}
+
+// Helper function to find or create a quantity type by name
+async function findOrCreateQuantityType(quantityTypeName) {
+  if (!quantityTypeName || typeof quantityTypeName !== 'string' || quantityTypeName.trim().length === 0) {
+    return null;
+  }
+
+  const normalizedName = quantityTypeName.trim();
+  
+  try {
+    // First, try to find existing quantity type
+    const findResult = await pool.query(
+      'SELECT id, name FROM quantity_types WHERE LOWER(name) = LOWER($1)',
+      [normalizedName]
+    );
+
+    if (findResult.rows.length > 0) {
+      return findResult.rows[0].id;
+    }
+
+    // Quantity type doesn't exist, create it
+    const createResult = await pool.query(
+      'INSERT INTO quantity_types (name) VALUES ($1) ON CONFLICT (name) DO NOTHING RETURNING id',
+      [normalizedName]
+    );
+
+    if (createResult.rows.length > 0) {
+      console.log(`✅ Auto-created quantity type: "${normalizedName}" (id: ${createResult.rows[0].id})`);
+      return createResult.rows[0].id;
+    }
+
+    // If conflict occurred (race condition), fetch the existing one
+    const retryResult = await pool.query(
+      'SELECT id FROM quantity_types WHERE LOWER(name) = LOWER($1)',
+      [normalizedName]
+    );
+
+    if (retryResult.rows.length > 0) {
+      return retryResult.rows[0].id;
+    }
+
+    return null;
+  } catch (err) {
+    console.error(`Error finding/creating quantity type "${normalizedName}":`, err);
+    return null;
+  }
+}
+
+// Helper function to map Open Food Facts quantity string to app quantity type ID
+async function mapOffQuantityToAppQuantityType(offQuantity, appQuantityTypes) {
+  if (!offQuantity || !appQuantityTypes || appQuantityTypes.length === 0) {
+    return null;
+  }
+
+  const normalized = offQuantity.toLowerCase().trim();
+  
+  // Create a map of app quantity type names (lowercase) to IDs
+  const appQuantityTypeMap = {};
+  appQuantityTypes.forEach((qt) => {
+    appQuantityTypeMap[qt.name.toLowerCase()] = qt.id;
+  });
+
+  // Extract unit from quantity string (e.g., "155 g" -> "g", "1 can" -> "can")
+  const unitMatch = normalized.match(/(?:^\d+(?:\.\d+)?\s*)?([a-z]+(?:\s+[a-z]+)?)$/);
+  if (!unitMatch) {
+    return null;
+  }
+
+  const unit = unitMatch[1].trim();
+
+  // Mapping rules: Open Food Facts unit -> App quantity type
+  const unitMappings = {
+    'g': 'Lb', 'gram': 'Lb', 'grams': 'Lb', 'kg': 'Lb', 'kilogram': 'Lb', 'kilograms': 'Lb',
+    'lb': 'Lb', 'lbs': 'Lb', 'pound': 'Lb', 'pounds': 'Lb', 'oz': 'Lb', 'ounce': 'Lb', 'ounces': 'Lb',
+    'ml': 'Liter', 'milliliter': 'Liter', 'milliliters': 'Liter', 'l': 'Liter', 'liter': 'Liter',
+    'liters': 'Liter', 'litre': 'Liter', 'litres': 'Liter', 'gal': 'Gallon', 'gallon': 'Gallon', 'gallons': 'Gallon',
+    'cup': 'Cup', 'cups': 'Cup', 'fl oz': 'Liter', 'fluid ounce': 'Liter', 'fluid ounces': 'Liter',
+    'each': 'Each', 'piece': 'Each', 'pieces': 'Each', 'item': 'Each', 'items': 'Each',
+    'unit': 'Each', 'units': 'Each', 'can': 'Each', 'cans': 'Each', 'bottle': 'Each', 'bottles': 'Each',
+    'pack': 'Each', 'packs': 'Each', 'package': 'Each', 'packages': 'Each',
+    'box': 'Box', 'boxes': 'Box', 'dozen': 'Dozen', 'dozens': 'Dozen',
+    'bag': 'Bag', 'bags': 'Bag', 'bunch': 'Bunch', 'bunches': 'Bunch', 'loaf': 'Loaf', 'loaves': 'Loaf',
+  };
+
+  // Try direct match
+  if (unitMappings[unit]) {
+    const appQuantityTypeName = unitMappings[unit];
+    if (appQuantityTypeMap[appQuantityTypeName.toLowerCase()]) {
+      return appQuantityTypeMap[appQuantityTypeName.toLowerCase()];
+    }
+  }
+
+  // Try partial match
+  for (const [key, appQuantityTypeName] of Object.entries(unitMappings)) {
+    if (unit.includes(key) || key.includes(unit)) {
+      if (appQuantityTypeMap[appQuantityTypeName.toLowerCase()]) {
+        return appQuantityTypeMap[appQuantityTypeName.toLowerCase()];
+      }
+    }
+  }
+
+  // Try to match any app quantity type name directly
+  for (const [appName, appId] of Object.entries(appQuantityTypeMap)) {
+    if (unit.includes(appName) || appName.includes(unit)) {
+      return appId;
+    }
+  }
+
+  return null;
+}
+
 // POST purchase
 app.post("/purchase", requireUserId, async (req, res) => {
-const { user_id, name, category, category_id, price, quantity, quantity_type, purchase_date } = req.body;
+const { user_id, name, category, category_id, price, quantity, quantity_type, quantity_type_id, purchase_date, barcode, image_url, brand, source, categories_tags, ingredients_text } = req.body;
 
 // Convert purchase_date to US East Coast timezone and truncate to just date part
 const localDate = moment.tz(purchase_date, 'America/New_York').startOf('day').toDate();
 
+  try {
+    // Auto-create category if category name is provided but category_id is not
+    // This is backward compatible - existing purchases with category_id will use it
+    let finalCategoryId = category_id;
+    if (!finalCategoryId && category) {
+      finalCategoryId = await findOrCreateCategory(category);
+    }
+
+    // Auto-create quantity type if quantity_type name is provided but quantity_type_id is not
+    // This is backward compatible - existing purchases with quantity_type_id will use it
+    let finalQuantityTypeId = quantity_type_id;
+    if (!finalQuantityTypeId && quantity_type) {
+      finalQuantityTypeId = await findOrCreateQuantityType(quantity_type);
+    }
+    
+    // Note: finalCategoryId and finalQuantityTypeId can still be null here for backward compatibility
+    // The purchase will be created even if these are null (for existing data that doesn't have them)
+
+  // First, ensure the food_item exists in the food_items table
+  // Check if food_item already exists for this user (or global)
+  let foodItemResult = await pool.query(
+    `SELECT id, image_url
+     FROM food_items
+     WHERE name = $1 AND (user_id = $2 OR user_id = -1)
+     ORDER BY (user_id = $2) DESC, id DESC
+     LIMIT 1`,
+    [name, user_id]
+  );
+
+  let foodItemId = null;
+  let existingFoodItemImageUrl = null;
+
+  if (foodItemResult.rows.length > 0) {
+    // Use existing food_item
+    foodItemId = foodItemResult.rows[0].id;
+    existingFoodItemImageUrl = foodItemResult.rows[0].image_url || null;
+
+    // If we got an image_url with this purchase and the food item has none yet, persist it.
+    // (Useful when a user adds an existing DB item that previously had no image.)
+    if (image_url && !existingFoodItemImageUrl) {
+      try {
+        await pool.query(
+          `UPDATE food_items
+           SET image_url = $1
+           WHERE id = $2`,
+          [image_url, foodItemId]
+        );
+        existingFoodItemImageUrl = image_url;
+      } catch (updateImgErr) {
+        console.warn("Could not update food_item image_url:", updateImgErr);
+      }
+    }
+  } else {
+    // Create new food_item if it doesn't exist
+    // For Open Food Facts products, we should always create the food_item
+    // If finalCategoryId and finalQuantityTypeId are provided, create the food_item
+    // NOTE: For backward compatibility, we allow creating food items even if category_id or quantity_type_id are null
+    // (they can be set later or the purchase can proceed without them)
+    if (finalCategoryId !== undefined && finalCategoryId !== null && finalQuantityTypeId !== undefined && finalQuantityTypeId !== null) {
+      const priceVal = price ? parseFloat(price) : 0;
+      const quantityVal = quantity ? parseFloat(quantity) : 0;
+
+      // Extract additional fields from request body (for Open Food Facts products)
+      const barcode = req.body.barcode || null;
+      const brand = req.body.brand || null;
+      const source = req.body.source || 'local';
+      const categories_tags = req.body.categories_tags ? JSON.stringify(req.body.categories_tags) : null;
+      const ingredients_text = req.body.ingredients_text || null;
+
+      const insertFoodItemQuery = `
+        INSERT INTO food_items (name, category_id, price, quantity, quantity_type_id, user_id, image_url, barcode, brand, source, categories_tags, ingredients_text)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        ON CONFLICT (name, user_id) DO UPDATE 
+          SET category_id = EXCLUDED.category_id,
+              quantity_type_id = EXCLUDED.quantity_type_id,
+              price = EXCLUDED.price,
+              image_url = COALESCE(EXCLUDED.image_url, food_items.image_url),
+              barcode = COALESCE(EXCLUDED.barcode, food_items.barcode),
+              brand = COALESCE(EXCLUDED.brand, food_items.brand),
+              source = COALESCE(EXCLUDED.source, food_items.source),
+              categories_tags = COALESCE(EXCLUDED.categories_tags, food_items.categories_tags),
+              ingredients_text = COALESCE(EXCLUDED.ingredients_text, food_items.ingredients_text)
+        RETURNING id
+      `;
+
+      try {
+        const foodItemInsertResult = await pool.query(insertFoodItemQuery, [
+          name,
+          finalCategoryId,
+          priceVal,
+          quantityVal,
+          finalQuantityTypeId,
+          user_id,
+          image_url || null,
+          barcode,
+          brand,
+          source,
+          categories_tags,
+          ingredients_text,
+        ]);
+
+        foodItemId = foodItemInsertResult.rows[0].id;
+        console.log(`✅ Created/found food_item: id=${foodItemId}, name=${name}, user_id=${user_id}`);
+      } catch (foodItemErr) {
+        console.error("Error creating food_item:", foodItemErr);
+        // Continue with purchase creation even if food_item creation fails
+      }
+    } else {
+      console.warn(`⚠️ Skipping food_item creation: category_id=${finalCategoryId}, quantity_type_id=${finalQuantityTypeId}`);
+    }
+  }
+
+  // Get quantity_type name if quantity_type_id is provided
+  let quantityTypeName = quantity_type;
+  if (!quantityTypeName && quantity_type_id) {
+    try {
+      const qtResult = await pool.query("SELECT name FROM quantity_types WHERE id = $1", [quantity_type_id]);
+      if (qtResult.rows.length > 0) {
+        quantityTypeName = qtResult.rows[0].name;
+      }
+    } catch (qtErr) {
+      console.warn("Could not fetch quantity type name:", qtErr);
+    }
+  }
+
+  // Create the purchase
 const query = `
-  INSERT INTO purchases (user_id, name, category, category_id, price, quantity, quantity_type, purchase_date)
-  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+  INSERT INTO purchases (user_id, name, category, category_id, price, quantity, quantity_type, purchase_date, food_item_id, image_url)
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
   RETURNING id
 `;
 
-try {
-  const result = await pool.query(query, [user_id, name, category, category_id, price, quantity, quantity_type, localDate]);
-    res.status(201).json({ message: "Purchase added successfully", id: result.rows[0].id });
+  const purchaseImageUrl = image_url || existingFoodItemImageUrl || null;
+  const result = await pool.query(query, [
+    user_id,
+    name,
+    category,
+    finalCategoryId,
+    price,
+    quantity,
+    quantityTypeName || quantity_type,
+    localDate,
+    foodItemId,
+    purchaseImageUrl,
+  ]);
+  
+  console.log(`✅ Purchase created: id=${result.rows[0].id}, name=${name}, user_id=${user_id}, date=${purchase_date}`);
+  
+  // Track frequently added foods
+  try {
+    await pool.query(`
+      INSERT INTO frequently_added_foods (user_id, food_item_id, food_name, add_count, last_added_date)
+      VALUES ($1, $2, $3, 1, CURRENT_TIMESTAMP)
+      ON CONFLICT (user_id, food_name) 
+      DO UPDATE SET 
+        add_count = frequently_added_foods.add_count + 1,
+        last_added_date = CURRENT_TIMESTAMP,
+        food_item_id = COALESCE(EXCLUDED.food_item_id, frequently_added_foods.food_item_id)
+    `, [user_id, foodItemId, name]);
+  } catch (trackErr) {
+    console.warn("Error tracking frequently added food:", trackErr);
+    // Don't fail the purchase if tracking fails
+  }
+  
+  res.status(201).json({ 
+    message: "Purchase added successfully", 
+    id: result.rows[0].id,
+    food_item_id: foodItemId // Return the food_item_id if created/found
+  });
   } catch (err) {
+  console.error("Error adding purchase:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -271,6 +590,202 @@ app.delete("/purchase/:id", requireUserId, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// GET popular food items (across all users, based on total purchase count)
+app.get("/popular-food-items", async (req, res) => {
+  const { limit = 20 } = req.query;
+  
+  try {
+    // Get food items ordered by total purchase count across all users
+    const query = `
+      SELECT 
+        fi.id,
+        fi.name,
+        fi.category_id,
+        c.name AS category,
+        fi.quantity_type_id,
+        qt.name AS quantity_type,
+        fi.emoji,
+        fi.image_url AS image,
+        fi.price,
+        COUNT(p.id) AS purchase_count
+      FROM food_items fi
+      LEFT JOIN purchases p ON p.name = fi.name
+      LEFT JOIN categories c ON fi.category_id = c.id
+      LEFT JOIN quantity_types qt ON fi.quantity_type_id = qt.id
+      WHERE fi.user_id = -1  -- Only global items
+      GROUP BY fi.id, fi.name, fi.category_id, c.name, fi.quantity_type_id, qt.name, fi.emoji, fi.image_url, fi.price
+      HAVING COUNT(p.id) > 0  -- Only items that have been purchased at least once
+      ORDER BY purchase_count DESC, fi.name ASC
+      LIMIT $1
+    `;
+    
+    const result = await pool.query(query, [parseInt(limit)]);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching popular food items:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET recent purchases (per-user, distinct items ordered by most recent purchase date)
+app.get("/recent-purchases", requireUserId, async (req, res) => {
+  const userId = req.user_id;
+  const { limit = 20 } = req.query;
+
+  try {
+    const query = `
+      WITH recent AS (
+        SELECT
+          p.name,
+          MAX(p.purchase_date) AS last_purchase_date,
+          COUNT(*)::int AS purchase_count,
+          MAX(p.category) AS purchase_category,
+          MAX(p.quantity_type) AS purchase_quantity_type
+        FROM purchases p
+        WHERE p.user_id = $1
+        GROUP BY p.name
+        ORDER BY last_purchase_date DESC
+        LIMIT $2
+      )
+      SELECT
+        r.name,
+        r.last_purchase_date,
+        r.purchase_count,
+        fi.id AS food_item_id,
+        fi.category_id,
+        COALESCE(c.name, r.purchase_category) AS category,
+        fi.quantity_type_id,
+        COALESCE(qt.name, r.purchase_quantity_type) AS quantity_type,
+        fi.emoji,
+        fi.image_url AS image,
+        fi.price
+      FROM recent r
+      LEFT JOIN LATERAL (
+        SELECT *
+        FROM food_items fi
+        WHERE LOWER(fi.name) = LOWER(r.name)
+          AND (fi.user_id = $1 OR fi.user_id = -1)
+        ORDER BY (fi.user_id = $1) DESC, fi.id DESC
+        LIMIT 1
+      ) fi ON true
+      LEFT JOIN categories c ON fi.category_id = c.id
+      LEFT JOIN quantity_types qt ON fi.quantity_type_id = qt.id
+      ORDER BY r.last_purchase_date DESC, r.name ASC
+    `;
+
+    const result = await pool.query(query, [userId, parseInt(limit)]);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching recent purchases:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET frequently-added-foods
+app.get("/frequently-added-foods", requireUserId, async (req, res) => {
+  const { user_id } = req.query;
+  
+  if (!user_id) {
+    return res.status(400).json({ error: "user_id is required" });
+  }
+
+  try {
+    // Get items from frequently_added_foods table (based on add_count)
+    // PLUS items that were purchased within the last 7 days
+    const query = `
+      WITH frequent_items AS (
+        SELECT 
+          faf.food_name,
+          faf.add_count,
+          faf.last_added_date,
+          faf.food_item_id,
+          fi.category_id,
+          c.name AS category,
+          fi.quantity_type_id,
+          qt.name AS quantity_type,
+          fi.emoji,
+          fi.image_url AS image,
+          fi.price
+        FROM frequently_added_foods faf
+        LEFT JOIN food_items fi ON faf.food_item_id = fi.id
+        LEFT JOIN categories c ON fi.category_id = c.id
+        LEFT JOIN quantity_types qt ON fi.quantity_type_id = qt.id
+        WHERE faf.user_id = $1
+      ),
+      recent_purchases AS (
+        SELECT DISTINCT
+          p.name AS food_name,
+          1 AS add_count,
+          MAX(p.purchase_date) AS last_added_date,
+          fi.id AS food_item_id,
+          fi.category_id,
+          c.name AS category,
+          fi.quantity_type_id,
+          qt.name AS quantity_type,
+          fi.emoji,
+          fi.image_url AS image,
+          fi.price
+        FROM purchases p
+        LEFT JOIN food_items fi ON p.name = fi.name AND (fi.user_id = $1 OR fi.user_id = -1)
+        LEFT JOIN categories c ON fi.category_id = c.id
+        LEFT JOIN quantity_types qt ON fi.quantity_type_id = qt.id
+        WHERE p.user_id = $1
+          AND p.purchase_date >= NOW() - INTERVAL '7 days'
+          AND NOT EXISTS (
+            SELECT 1 FROM frequently_added_foods faf 
+            WHERE faf.user_id = $1 AND faf.food_name = p.name
+          )
+        GROUP BY p.name, fi.id, fi.category_id, c.name, fi.quantity_type_id, qt.name, fi.emoji, fi.image_url, fi.price
+      ),
+      recent_food_items AS (
+        SELECT DISTINCT
+          fi.name AS food_name,
+          1 AS add_count,
+          COALESCE(
+            (SELECT MAX(purchase_date) FROM purchases WHERE user_id = $1 AND name = fi.name),
+            NOW()
+          ) AS last_added_date,
+          fi.id AS food_item_id,
+          fi.category_id,
+          c.name AS category,
+          fi.quantity_type_id,
+          qt.name AS quantity_type,
+          fi.emoji,
+          fi.image_url AS image,
+          fi.price
+        FROM food_items fi
+        LEFT JOIN categories c ON fi.category_id = c.id
+        LEFT JOIN quantity_types qt ON fi.quantity_type_id = qt.id
+        WHERE fi.user_id = $1
+          AND EXISTS (
+            SELECT 1 FROM purchases p 
+            WHERE p.user_id = $1 
+              AND p.name = fi.name 
+              AND p.purchase_date >= NOW() - INTERVAL '7 days'
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM frequently_added_foods faf 
+            WHERE faf.user_id = $1 AND faf.food_name = fi.name
+          )
+      )
+      SELECT * FROM frequent_items
+      UNION
+      SELECT * FROM recent_purchases
+      UNION
+      SELECT * FROM recent_food_items
+      ORDER BY add_count DESC, last_added_date DESC
+      LIMIT 20
+    `;
+    
+    const result = await pool.query(query, [user_id]);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching frequently added foods:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET food-items
 app.get("/food-items", requireUserId, async (req, res) => {
   let user_id = parseInt(req.query.user_id, 10);
@@ -281,7 +796,7 @@ app.get("/food-items", requireUserId, async (req, res) => {
   const { search, category } = req.query;
 
   let query = `
-    SELECT f.id, f.name, f.category_id, c.name AS category, f.price, f.quantity, qt.name AS quantity_type, f.emoji
+    SELECT f.id, f.name, f.category_id, c.name AS category, f.price, f.quantity, qt.name AS quantity_type, f.emoji, f.image_url AS image, f.barcode, f.brand, f.source, f.categories_tags, f.ingredients_text
     FROM food_items f
     LEFT JOIN quantity_types qt ON f.quantity_type_id = qt.id
     LEFT JOIN categories c ON f.category_id = c.id
@@ -327,17 +842,33 @@ app.get("/food-purchases", requireUserId, async (req, res) => {
       p.purchase_date,
       p.quantity_type,
       c.name AS category_name,
-      f.emoji
+      fi.emoji,
+      COALESCE(p.image_url, fi.image_url) AS image
     FROM purchases p
     LEFT JOIN categories c ON p.category = c.name
-    LEFT JOIN food_items f ON p.name = f.name AND f.user_id = -1
+    LEFT JOIN LATERAL (
+      SELECT f.emoji, f.image_url
+      FROM food_items f
+      WHERE
+        (p.food_item_id IS NOT NULL AND f.id = p.food_item_id)
+        OR (
+          p.food_item_id IS NULL
+          AND LOWER(f.name) = LOWER(p.name)
+          AND (f.user_id = $1 OR f.user_id = -1)
+        )
+      ORDER BY (f.user_id = $1) DESC, f.id DESC
+      LIMIT 1
+    ) fi ON true
     WHERE p.user_id = $1
+    ORDER BY p.purchase_date DESC, p.id DESC
   `;
 
   try {
     const { rows } = await pool.query(query, [user_id]);
+    console.log(`📦 Returning ${rows.length} purchases for user ${user_id}`);
     res.json(rows);
   } catch (err) {
+    console.error("Error fetching food purchases:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -2446,7 +2977,730 @@ app.get("/api/leaderboard/total-completions", async (req, res) => {
   }
 });
 
-// Catch-all for 404
+// Unified Food Items Search Endpoint (searches local DB + Open Food Facts)
+app.get("/api/food-items/search", requireUserId, async (req, res) => {
+  const { term, user_id, pageSize } = req.query;
+
+  console.log(`[SEARCH] Starting search - term: "${term}", user_id: ${user_id}`);
+
+  if (!term || term.trim().length < 2) {
+    console.log(`[SEARCH] Invalid search term (too short): "${term}"`);
+    return res.status(400).json({ error: "Search term must be at least 2 characters" });
+  }
+
+  const userId = parseInt(user_id, 10);
+  if (isNaN(userId)) {
+    console.log(`[SEARCH] Invalid user_id: ${user_id}`);
+    return res.status(400).json({ error: "Invalid user_id" });
+  }
+
+  try {
+    const results = {
+      local: [],
+      openfoodfacts: [],
+      opennutrition: [],
+      error: null,
+    };
+
+    const parsedPageSize = parseInt(pageSize, 10);
+    const offPageSize = Number.isFinite(parsedPageSize)
+      ? Math.min(Math.max(parsedPageSize, 1), 50)
+      : 20;
+
+    // Search local database and Open Food Facts in parallel for better performance
+    const shouldSearchOpenFoodFacts = term.length >= 3;
+    console.log(`[SEARCH] shouldSearchOpenFoodFacts: ${shouldSearchOpenFoodFacts}`);
+
+    const searchPromises = [
+      // Always search local database
+      (async () => {
+        console.log(`[SEARCH] Searching local database for: "${term}"`);
+        const startTime = Date.now();
+        try {
+          // Dedupe local results by name:
+          // If a user has a custom item with the same name as a global (-1) item,
+          // prefer the user's item.
+          const result = await pool.query(
+            `SELECT DISTINCT ON (LOWER(f.name))
+               f.id,
+               f.name,
+               f.category_id,
+               c.name AS category,
+               f.price,
+               f.quantity,
+               qt.name AS quantity_type,
+               f.emoji,
+               f.image_url AS image,
+               f.barcode,
+               f.brand,
+               f.source,
+               f.categories_tags,
+               f.ingredients_text
+             FROM food_items f
+             LEFT JOIN quantity_types qt ON f.quantity_type_id = qt.id
+             LEFT JOIN categories c ON f.category_id = c.id
+             WHERE (f.user_id = $1 OR f.user_id = -1)
+               AND f.name ILIKE $2
+             ORDER BY LOWER(f.name) ASC, (f.user_id = $1) DESC, f.id DESC
+             LIMIT 20`,
+            [userId, `%${term}%`]
+          );
+          const duration = Date.now() - startTime;
+          console.log(`[SEARCH] Local DB search completed in ${duration}ms - found ${result.rows.length} items`);
+          return result;
+        } catch (err) {
+          console.error(`[SEARCH] Local DB search error:`, err);
+          throw err;
+        }
+      })(),
+    ];
+
+    // Conditionally add Open Food Facts search
+    if (shouldSearchOpenFoodFacts) {
+      searchPromises.push(
+        (async () => {
+          try {
+            console.log(`[SEARCH] Starting Open Food Facts search for: "${term}"`);
+            const startTime = Date.now();
+            
+            // Check cache first - include locale in cache key to separate US vs world results
+            const searchKey = `us_${term.toLowerCase()}_${offPageSize}`;
+            console.log(`[SEARCH] Checking cache with key: "${searchKey}"`);
+            
+            const cacheResult = await pool.query(
+              `SELECT products, expires_at 
+               FROM off_search_cache 
+               WHERE search_key = $1 AND expires_at > CURRENT_TIMESTAMP`,
+              [searchKey]
+            );
+
+            let offProducts = [];
+
+            if (cacheResult.rows.length > 0) {
+              // Use cached results
+              console.log(`[SEARCH] Cache HIT for key: "${searchKey}"`);
+              offProducts = cacheResult.rows[0].products;
+              console.log(`[SEARCH] Retrieved ${offProducts.length} products from cache`);
+            } else {
+              console.log(`[SEARCH] Cache MISS for key: "${searchKey}" - fetching from API`);
+              // Fetch from Open Food Facts API
+              // Use US-specific endpoint to prioritize US products
+              const SEARCH_API_URL = 'https://us.openfoodfacts.org/cgi/search.pl';
+              const params = new URLSearchParams({
+                action: 'process',
+                search_terms: term,
+                page_size: offPageSize.toString(), // Limit results
+                json: '1',
+                lc: 'en',
+                fields: 'code,product_name,product_name_en,brands,categories,categories_en,categories_tags,categories_tags_en,languages_tags,image_front_thumb_url,image_front_small_url,image_front_url,image_url,ingredients_text,quantity,countries_tags_en',
+                // Prioritize products with English names and US availability
+                sort_by: 'popularity', // Sort by popularity (more likely to be common products)
+              });
+
+              const apiUrl = `${SEARCH_API_URL}?${params.toString()}`;
+              console.log(`[SEARCH] Fetching from Open Food Facts API: ${apiUrl}`);
+              const apiStartTime = Date.now();
+              
+              // No timeout - let it complete to see if API is just slow
+              let apiResponse;
+              try {
+                apiResponse = await fetch(apiUrl, {
+                  headers: {
+                    'User-Agent': 'FoodWaste-App/1.0 (School Project) - https://github.com/your-repo',
+                    'Accept': 'application/json',
+                  },
+                });
+              } catch (fetchError) {
+                console.error(`[SEARCH] Open Food Facts API fetch error:`, fetchError);
+                throw fetchError;
+              }
+
+              const apiDuration = Date.now() - apiStartTime;
+              console.log(`[SEARCH] Open Food Facts API response: ${apiResponse.status} (took ${apiDuration}ms)`);
+
+              if (apiResponse.status === 429) {
+                const retryAfter = apiResponse.headers.get('Retry-After') || '60';
+                console.log(`[SEARCH] Rate limited - retry after ${retryAfter} seconds`);
+                return {
+                  error: {
+                    type: 'RATE_LIMITED',
+                    message: `Rate limit exceeded. Please wait ${retryAfter} seconds.`,
+                    retryAfter: parseInt(retryAfter, 10),
+                  },
+                  products: [],
+                };
+              } else if (apiResponse.ok) {
+                const data = await apiResponse.json();
+                console.log(`[SEARCH] Open Food Facts API returned ${data.products?.length || 0} raw products`);
+                
+                // Filter and prioritize products:
+                // 1. Must have a name (prefer English name)
+                // 2. Prefer products available in US (countries_tags_en includes "en:united-states")
+                // 3. Prefer products with English names
+                const rawProducts = data.products || [];
+                console.log(`[SEARCH] Processing ${rawProducts.length} raw products`);
+                
+                offProducts = rawProducts
+                  .filter((product) => {
+                    // Require an English name to avoid non-English results slipping in.
+                    return typeof product.product_name_en === 'string' && product.product_name_en.trim().length > 0;
+                  })
+                  .map((product) => {
+                    const name = product.product_name_en.trim();
+                    const isUSProduct = product.countries_tags_en && 
+                      product.countries_tags_en.some(country => 
+                        country.toLowerCase().includes('united-states') || 
+                        country.toLowerCase().includes('en:united-states')
+                      );
+                    const hasEnglishName = !!product.product_name_en;
+                    
+                    return {
+                      name,
+                      ingredients: product.ingredients_text_en || product.ingredients_text || '',
+                      ingredients_text: product.ingredients_text_en || product.ingredients_text || '',
+                      categories: product.categories_en || product.categories || '',
+                      categories_tags: product.categories_tags_en || product.categories_tags || [],
+                      languages_tags: product.languages_tags || [],
+                      // Prefer thumbnails for faster list/grid loading.
+                      // Keep a larger fallback available if needed elsewhere.
+                      image: product.image_front_thumb_url || product.image_front_small_url || product.image_front_url || product.image_url || '',
+                      image_large: product.image_front_url || product.image_url || product.image_front_small_url || product.image_front_thumb_url || '',
+                      brand: product.brands || '',
+                      quantity: product.quantity || '',
+                      barcode: product.code || '',
+                      source: 'openfoodfacts',
+                      // Add priority score for sorting
+                      _priority: (isUSProduct ? 10 : 0) + (hasEnglishName ? 5 : 0),
+                    };
+                  })
+                  // Sort by priority (US + English name first)
+                  .sort((a, b) => (b._priority || 0) - (a._priority || 0))
+                  // Remove priority field and take top N
+                  .map(({ _priority, ...product }) => product)
+                  .slice(0, offPageSize);
+                
+                console.log(`[SEARCH] Filtered to ${offProducts.length} products after processing`);
+
+                // Remove OFF results that duplicate local results by name (case-insensitive),
+                // and dedupe OFF results by (name + brand).
+                const localNameSet = new Set(
+                  (results.local || [])
+                    .map((i) => String(i?.name || '').trim().toLowerCase())
+                    .filter(Boolean)
+                );
+                const seenOffKey = new Set();
+                offProducts = (offProducts || []).filter((p) => {
+                  const nameKey = String(p?.name || '').trim().toLowerCase();
+                  if (!nameKey) return false;
+                  if (localNameSet.has(nameKey)) return false;
+                  const brandKey = String(p?.brand || '').trim().toLowerCase();
+                  const key = `${nameKey}::${brandKey}`;
+                  if (seenOffKey.has(key)) return false;
+                  seenOffKey.add(key);
+                  return true;
+                });
+
+                // Cache the results
+                if (offProducts.length > 0) {
+                  console.log(`[SEARCH] Caching ${offProducts.length} products with key: "${searchKey}"`);
+                  const expiresAt = new Date();
+                  expiresAt.setDate(expiresAt.getDate() + 7); // 7 days cache
+
+                  await pool.query(
+                    `INSERT INTO off_search_cache (search_key, search_term, page_size, products, expires_at)
+                     VALUES ($1, $2, $3, $4, $5)
+                     ON CONFLICT (search_key) 
+                     DO UPDATE SET products = EXCLUDED.products, 
+                                  cached_at = CURRENT_TIMESTAMP,
+                                  expires_at = EXCLUDED.expires_at`,
+                    [searchKey, term.toLowerCase(), offPageSize, JSON.stringify(offProducts), expiresAt]
+                  );
+                  console.log(`[SEARCH] Cache updated successfully`);
+                }
+              } else {
+                console.log(`[SEARCH] API response not OK (status: ${apiResponse.status}), skipping caching`);
+              }
+            }
+
+            const totalDuration = Date.now() - startTime;
+            console.log(`[SEARCH] Open Food Facts search completed in ${totalDuration}ms - returning ${offProducts.length} products`);
+            return { products: offProducts, error: null };
+          } catch (err) {
+            console.error("[SEARCH] Error searching Open Food Facts:", err);
+            if (err.name === 'AbortError' || err.message?.includes('timeout') || err.message?.includes('aborted')) {
+              console.log(`[SEARCH] Request was aborted/timed out`);
+              return {
+                error: {
+                  type: 'TIMEOUT',
+                  message: 'Open Food Facts API request timed out.',
+                },
+                products: [],
+              };
+            }
+            return {
+              error: {
+                type: 'API_ERROR',
+                message: 'Failed to search Open Food Facts database.',
+              },
+              products: [],
+            };
+          }
+        })()
+      );
+    }
+
+    // Execute searches in parallel - use allSettled so one failure doesn't block the other
+    console.log(`[SEARCH] Executing ${searchPromises.length} search promise(s) in parallel`);
+    const searchStartTime = Date.now();
+    const searchResults = await Promise.allSettled(searchPromises);
+    const searchDuration = Date.now() - searchStartTime;
+    console.log(`[SEARCH] All searches completed in ${searchDuration}ms`);
+    
+    // Extract results from settled promises
+    const localResult = searchResults[0].status === 'fulfilled' ? searchResults[0].value : { rows: [] };
+    const offResult = searchResults[1] && searchResults[1].status === 'fulfilled' ? searchResults[1].value : null;
+    
+    // Log any rejected promises
+    if (searchResults[0].status === 'rejected') {
+      console.error(`[SEARCH] Local search failed:`, searchResults[0].reason);
+    }
+    if (searchResults[1] && searchResults[1].status === 'rejected') {
+      console.error(`[SEARCH] Open Food Facts search failed:`, searchResults[1].reason);
+    }
+
+    // Process local results
+    results.local = localResult.rows.map(item => ({
+      ...item,
+      source: 'local',
+    }));
+    console.log(`[SEARCH] Local results: ${results.local.length} items`);
+
+    // Process Open Food Facts results
+    if (offResult) {
+      results.openfoodfacts = offResult.products || [];
+      console.log(`[SEARCH] Open Food Facts results: ${results.openfoodfacts.length} items`);
+      if (offResult.error) {
+        console.log(`[SEARCH] Open Food Facts error:`, offResult.error);
+        results.error = offResult.error;
+      }
+    } else {
+      console.log(`[SEARCH] No Open Food Facts search performed (term too short)`);
+    }
+
+    // Final dedupe pass (after both searches finish):
+    // - Remove OFF results that duplicate local results by name (case-insensitive)
+    // - Dedupe OFF by (name + brand)
+    try {
+      const norm = (s) => String(s || '').trim().toLowerCase();
+      const localNameSet = new Set(results.local.map((i) => norm(i.name)).filter(Boolean));
+      const seenOff = new Set();
+      results.openfoodfacts = (results.openfoodfacts || []).filter((p) => {
+        const nameKey = norm(p?.name);
+        if (!nameKey) return false;
+        if (localNameSet.has(nameKey)) return false;
+        const brandKey = norm(p?.brand);
+        const key = `${nameKey}::${brandKey}`;
+        if (seenOff.has(key)) return false;
+        seenOff.add(key);
+        return true;
+      });
+    } catch (dedupeErr) {
+      console.error('[SEARCH] Dedupe pass failed (continuing):', dedupeErr);
+    }
+
+    // OpenNutrition fallback is disabled - OpenNutrition doesn't provide a REST API
+    // It only provides a TSV file download that would need to be indexed locally
+    // TODO: If we want to use OpenNutrition, we need to:
+    // 1. Download the TSV file from opennutrition.app/download
+    // 2. Parse and index it in our database
+    // 3. Query our local database instead of calling a non-existent API
+    const shouldSearchOpenNutrition = false; // Disabled until we implement local dataset indexing
+
+    if (shouldSearchOpenNutrition) {
+      try {
+        // Import OpenNutrition utility
+        const { searchOpenNutrition } = await import('./utils/openNutrition.js');
+        
+        // Check cache first
+        const onSearchKey = `on_${term.toLowerCase()}_10`;
+        const onCacheResult = await pool.query(
+          `SELECT products, expires_at 
+           FROM opennutrition_search_cache 
+           WHERE search_key = $1 AND expires_at > CURRENT_TIMESTAMP`,
+          [onSearchKey]
+        );
+
+        let onProducts = [];
+
+        if (onCacheResult.rows.length > 0) {
+          // Use cached results
+          onProducts = onCacheResult.rows[0].products;
+          results.opennutrition = onProducts;
+        } else {
+          // Fetch from OpenNutrition API with a timeout wrapper to prevent blocking
+          // Use Promise.race to ensure we don't wait more than 5 seconds
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('OpenNutrition timeout')), 5000)
+          );
+          
+          const onSearchPromise = searchOpenNutrition(term).then(onResult => {
+            if (onResult.error) {
+              console.error('OpenNutrition search error:', onResult.error);
+              return [];
+            }
+            return onResult.products || [];
+          });
+          
+          try {
+            onProducts = await Promise.race([onSearchPromise, timeoutPromise]);
+            
+            // Cache the results (7 days cache) if we got any
+            if (onProducts.length > 0) {
+              const expiresAt = new Date();
+              expiresAt.setDate(expiresAt.getDate() + 7);
+
+              // Don't await cache write - fire and forget to avoid blocking
+              pool.query(
+                `INSERT INTO opennutrition_search_cache (search_key, search_term, products, expires_at)
+                 VALUES ($1, $2, $3, $4)
+                 ON CONFLICT (search_key) 
+                 DO UPDATE SET products = EXCLUDED.products, 
+                              cached_at = CURRENT_TIMESTAMP,
+                              expires_at = EXCLUDED.expires_at`,
+                [onSearchKey, term.toLowerCase(), JSON.stringify(onProducts), expiresAt]
+              ).catch(err => console.error('Error caching OpenNutrition results:', err));
+            }
+            
+            results.opennutrition = onProducts;
+          } catch (timeoutErr) {
+            // Timeout or error - return empty results, don't block the response
+            console.log('OpenNutrition search timed out or failed, skipping:', timeoutErr.message);
+            results.opennutrition = [];
+          }
+        }
+      } catch (err) {
+        // Gracefully handle errors - don't break the search if OpenNutrition fails
+        console.error('Error searching OpenNutrition:', err);
+        results.opennutrition = [];
+      }
+    }
+
+    console.log(`[SEARCH] Returning results - local: ${results.local.length}, OFF: ${results.openfoodfacts.length}, ON: ${results.opennutrition.length}`);
+    res.json(results);
+  } catch (err) {
+    console.error("[SEARCH] Error in unified search:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Open Food Facts Cache Endpoints (shared cache for all users)
+// IMPORTANT: These must be defined BEFORE the catch-all 404 handler
+const CACHE_EXPIRY_DAYS = 7;
+
+// GET cached product by barcode OR fetch from Open Food Facts API
+app.get("/api/openfoodfacts/product/:barcode", async (req, res) => {
+  const { barcode } = req.params;
+  
+  // Validate barcode format
+  if (!barcode || !/^\d+$/.test(barcode)) {
+    return res.status(400).json({ error: "Invalid barcode format" });
+  }
+
+  try {
+    // Check cache first
+    const cacheResult = await pool.query(
+      `SELECT product_data, expires_at 
+       FROM off_product_cache 
+       WHERE barcode = $1 AND expires_at > CURRENT_TIMESTAMP`,
+      [barcode]
+    );
+
+    if (cacheResult.rows.length > 0) {
+      return res.json({ product: cacheResult.rows[0].product_data, cached: true });
+    }
+
+    // Not in cache - fetch from Open Food Facts API
+    const API_BASE_URL = 'https://world.openfoodfacts.org/api/v0/product';
+    const apiResponse = await fetch(`${API_BASE_URL}/${barcode}.json`, {
+      headers: {
+        'User-Agent': 'FoodWaste-App/1.0 (School Project) - https://github.com/your-repo',
+        'Accept': 'application/json',
+      },
+    });
+
+    // Handle rate limiting
+    if (apiResponse.status === 429) {
+      const retryAfter = apiResponse.headers.get('Retry-After') || '60';
+      return res.status(429).json({
+        error: 'RATE_LIMITED',
+        message: `Rate limit exceeded. Please wait ${retryAfter} seconds.`,
+        retryAfter: parseInt(retryAfter, 10),
+      });
+    }
+
+    if (!apiResponse.ok) {
+      return res.status(apiResponse.status).json({
+        error: 'API_ERROR',
+        message: `Open Food Facts API returned status ${apiResponse.status}`,
+      });
+    }
+
+    const data = await apiResponse.json();
+
+    // Check if product was found
+    if (data.status === 0 || !data.product) {
+      return res.status(404).json({ error: "NOT_FOUND", message: "Product not found in database" });
+    }
+
+    // Extract and normalize product data
+    const product = data.product;
+    // Prioritize English name and US availability
+        const normalizedProduct = {
+          name: product.product_name_en || product.product_name || '',
+          ingredients: product.ingredients_text_en || product.ingredients_text || '',
+          ingredients_text: product.ingredients_text_en || product.ingredients_text || '',
+          categories: product.categories_en || product.categories || '',
+          categories_tags: product.categories_tags_en || product.categories_tags || [],
+          // Prefer smaller images for faster loading
+          image: product.image_front_small_url || product.image_front_url || product.image_url || '',
+          brand: product.brands || '',
+          quantity: product.quantity || '',
+          nutrition: product.nutriments || {},
+          barcode: barcode,
+          source: 'openfoodfacts',
+          // Include country info for filtering
+          countries_tags_en: product.countries_tags_en || [],
+        };
+
+    // Cache the result
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + CACHE_EXPIRY_DAYS);
+
+    await pool.query(
+      `INSERT INTO off_product_cache (barcode, product_data, expires_at)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (barcode) 
+       DO UPDATE SET product_data = EXCLUDED.product_data, 
+                    cached_at = CURRENT_TIMESTAMP,
+                    expires_at = EXCLUDED.expires_at`,
+      [barcode, JSON.stringify(normalizedProduct), expiresAt]
+    );
+
+    res.json({ product: normalizedProduct, cached: false });
+  } catch (err) {
+    console.error("Error fetching product from Open Food Facts:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST cache product
+app.post("/api/openfoodfacts/product", async (req, res) => {
+  const { barcode, product } = req.body;
+
+  if (!barcode || !product) {
+    return res.status(400).json({ error: "Barcode and product data required" });
+  }
+
+  try {
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + CACHE_EXPIRY_DAYS);
+
+    await pool.query(
+      `INSERT INTO off_product_cache (barcode, product_data, expires_at)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (barcode) 
+       DO UPDATE SET product_data = EXCLUDED.product_data, 
+                    cached_at = CURRENT_TIMESTAMP,
+                    expires_at = EXCLUDED.expires_at`,
+      [barcode, JSON.stringify(product), expiresAt]
+    );
+
+    res.json({ message: "Product cached successfully" });
+  } catch (err) {
+    console.error("Error caching product:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET cached search results OR fetch from Open Food Facts API
+app.get("/api/openfoodfacts/search", async (req, res) => {
+  const { term, pageSize } = req.query;
+
+  if (!term) {
+    return res.status(400).json({ error: "Search term required" });
+  }
+
+  try {
+    // Check cache first - include locale in cache key to separate US vs world results
+    const searchKey = `us_${term.toLowerCase()}_${pageSize || 10}`;
+    const cacheResult = await pool.query(
+      `SELECT products, expires_at 
+       FROM off_search_cache 
+       WHERE search_key = $1 AND expires_at > CURRENT_TIMESTAMP`,
+      [searchKey]
+    );
+
+    if (cacheResult.rows.length > 0) {
+      return res.json({ products: cacheResult.rows[0].products, cached: true });
+    }
+
+    // Not in cache - fetch from Open Food Facts API
+    // Use US-specific endpoint to prioritize US products
+    const SEARCH_API_URL = 'https://us.openfoodfacts.org/cgi/search.pl';
+    const params = new URLSearchParams({
+      action: 'process',
+      search_terms: term,
+      page_size: Math.min(pageSize || 10, 100).toString(),
+      json: '1',
+      lc: 'en',
+      fields: 'code,product_name,product_name_en,brands,categories,categories_en,categories_tags,categories_tags_en,languages_tags,image_url,image_front_url,image_front_small_url,image_front_thumb_url,ingredients_text,ingredients_text_en,quantity,countries_tags_en',
+      sort_by: 'popularity', // Sort by popularity (more likely to be common products)
+    });
+
+    const apiResponse = await fetch(`${SEARCH_API_URL}?${params.toString()}`, {
+      headers: {
+        'User-Agent': 'FoodWaste-App/1.0 (School Project) - https://github.com/your-repo',
+        'Accept': 'application/json',
+      },
+    });
+
+    // Handle rate limiting
+    if (apiResponse.status === 429) {
+      const retryAfter = apiResponse.headers.get('Retry-After') || '60';
+      return res.status(429).json({
+        error: 'RATE_LIMITED',
+        message: `Rate limit exceeded. Please wait ${retryAfter} seconds.`,
+        retryAfter: parseInt(retryAfter, 10),
+      });
+    }
+
+    if (!apiResponse.ok) {
+      return res.status(apiResponse.status).json({
+        error: 'API_ERROR',
+        message: `Open Food Facts API returned status ${apiResponse.status}`,
+      });
+    }
+
+    const data = await apiResponse.json();
+
+    // Filter and prioritize products:
+    // 1. Must have a name (prefer English name)
+    // 2. Prefer products available in US (countries_tags_en includes "en:united-states")
+    // 3. Prefer products with English names
+    const normalizedProducts = (data.products || [])
+      .filter((product) => {
+        // Require an English name to avoid non-English results slipping in.
+        return typeof product.product_name_en === 'string' && product.product_name_en.trim().length > 0;
+      })
+      .map((product) => {
+        const name = product.product_name_en.trim();
+        const isUSProduct = product.countries_tags_en && 
+          Array.isArray(product.countries_tags_en) &&
+          product.countries_tags_en.some(country => 
+            country.toLowerCase().includes('united-states') || 
+            country.toLowerCase().includes('en:united-states') ||
+            country.toLowerCase() === 'en:united-states'
+          );
+        const hasEnglishName = !!product.product_name_en;
+        
+        return {
+          name,
+          ingredients: product.ingredients_text_en || product.ingredients_text || '',
+          categories: product.categories_en || product.categories || '',
+          categories_tags: product.categories_tags_en || product.categories_tags || [],
+          languages_tags: product.languages_tags || [],
+          image: product.image_front_thumb_url || product.image_front_small_url || product.image_front_url || product.image_url || '',
+          image_large: product.image_front_url || product.image_url || product.image_front_small_url || product.image_front_thumb_url || '',
+          brand: product.brands || '',
+          quantity: product.quantity || '',
+          barcode: product.code || '',
+          source: 'openfoodfacts',
+          // Add priority score for sorting
+          _priority: (isUSProduct ? 10 : 0) + (hasEnglishName ? 5 : 0),
+        };
+      })
+      // Sort by priority (US + English name first)
+      .sort((a, b) => (b._priority || 0) - (a._priority || 0))
+      // Remove priority field and take top results
+      .map(({ _priority, ...product }) => product)
+      .slice(0, pageSize || 10);
+
+    // Cache the results
+    if (normalizedProducts.length > 0) {
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + CACHE_EXPIRY_DAYS);
+
+      await pool.query(
+        `INSERT INTO off_search_cache (search_key, search_term, page_size, products, expires_at)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (search_key) 
+         DO UPDATE SET products = EXCLUDED.products, 
+                      cached_at = CURRENT_TIMESTAMP,
+                      expires_at = EXCLUDED.expires_at`,
+        [searchKey, term.toLowerCase(), pageSize || 10, JSON.stringify(normalizedProducts), expiresAt]
+      );
+    }
+
+    res.json({ products: normalizedProducts, cached: false });
+  } catch (err) {
+    console.error("Error fetching/searching Open Food Facts:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET Open Food Facts category taxonomy (English) with pagination + search
+// NOTE: OFF taxonomy contains thousands of categories; this endpoint is meant for autocomplete/suggestions.
+app.get("/api/openfoodfacts/categories", async (req, res) => {
+  try {
+    const { q = '', limit = 50, offset = 0, refresh = 'false' } = req.query;
+    const result = await searchOffCategories({
+      q,
+      limit,
+      offset,
+      forceRefresh: String(refresh).toLowerCase() === 'true',
+    });
+    res.json(result);
+  } catch (err) {
+    console.error("Error fetching Open Food Facts categories taxonomy:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST endpoint removed - caching is now handled automatically in GET endpoint
+
+// DELETE clear all cache (admin function)
+app.delete("/api/openfoodfacts/clear", async (req, res) => {
+  try {
+    await pool.query("DELETE FROM off_product_cache");
+    await pool.query("DELETE FROM off_search_cache");
+    res.json({ message: "Cache cleared successfully" });
+  } catch (err) {
+    console.error("Error clearing cache:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Cleanup expired cache entries (can be called periodically)
+app.post("/api/openfoodfacts/cleanup", async (req, res) => {
+  try {
+    const result1 = await pool.query(
+      "DELETE FROM off_product_cache WHERE expires_at < CURRENT_TIMESTAMP"
+    );
+    const result2 = await pool.query(
+      "DELETE FROM off_search_cache WHERE expires_at < CURRENT_TIMESTAMP"
+    );
+    res.json({ 
+      message: "Expired cache entries cleaned up",
+      productsDeleted: result1.rowCount,
+      searchesDeleted: result2.rowCount
+    });
+  } catch (err) {
+    console.error("Error cleaning up cache:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Catch-all for 404 (must be after all routes)
 app.use((req, res) => {
   console.log(`❌ 404 - Endpoint not found: ${req.method} ${req.path}`);
   console.log(`   Origin: ${req.headers.origin || 'no origin'}`);
@@ -2470,7 +3724,14 @@ app.use((req, res) => {
 
 
 
-
+// Catch-all for 404 (must be after all routes)
+app.use((req, res) => {
+  console.log(`❌ 404 - Endpoint not found: ${req.method} ${req.path}`);
+  console.log(`   Origin: ${req.headers.origin || 'no origin'}`);
+  console.log(`   Host: ${req.headers.host || 'no host'}`);
+  console.log(`   URL: ${req.url}`);
+  res.status(404).json({ error: "Endpoint not found", path: req.path, method: req.method });
+});
 
     // Start server
     const PORT = process.env.PORT || 5001;

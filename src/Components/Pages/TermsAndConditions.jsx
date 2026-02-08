@@ -1,13 +1,16 @@
 import React, { useState } from "react";
-import { Button, Checkbox, FormControlLabel, Typography, Box, Paper } from "@mui/material";
+import { Button, Checkbox, FormControlLabel, Typography, Box, Paper, Snackbar, Alert } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import PageLayout from "../PageLayout";
 import { getCurrentUserId, logout, getIntendedDestination, clearIntendedDestination } from "../../utils/authUtils";
 import { authAPI } from "../../api";
 
+const TERMS_CACHE_KEY_PREFIX = "termsAccepted:";
+
 function TermsAndConditions({ onTermsAccepted }) {
   const [accepted, setAccepted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'error' });
   const navigate = useNavigate();
   const userId = getCurrentUserId();
 
@@ -35,6 +38,9 @@ function TermsAndConditions({ onTermsAccepted }) {
     setIsSubmitting(true);
     try {
       await authAPI.acceptTerms(userId);
+      if (userId) {
+        localStorage.setItem(`${TERMS_CACHE_KEY_PREFIX}${userId}`, "true");
+      }
       
       // Call the callback to update the guard
       if (onTermsAccepted) {
@@ -52,7 +58,7 @@ function TermsAndConditions({ onTermsAccepted }) {
       navigate(userId ? "/log" : "/");
     } catch (error) {
       console.error("Error accepting terms:", error);
-      alert("Failed to accept terms. Please try again.");
+      setSnackbar({ open: true, message: "Failed to accept terms. Please try again.", severity: 'error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -214,6 +220,16 @@ function TermsAndConditions({ onTermsAccepted }) {
           </Box>
         </Paper>
       </Box>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </PageLayout>
   );
 }

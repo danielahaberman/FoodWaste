@@ -11,7 +11,9 @@ import {
   Stepper,
   Step,
   StepLabel,
-  StepContent
+  StepContent,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import { 
   Close as CloseIcon,
@@ -29,6 +31,8 @@ const PWAInstallPrompt = ({ open, onClose }) => {
   const [detectedIOS, setDetectedIOS] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState(null); // 'ios' or 'android'
   const [isStandalone, setIsStandalone] = useState(false);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   useEffect(() => {
     // Check if running on iOS (using improved detection)
@@ -86,16 +90,17 @@ const PWAInstallPrompt = ({ open, onClose }) => {
     <Dialog 
       open={open} 
       onClose={onClose}
-      maxWidth="sm"
-      fullWidth
+      fullScreen={isMobile}
+      maxWidth={isMobile ? false : "sm"}
+      fullWidth={!isMobile}
       PaperProps={{
         sx: {
-          borderRadius: { xs: 1, sm: 2 },
+          borderRadius: { xs: 0, sm: 2 },
           backgroundColor: 'rgba(255, 255, 255, 0.95)',
           backdropFilter: 'blur(10px)',
-          margin: { xs: 1.5, sm: 2 },
-          maxHeight: { xs: 'calc(100vh - 24px)', sm: '90vh' },
-          height: 'auto',
+          margin: { xs: 0, sm: 2 },
+          maxHeight: { xs: '100dvh', sm: '90vh' },
+          height: { xs: '100dvh', sm: 'auto' },
           display: 'flex',
           flexDirection: 'column'
         }
@@ -107,7 +112,7 @@ const PWAInstallPrompt = ({ open, onClose }) => {
         alignItems: 'center',
         pb: { xs: 0.5, sm: 1 },
         px: { xs: 1.5, sm: 3 },
-        pt: { xs: 1.5, sm: 3 }
+        pt: { xs: 'calc(12px + env(safe-area-inset-top))', sm: 3 }
       }}>
         <Typography variant="h6" sx={{ 
           color: '#1976d2', 
@@ -435,6 +440,7 @@ const PWAInstallPrompt = ({ open, onClose }) => {
 
       <DialogActions sx={{ 
         p: { xs: 1.5, sm: 3 }, 
+        pb: { xs: 'calc(12px + env(safe-area-inset-bottom))', sm: 3 },
         pt: { xs: 0.5, sm: 1 },
         flexDirection: { xs: 'column', sm: 'row' },
         gap: { xs: 0.75, sm: 1 },

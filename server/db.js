@@ -119,8 +119,40 @@ const initDB = async () => {
         quantity_type_id INTEGER REFERENCES quantity_types(id),
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         emoji TEXT,
+        image_url TEXT,
+        barcode TEXT,
+        brand TEXT,
+        source TEXT DEFAULT 'local',
+        categories_tags JSONB,
+        ingredients_text TEXT,
         UNIQUE(name, user_id)
       );
+    `);
+    
+    // Add new columns for backward compatibility (for existing databases)
+    await client.query(`
+      ALTER TABLE food_items 
+      ADD COLUMN IF NOT EXISTS image_url TEXT;
+    `);
+    await client.query(`
+      ALTER TABLE food_items 
+      ADD COLUMN IF NOT EXISTS barcode TEXT;
+    `);
+    await client.query(`
+      ALTER TABLE food_items 
+      ADD COLUMN IF NOT EXISTS brand TEXT;
+    `);
+    await client.query(`
+      ALTER TABLE food_items 
+      ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'local';
+    `);
+    await client.query(`
+      ALTER TABLE food_items 
+      ADD COLUMN IF NOT EXISTS categories_tags JSONB;
+    `);
+    await client.query(`
+      ALTER TABLE food_items 
+      ADD COLUMN IF NOT EXISTS ingredients_text TEXT;
     `);
     await client.query(`
       CREATE TABLE IF NOT EXISTS purchases (
@@ -134,6 +166,14 @@ const initDB = async () => {
         purchase_date TIMESTAMP NOT NULL,
         quantity_type TEXT
       );
+    `);
+    await client.query(`
+      ALTER TABLE purchases
+      ADD COLUMN IF NOT EXISTS food_item_id INTEGER;
+    `);
+    await client.query(`
+      ALTER TABLE purchases
+      ADD COLUMN IF NOT EXISTS image_url TEXT;
     `);
     await client.query(`
       CREATE TABLE IF NOT EXISTS survey_questions (
@@ -158,6 +198,69 @@ const initDB = async () => {
         response TEXT,
         response_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
+
+    // Open Food Facts cache table (shared across all users)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS off_product_cache (
+        barcode VARCHAR(50) PRIMARY KEY,
+        product_data JSONB NOT NULL,
+        cached_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP NOT NULL
+      );
+    `);
+
+    // Open Food Facts search cache table (shared across all users)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS off_search_cache (
+        search_key VARCHAR(255) PRIMARY KEY,
+        search_term VARCHAR(255) NOT NULL,
+        page_size INTEGER NOT NULL,
+        products JSONB NOT NULL,
+        cached_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP NOT NULL
+      );
+    `);
+
+    // OpenNutrition search cache table (shared across all users)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS opennutrition_search_cache (
+        search_key VARCHAR(255) PRIMARY KEY,
+        search_term VARCHAR(255) NOT NULL,
+        products JSONB NOT NULL,
+        cached_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP NOT NULL
+      );
+    `);
+
+    // Frequently added foods table (tracks user's most frequently purchased items)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS frequently_added_foods (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        food_item_id INTEGER REFERENCES food_items(id) ON DELETE CASCADE,
+        food_name TEXT NOT NULL,
+        add_count INTEGER DEFAULT 1,
+        last_added_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, food_name)
+      );
+    `);
+    
+    // Add index for faster lookups
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_frequently_added_foods_user_id 
+      ON frequently_added_foods(user_id);
+    `);
+
+    // Create index for faster lookups
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_off_product_cache_expires ON off_product_cache(expires_at);
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_off_search_cache_expires ON off_search_cache(expires_at);
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_opennutrition_search_cache_expires ON opennutrition_search_cache(expires_at);
     `);
     
     await client.query(`

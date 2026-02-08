@@ -25,6 +25,8 @@ import {
   Tabs,
   Tab,
   Container,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import PageWrapper from "../PageWrapper";
 import { useNavigate } from "react-router-dom";
@@ -61,6 +63,7 @@ function ConsumeWaste({ onGoToDate }) {
   const [actionType, setActionType] = useState("consumed"); // or 'wasted'
   const [sliderUnits, setSliderUnits] = useState(0);
   const [manualQty, setManualQty] = useState("");
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'error' });
 
   const fetchWeeklyPurchaseSummary = async () => {
     const userId = getCurrentUserId();
@@ -268,14 +271,6 @@ function ConsumeWaste({ onGoToDate }) {
       let unmarked = parseFloat(d.unmarked_cost);
       if (!isFinite(unmarked)) unmarked = 0;
       
-      // Debug logging to see what the API is returning
-      console.log('Week chart data for', weekOf, ':', {
-        rawData: d,
-        consumed,
-        wasted,
-        unmarked,
-        total: consumed + wasted + unmarked
-      });
 
       // Fallback: compute Unmarked $ from purchases list + summaries if backend doesn't provide it
       if (unmarked <= 0) {
@@ -359,7 +354,7 @@ function ConsumeWaste({ onGoToDate }) {
     try {
       await consumptionAPI.log(payload);
     } catch (e) {
-      alert(e?.response?.data?.error || "Failed to log");
+      setSnackbar({ open: true, message: e?.response?.data?.error || "Failed to log", severity: 'error' });
       return;
     }
     closeDialog();
@@ -381,12 +376,10 @@ function ConsumeWaste({ onGoToDate }) {
       return;
     }
     try {
-      console.log('Marking week as wasted:', weekOf);
       const response = await consumptionAPI.autoWasteWeek({ user_id: userId, week_start: weekOf });
-      console.log('Auto waste week response:', response);
       
       if (response.data.inserted === 0) {
-        alert('No remaining food to mark as wasted for this week. All food has already been consumed or wasted.');
+        setSnackbar({ open: true, message: 'No remaining food to mark as wasted for this week. All food has already been consumed or wasted.', severity: 'info' });
         return;
       }
       
@@ -398,8 +391,7 @@ function ConsumeWaste({ onGoToDate }) {
       // Dispatch task completion event to update streak and task counts
       window.dispatchEvent(new CustomEvent('taskCompleted'));
     } catch (error) {
-      console.error('Error marking week as wasted:', error);
-      alert('Failed to mark week as wasted: ' + (error?.response?.data?.error || error.message));
+      setSnackbar({ open: true, message: 'Failed to mark week as wasted: ' + (error?.response?.data?.error || error.message), severity: 'error' });
     }
   };
 
@@ -410,12 +402,10 @@ function ConsumeWaste({ onGoToDate }) {
       return;
     }
     try {
-      console.log('Marking week as consumed:', weekOf);
       const response = await consumptionAPI.autoConsumeWeek({ user_id: userId, week_start: weekOf });
-      console.log('Auto consume week response:', response);
       
       if (response.data.inserted === 0) {
-        alert('No remaining food to mark as consumed for this week. All food has already been consumed or wasted.');
+        setSnackbar({ open: true, message: 'No remaining food to mark as consumed for this week. All food has already been consumed or wasted.', severity: 'info' });
         return;
       }
       
@@ -427,8 +417,7 @@ function ConsumeWaste({ onGoToDate }) {
       // Dispatch task completion event to update streak and task counts
       window.dispatchEvent(new CustomEvent('taskCompleted'));
     } catch (error) {
-      console.error('Error marking week as consumed:', error);
-      alert('Failed to mark week as consumed: ' + (error?.response?.data?.error || error.message));
+      setSnackbar({ open: true, message: 'Failed to mark week as consumed: ' + (error?.response?.data?.error || error.message), severity: 'error' });
     }
   };
 
@@ -840,16 +829,6 @@ function ConsumeWaste({ onGoToDate }) {
               
               const total = consumedCost + wastedCost + unmarkedCost;
               
-              // Debug logging for pie chart data
-              console.log('Calculated pie chart data for week', activeWeekOf, ':', {
-                consumedCost,
-                wastedCost,
-                unmarkedCost,
-                total,
-                weekChartsData: weekCharts[activeWeekOf],
-                weekChartTotals: weekChartTotals[activeWeekOf]
-              });
-              
               // Check if there are any food items with consumption or waste data
               const hasConsumptionData = week.purchases.some(purchase => {
                 const summary = summaryMap[purchase.id] || {};
@@ -857,18 +836,6 @@ function ConsumeWaste({ onGoToDate }) {
                 const wastedQty = parseFloat(summary.wasted_qty || 0);
                 return consumedQty > 0 || wastedQty > 0;
               });
-              
-              // Debug logging for individual items
-              console.log('Individual items data for week', activeWeekOf, ':', week.purchases.map(purchase => {
-                const summary = summaryMap[purchase.id] || {};
-                return {
-                  name: purchase.name,
-                  consumedQty: parseFloat(summary.consumed_qty || 0),
-                  wastedQty: parseFloat(summary.wasted_qty || 0),
-                  consumedCost: parseFloat(summary.consumed_cost || 0),
-                  wastedCost: parseFloat(summary.wasted_cost || 0)
-                };
-              }));
               
               if (total > 0.0001 || hasConsumptionData) {
                 return (
@@ -1429,6 +1396,16 @@ function ConsumeWaste({ onGoToDate }) {
 			</Box>
 		</Dialog>
       </Container>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </PageWrapper>
   );
 }

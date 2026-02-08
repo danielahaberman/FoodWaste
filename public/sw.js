@@ -7,11 +7,26 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Fetch event - don't intercept, let all requests pass through to network
+// Fetch event - only intercept same-origin requests, let API requests pass through
 self.addEventListener('fetch', (event) => {
-  // Explicitly pass through to network without caching
-  // If we don't call event.respondWith(), the browser handles the request normally
-  // This ensures no caching and no interference with asset loading
+  const url = new URL(event.request.url);
+  
+  // Don't intercept API requests or cross-origin requests
+  // Let the browser handle them normally to avoid CORS issues
+  if (url.pathname.startsWith('/api/') || 
+      url.pathname.startsWith('/auth/') ||
+      url.pathname.startsWith('/food-') ||
+      url.pathname.startsWith('/purchase') ||
+      url.pathname.startsWith('/quantity-types') ||
+      url.pathname.startsWith('/survey-') ||
+      url.pathname.startsWith('/consumption-') ||
+      url.pathname.startsWith('/admin/') ||
+      url.origin !== self.location.origin) {
+    // Let API and cross-origin requests pass through without interception
+    return;
+  }
+  
+  // For same-origin static assets, pass through to network
   event.respondWith(fetch(event.request));
 });
 
