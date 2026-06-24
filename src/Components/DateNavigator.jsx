@@ -6,7 +6,9 @@ import {
   Popover,
   Box,
   Paper,
-  Badge
+  Badge,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import {
   ArrowBackIosNew as ArrowBackIos,
@@ -17,6 +19,8 @@ import { PickersDay } from "@mui/x-date-pickers/PickersDay";
 import dayjs from "dayjs";
 
 const DateNavigator = ({ value, onChange, datesWithFood = [] }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
 
@@ -25,7 +29,6 @@ const DateNavigator = ({ value, onChange, datesWithFood = [] }) => {
   const handlePrev = () => onChange(dayjs(value).subtract(1, "day"));
   const handleNext = () => {
     const nextDate = dayjs(value).add(1, "day");
-    // Don't allow selecting future dates
     if (nextDate.isAfter(dayjs(), "day")) {
       return;
     }
@@ -34,7 +37,6 @@ const DateNavigator = ({ value, onChange, datesWithFood = [] }) => {
   const handleOpenCalendar = (e) => setAnchorEl(e.currentTarget);
   const handleCloseCalendar = () => setAnchorEl(null);
 
-  // Custom day renderer to show blue dots on days with food purchases
   const ServerDay = (props) => {
     const { day, outsideCurrentMonth, ...other } = props;
     const dateStr = dayjs(day).format('YYYY-MM-DD');
@@ -70,46 +72,46 @@ const DateNavigator = ({ value, onChange, datesWithFood = [] }) => {
 
   return (
     <Box display="flex" alignItems="center" gap={1}>
-      <IconButton onClick={handlePrev} size="small" color="primary">
+      <IconButton onClick={handlePrev} color="primary" aria-label="Previous day">
         <ArrowBackIos fontSize="small" />
       </IconButton>
 
-     <Box
-  onClick={handleOpenCalendar}
-  sx={{
-    cursor: "pointer",
-    px: 2,
-    py: 1,
-    borderRadius: "999px",
-    backgroundColor: "background.paper",
-    border: "1px solid",
-    borderColor: "divider",
-    "&:hover": {
-      backgroundColor: "grey.100"
-    },
-    userSelect: "none",
-    transition: "background-color 0.2s ease",
-    width: "120px", // ✅ Fixed width
-    textAlign: "center", // ✅ Center text
-    overflow: "hidden", // Prevent layout shift
-    whiteSpace: "nowrap",
-  }}
->
-  <Typography
-    variant="body2"
-    fontWeight={500}
-    color="text.primary"
-    noWrap
-  >
-    {isToday ? "Today" : dayjs(value).format("MMM D, YYYY")}
-  </Typography>
-</Box>
+      <Box
+        onClick={handleOpenCalendar}
+        sx={{
+          cursor: "pointer",
+          px: 2,
+          py: 1,
+          borderRadius: "999px",
+          backgroundColor: "background.paper",
+          border: "1px solid",
+          borderColor: "divider",
+          "&:hover": {
+            backgroundColor: "grey.100"
+          },
+          userSelect: "none",
+          transition: "background-color 0.2s ease",
+          minWidth: isMobile ? 110 : 120,
+          textAlign: "center",
+          overflow: "hidden",
+          whiteSpace: "nowrap",
+        }}
+      >
+        <Typography
+          variant="body2"
+          fontWeight={500}
+          color="text.primary"
+          noWrap
+        >
+          {isToday ? "Today" : dayjs(value).format("MMM D, YYYY")}
+        </Typography>
+      </Box>
 
-      <IconButton 
-        onClick={handleNext} 
-        size="small" 
+      <IconButton
+        onClick={handleNext}
         color="primary"
         disabled={dayjs(value).isSame(dayjs(), "day")}
+        aria-label="Next day"
       >
         <ArrowForwardIos fontSize="small" />
       </IconButton>
@@ -136,10 +138,9 @@ const DateNavigator = ({ value, onChange, datesWithFood = [] }) => {
         }}
       >
         <StaticDatePicker
-          displayStaticWrapperAs="desktop"
+          displayStaticWrapperAs={isMobile ? "mobile" : "desktop"}
           value={value}
           onChange={(newValue) => {
-            // Don't allow selecting future dates
             if (dayjs(newValue).isAfter(dayjs(), "day")) {
               return;
             }

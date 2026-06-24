@@ -10,13 +10,13 @@ import {
   Refresh as RefreshIcon,
   Close as CloseIcon,
 } from '@mui/icons-material';
+import { primaryAlertSx } from '../themeStyles';
 
 const UpdatePrompt = ({ open, onUpdate, onDismiss, currentVersion, storedVersion }) => {
-  // Don't show if we don't have version info (backward compatibility)
   if (!open || !currentVersion || !storedVersion) {
     return null;
   }
-  
+
   return (
     <Snackbar
       open={open}
@@ -36,37 +36,17 @@ const UpdatePrompt = ({ open, onUpdate, onDismiss, currentVersion, storedVersion
               size="small"
               onClick={onUpdate}
               variant="contained"
-              sx={{
-                backgroundColor: '#1976d2',
-                color: 'white',
-                '&:hover': {
-                  backgroundColor: '#1565c0',
-                },
-                minWidth: 'auto',
-                px: 2,
-              }}
+              sx={{ minWidth: 'auto', px: 2 }}
             >
               Update Now
             </Button>
-            <Button
-              color="inherit"
-              size="small"
-              onClick={onDismiss}
-              sx={{
-                minWidth: 'auto',
-                px: 1,
-              }}
-            >
+            <Button color="inherit" size="small" onClick={onDismiss} sx={{ minWidth: 'auto', px: 1 }}>
               <CloseIcon fontSize="small" />
             </Button>
           </Box>
         }
         sx={{
-          backgroundColor: '#1976d2',
-          color: 'white',
-          '& .MuiAlert-icon': {
-            color: 'white',
-          },
+          ...primaryAlertSx,
           '& .MuiAlert-message': {
             display: 'flex',
             alignItems: 'center',
@@ -82,12 +62,7 @@ const UpdatePrompt = ({ open, onUpdate, onDismiss, currentVersion, storedVersion
             New version available!
           </Typography>
           <Typography variant="caption" sx={{ opacity: 0.9 }}>
-            {storedVersion && currentVersion && (
-              <>Update from v{storedVersion} to v{currentVersion}</>
-            )}
-            {!storedVersion && currentVersion && (
-              <>Current version: v{currentVersion}</>
-            )}
+            Update from v{storedVersion} to v{currentVersion}
           </Typography>
         </Box>
       </Alert>
@@ -96,4 +71,3 @@ const UpdatePrompt = ({ open, onUpdate, onDismiss, currentVersion, storedVersion
 };
 
 export default UpdatePrompt;
-

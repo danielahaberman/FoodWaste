@@ -1,7 +1,7 @@
 // @ts-nocheck
 /* eslint-disable react/prop-types */
 import React, { useState, useEffect } from "react";
-import { Box, IconButton, Typography, Badge } from "@mui/material";
+import { Box, IconButton, Typography, Badge, Paper } from "@mui/material";
 import {
   Restaurant as RestaurantIcon,
   Assignment as AssignmentIcon,
@@ -12,6 +12,7 @@ import {
 import { useNavigate, useLocation } from "react-router-dom";
 import { dailyTasksAPI } from "../api";
 import { getCurrentUserId } from "../utils/authUtils";
+import { frostedBar } from "../themeStyles";
 
 function BottomBar() {
   const navigate = useNavigate();
@@ -130,29 +131,23 @@ function BottomBar() {
   );
 
   return (
-    <Box
+    <Paper
+      component="nav"
+      elevation={0}
+      square
       sx={{
+        ...frostedBar,
         boxSizing: "border-box",
-        position: "fixed",
-        bottom: 0,
-        left: "50%",
-        transform: "translateX(-50%)",
-        maxWidth: "600px",
+        flexShrink: 0,
         width: "100%",
         pt: 0.5,
-        pb: 1,
+        pb: 'calc(8px + env(safe-area-inset-bottom, 0px))',
         px: { xs: 1, sm: 1.5 },
         display: "flex",
         justifyContent: "space-around",
         alignItems: "flex-start",
-        minHeight: 88,
-        height: 88,
-        backdropFilter: "blur(40px) saturate(200%)",
-        WebkitBackdropFilter: "blur(40px) saturate(200%)",
-        backgroundColor: "rgba(255, 255, 255, 0.9)",
-        borderTop: "1px solid rgba(0, 0, 0, 0.08)",
-        boxShadow: "0 -4px 20px rgba(0, 0, 0, 0.08), 0 -2px 6px rgba(0, 0, 0, 0.06)",
-        zIndex: 1400, // Higher than PageWrapper (1300) to ensure it's always visible
+        minHeight: 'calc(88px + env(safe-area-inset-bottom, 0px))',
+        borderRadius: 0,
       }}
     >
       <NavItem
@@ -221,7 +216,7 @@ function BottomBar() {
         isActive={location.pathname === "/settings"}
         route="/settings"
       />
-    </Box>
+    </Paper>
   );
 }
 

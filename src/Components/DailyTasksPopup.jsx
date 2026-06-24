@@ -14,6 +14,8 @@ import {
   Card,
   CardContent,
   LinearProgress,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import {
   Restaurant as FoodIcon,
@@ -28,6 +30,13 @@ import { getCurrentUserId } from "../utils/authUtils";
 
 const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const dialogActionsSx = {
+    justifyContent: "space-between",
+    px: 3,
+    pb: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+  };
   const [dailyTasks, setDailyTasks] = useState(null);
   const [streak, setStreak] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -98,8 +107,6 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
         onClose();
         break;
       case "consume_waste":
-<div className=""></div>        // Route to the Consume/Waste page.
-        // (Previously this dispatched an event with no listener, so the button did nothing.)
         navigate("/summary");
         onClose();
         break;
@@ -206,6 +213,7 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
         onClose={handleClose} 
         maxWidth="sm" 
         fullWidth
+        fullScreen={isMobile}
         PaperProps={{
           sx: {
             zIndex: 1501,
@@ -226,7 +234,7 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
               Welcome to Daily Tasks!
             </Typography>
           </Box>
-          <IconButton onClick={handleClose} size="small">
+          <IconButton onClick={handleClose} aria-label="Close">
             <CloseIcon />
           </IconButton>
         </DialogTitle>
@@ -292,7 +300,7 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
           </Stack>
         </DialogContent>
         
-        <DialogActions sx={{ justifyContent: "center", px: 3, pb: 3 }}>
+        <DialogActions sx={{ justifyContent: "center", px: 3, pb: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}>
           <Button 
             onClick={handleIntroContinue} 
             variant="contained" 
@@ -313,6 +321,7 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
         onClose={handleClose} 
         maxWidth="sm" 
         fullWidth
+        fullScreen={isMobile}
         PaperProps={{
           sx: {
             zIndex: 1501, // Higher than backdrop to ensure dialog content appears above
@@ -342,6 +351,7 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
       onClose={handleClose} 
       maxWidth="sm" 
       fullWidth
+      fullScreen={isMobile}
       PaperProps={{
         sx: {
           zIndex: 1501, // Higher than backdrop to ensure dialog content appears above
@@ -362,7 +372,7 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
             Daily Tasks
           </Typography>
         </Box>
-        <IconButton onClick={handleClose} size="small">
+        <IconButton onClick={handleClose} aria-label="Close">
           <CloseIcon />
         </IconButton>
       </DialogTitle>
@@ -449,7 +459,7 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
         )}
       </DialogContent>
       
-      <DialogActions sx={{ justifyContent: "space-between", px: 3, pb: 2 }}>
+      <DialogActions sx={dialogActionsSx}>
         <Button onClick={handleDismiss} color="inherit">
           Dismiss
         </Button>

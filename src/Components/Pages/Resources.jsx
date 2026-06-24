@@ -13,8 +13,7 @@ import {
   Divider,
   Chip,
   Link,
-  Paper,
-  Container
+  Paper
 } from '@mui/material';
 import {
   Lightbulb,
@@ -120,21 +119,9 @@ const Resources = () => {
   };
 
   return (
-    <PageWrapper 
-      title="🌱 Food Waste Resources"
-      maxWidth="sm"
-    >
-      <Container 
-        maxWidth="sm"
-        sx={{ 
-          maxWidth: { xs: '100%', sm: '600px' },
-          px: { xs: 2, sm: 2.5 },
-          py: { xs: 2.5, sm: 3 },
-          pb: 0 // PageWrapper handles bottom padding for nav bar
-        }}
-      >
+    <PageWrapper title="🌱 Food Waste Resources">
         {/* Introduction */}
-        <Paper 
+        <Paper
           elevation={0} 
           sx={{ 
             p: { xs: 3, sm: 4 }, 
@@ -602,7 +589,6 @@ const Resources = () => {
             Start Tracking Your Food
           </Button>
         </Paper>
-      </Container>
     </PageWrapper>
   );
 };

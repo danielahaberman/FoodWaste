@@ -25,9 +25,10 @@ import {
   MenuItem,
   Tabs,
   Tab,
-  Container,
   Snackbar,
   Alert,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import PageWrapper from "../PageWrapper";
 import { useNavigate } from "react-router-dom";
@@ -57,6 +58,8 @@ ChartJS.register(ArcElement, ChartTooltip, CategoryScale, LinearScale, PointElem
 
 function ConsumeWaste({ onGoToDate }) {
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [weeklySummary, setWeeklySummary] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -467,24 +470,24 @@ function ConsumeWaste({ onGoToDate }) {
 
   if (loading)
     return (
-      <PageWrapper title={pageTitle} maxWidth="sm">
-        <Container maxWidth="sm" sx={{ py: 4, textAlign: 'center' }}>
+      <PageWrapper title={pageTitle}>
+        <Box sx={{ py: 4, textAlign: 'center' }}>
           <CircularProgress />
           <Typography variant="body2" mt={2} fontStyle="italic">
             Loading weekly purchase summary...
           </Typography>
-        </Container>
+        </Box>
       </PageWrapper>
     );
 
   if (error)
     return (
-      <PageWrapper title={pageTitle} maxWidth="sm">
-        <Container maxWidth="sm" sx={{ py: 4 }}>
+      <PageWrapper title={pageTitle}>
+        <Box sx={{ py: 4 }}>
           <Typography color="error" textAlign="center">
             {error}
           </Typography>
-        </Container>
+        </Box>
       </PageWrapper>
     );
 
@@ -508,16 +511,7 @@ function ConsumeWaste({ onGoToDate }) {
   ) : null;
 
   return (
-    <PageWrapper title={pageTitle} maxWidth="sm" headerAction={trendsButton}>
-      <Container 
-        maxWidth="sm"
-        sx={{ 
-          maxWidth: { xs: '100%', sm: '600px' },
-          px: { xs: 2, sm: 2.5 },
-          py: { xs: 2.5, sm: 3 },
-          pb: 0 // PageWrapper handles bottom padding for nav bar
-        }}
-      >
+    <PageWrapper title={pageTitle} headerAction={trendsButton}>
 
         {!activeWeekOf && <Legend />}
 
@@ -860,11 +854,25 @@ function ConsumeWaste({ onGoToDate }) {
             right: 0,
             bottom: 0,
             backgroundColor: 'white',
-            zIndex: 1000,
+            zIndex: 1500,
             overflow: 'auto',
             borderRadius: 0,
-            p: 2
+            p: 2,
+            pt: 'calc(16px + env(safe-area-inset-top, 0px))',
+            pb: 'calc(16px + env(safe-area-inset-bottom, 0px))',
           }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+              <IconButton
+                onClick={() => setActiveWeekOf(null)}
+                aria-label="Back to weekly summary"
+                sx={{ minWidth: 44, minHeight: 44 }}
+              >
+                <ArrowBackIosIcon />
+              </IconButton>
+              <Typography variant="h6" sx={{ fontWeight: 600, flex: 1 }}>
+                {formatWeekRange(activeWeekOf)}
+              </Typography>
+            </Box>
             <Legend />
             {weekCharts[activeWeekOf] && (() => {
               // Calculate pie chart data directly from summaryMap to ensure consistency
@@ -971,19 +979,17 @@ function ConsumeWaste({ onGoToDate }) {
                     <Stack direction="row" spacing={0.5} sx={{ mb: 0.5 }}>
                       <Button 
                         variant="outlined" 
-                        size="small" 
                         onClick={() => markWeekAsConsumed(activeWeekOf)}
                         disabled={!isWeekEditable}
-                        sx={{ flex: 1, fontSize: '0.7rem', py: 0.5 }}
+                        sx={{ flex: 1, fontSize: '0.8125rem', py: 1, minHeight: 44 }}
                       >
                         Mark remaining as consumed
                       </Button>
                       <Button 
                         variant="outlined" 
-                        size="small" 
                         onClick={() => markWeekAsWasted(activeWeekOf)}
                         disabled={!isWeekEditable}
-                        sx={{ flex: 1, fontSize: '0.7rem', py: 0.5 }}
+                        sx={{ flex: 1, fontSize: '0.8125rem', py: 1, minHeight: 44 }}
                       >
                         Mark remaining as wasted
                       </Button>
@@ -1102,7 +1108,7 @@ function ConsumeWaste({ onGoToDate }) {
                             )
                           }
                         />
-                        <IconButton size="small" onClick={(e)=> handleItemMenuOpen(e, item)}>
+                        <IconButton onClick={(e)=> handleItemMenuOpen(e, item)} aria-label="Item actions">
                           <MoreVertIcon />
                         </IconButton>
                       </ListItem>
@@ -1141,7 +1147,7 @@ function ConsumeWaste({ onGoToDate }) {
         );
       })()}
 
-      <Dialog open={!!selectedPurchase} onClose={closeDialog} fullWidth maxWidth="sm">
+      <Dialog open={!!selectedPurchase} onClose={closeDialog} fullWidth maxWidth="sm" fullScreen={isMobile}>
         <DialogTitle>Log Consumed / Wasted - {selectedPurchase?.name}</DialogTitle>
         <DialogContent>
           {selectedPurchase && (() => {
@@ -1575,7 +1581,6 @@ function ConsumeWaste({ onGoToDate }) {
 				</Box>
 			</Box>
 		</Dialog>
-      </Container>
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}

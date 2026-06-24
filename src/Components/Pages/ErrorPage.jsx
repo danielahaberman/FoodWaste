@@ -6,7 +6,6 @@ import {
   Typography,
   Paper,
   Button,
-  Container,
   Accordion,
   AccordionSummary,
   AccordionDetails,
@@ -78,20 +77,7 @@ const ErrorPage = () => {
   };
 
   return (
-    <PageWrapper 
-      title="Error Logs" 
-      maxWidth="md"
-      showLogo={false}
-    >
-      <Container 
-        maxWidth="md"
-        sx={{ 
-          maxWidth: { xs: '100%', sm: '900px' },
-          px: { xs: 2, sm: 3 },
-          py: { xs: 2.5, sm: 3 },
-          pb: 0
-        }}
-      >
+    <PageWrapper title="Error Logs" showLogo={false} reserveBottomNav={false} contentMaxWidth="900px">
         {/* Header */}
         <Paper 
           elevation={0}
@@ -350,7 +336,6 @@ const ErrorPage = () => {
             ))}
           </Stack>
         )}
-      </Container>
     </PageWrapper>
   );
 };

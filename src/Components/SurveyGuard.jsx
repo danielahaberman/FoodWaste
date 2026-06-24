@@ -10,9 +10,13 @@ import {
   Button,
   Typography,
   Box,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 
 function SurveyGuard({ children }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [surveyStatus, setSurveyStatus] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
@@ -118,9 +122,10 @@ function SurveyGuard({ children }) {
         {children}
         <Dialog
           open={showWelcomeModal}
-          onClose={() => {}} // No close handler - force them to take action
+          onClose={() => {}}
           maxWidth="sm"
           fullWidth
+          fullScreen={isMobile}
           disableEscapeKeyDown
         >
           <DialogTitle sx={{ textAlign: 'center', color: 'primary.main' }}>
@@ -148,7 +153,7 @@ function SurveyGuard({ children }) {
               The survey takes about 2-3 minutes to complete.
             </Typography>
           </DialogContent>
-          <DialogActions sx={{ justifyContent: 'center', pb: 3 }}>
+          <DialogActions sx={{ justifyContent: 'center', pb: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}>
             <Button
               variant="contained"
               onClick={handleStartSurvey}
@@ -172,7 +177,6 @@ function SurveyGuard({ children }) {
       <Dialog
         open={showWeeklyModal}
         onClose={() => {
-          // Only allow closing if within grace period
           const daysSince = surveyStatus?.daysSinceLastWeekly;
           if (daysSince !== null && daysSince <= 9) {
             handleRemindLater();
@@ -180,6 +184,7 @@ function SurveyGuard({ children }) {
         }}
         maxWidth="sm"
         fullWidth
+        fullScreen={isMobile}
         disableEscapeKeyDown={surveyStatus?.daysSinceLastWeekly === null || surveyStatus?.daysSinceLastWeekly > 9}
       >
         <DialogTitle sx={{ textAlign: 'center', color: 'primary.main' }}>
@@ -228,7 +233,7 @@ function SurveyGuard({ children }) {
             The survey takes about 2-3 minutes to complete.
           </Typography>
         </DialogContent>
-        <DialogActions sx={{ justifyContent: 'center', pb: 3, gap: 2, flexWrap: 'wrap' }}>
+        <DialogActions sx={{ justifyContent: 'center', pb: 'calc(24px + env(safe-area-inset-bottom, 0px))', gap: 2, flexWrap: 'wrap' }}>
           <Button
             variant="contained"
             onClick={handleStartWeeklySurvey}

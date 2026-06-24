@@ -1,11 +1,22 @@
 import React from 'react';
-import { Alert, IconButton, Box, Button } from '@mui/material';
+import {
+  Alert,
+  Button,
+  IconButton,
+  Snackbar,
+  Box,
+} from '@mui/material';
 import {
   Close as CloseIcon,
   Share as ShareIcon,
   GetApp as InstallIcon,
 } from '@mui/icons-material';
+import { useLocation } from 'react-router-dom';
 import { isChromeOnIOS } from '../utils/pwaUtils';
+import { primaryAlertSx } from '../themeStyles';
+import { BOTTOM_NAV_HEIGHT } from './PageWrapper';
+
+const BOTTOM_NAV_ROUTES = ['/summary', '/survey', '/log', '/tasks', '/settings', '/resources', '/home', '/tasks-leaderboard'];
 
 const PWAInstallBanner = ({
   open,
@@ -15,9 +26,10 @@ const PWAInstallBanner = ({
   onInstall,
   onLearnMore,
 }) => {
-  if (!open) {
-    return null;
-  }
+  const location = useLocation();
+  const hasBottomNav = BOTTOM_NAV_ROUTES.some(
+    (route) => location.pathname === route || location.pathname.startsWith(`${route}/`)
+  );
 
   const chromeOnIOS = isChromeOnIOS();
 
@@ -28,15 +40,16 @@ const PWAInstallBanner = ({
       : 'Install Food Hero for the best app experience.';
 
   return (
-    <Box
+    <Snackbar
+      open={open}
+      anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       sx={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
+        bottom: hasBottomNav ? BOTTOM_NAV_HEIGHT : 'calc(8px + env(safe-area-inset-bottom, 0px))',
+        left: { xs: 8, sm: 16 },
+        right: { xs: 8, sm: 16 },
+        maxWidth: 600,
+        mx: 'auto',
         zIndex: 1200,
-        px: { xs: 1, sm: 2 },
-        pb: 'calc(8px + env(safe-area-inset-bottom))',
       }}
     >
       <Alert
@@ -64,7 +77,6 @@ const PWAInstallBanner = ({
             <IconButton
               aria-label="Dismiss install banner"
               color="inherit"
-              size="small"
               onClick={onDismiss}
             >
               <CloseIcon fontSize="inherit" />
@@ -72,10 +84,9 @@ const PWAInstallBanner = ({
           </Box>
         }
         sx={{
-          backgroundColor: '#1976d2',
-          color: 'white',
+          ...primaryAlertSx,
+          width: '100%',
           alignItems: 'center',
-          '& .MuiAlert-icon': { color: 'white' },
           boxShadow: '0 -2px 12px rgba(0,0,0,0.15)',
           cursor: isIOS && !chromeOnIOS && onLearnMore ? 'pointer' : 'default',
         }}
@@ -83,7 +94,7 @@ const PWAInstallBanner = ({
       >
         {message}
       </Alert>
-    </Box>
+    </Snackbar>
   );
 };
 

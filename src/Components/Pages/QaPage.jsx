@@ -10,7 +10,6 @@ import Survey from "../Survey";
 import {
   Box,
   Typography,
-  Container,
   CircularProgress,
 } from "@mui/material";
 import PageWrapper from "../PageWrapper";
@@ -81,21 +80,7 @@ function QaPage() {
   const nextSurveyDate = dayjs().startOf("week").add(1, "week").format("MMM D, YYYY");
 
   return (
-    <PageWrapper 
-      title="Survey"
-      maxWidth="sm"
-      headerColor="background.default"
-      headerTextColor="text.primary"
-    >
-      <Container 
-        maxWidth="sm"
-        sx={{ 
-          maxWidth: { xs: '100%', sm: '600px' },
-          px: { xs: 2.5, sm: 3 },
-          py: { xs: 3, sm: 4 },
-          pb: 0 // PageWrapper handles bottom padding for nav bar
-        }}
-      >
+    <PageWrapper title="Survey">
         {loadingStatus ? (
           <Box display="flex" justifyContent="center" alignItems="center" py={5}>
             <CircularProgress />
@@ -150,7 +135,6 @@ function QaPage() {
             </Typography>
           </Box>
         )}
-      </Container>
     </PageWrapper>
   );
 }

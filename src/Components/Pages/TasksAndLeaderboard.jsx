@@ -6,7 +6,6 @@ import {
   Tabs,
   Tab,
   Paper,
-  Container,
 } from "@mui/material";
 import {
   Checklist as ChecklistIcon,
@@ -16,6 +15,7 @@ import { useNavigate } from "react-router-dom";
 import DailyTasks from "../DailyTasks";
 import Leaderboard from "./Leaderboard";
 import PageWrapper from "../PageWrapper";
+import { frostedSurface } from "../../themeStyles";
 
 const TasksAndLeaderboard = () => {
   const navigate = useNavigate();
@@ -26,17 +26,13 @@ const TasksAndLeaderboard = () => {
   };
 
   return (
-    <PageWrapper 
-      title="Tasks & Leaderboard"
-      maxWidth="sm"
-    >
+    <PageWrapper title="Tasks & Leaderboard">
       <Box sx={{ 
         display: "flex", 
         flexDirection: "column",
         height: "100%",
         width: "100%"
       }}>
-        {/* Tabs - Fixed at top */}
         <Paper sx={{ 
           position: 'sticky',
           top: 0,
@@ -45,18 +41,8 @@ const TasksAndLeaderboard = () => {
           borderRadius: 0,
           flexShrink: 0,
           elevation: 0,
-          backgroundColor: 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(40px) saturate(200%)',
-          WebkitBackdropFilter: 'blur(40px) saturate(200%)',
-          borderBottom: '0.5px solid rgba(0, 0, 0, 0.1)'
+          ...frostedSurface,
         }}>
-          <Container 
-            maxWidth="sm"
-            sx={{ 
-              maxWidth: { xs: '100%', sm: '600px' },
-              px: { xs: 2, sm: 2.5 },
-            }}
-          >
             <Tabs
               value={tabValue}
               onChange={handleTabChange}
@@ -112,7 +98,6 @@ const TasksAndLeaderboard = () => {
                 }
               />
             </Tabs>
-          </Container>
         </Paper>
 
         {/* Tab Content - Scrollable */}

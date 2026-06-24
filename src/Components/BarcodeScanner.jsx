@@ -11,6 +11,8 @@ import {
   IconButton,
   CircularProgress,
   Alert,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import BarcodeScannerComponent from 'react-qr-barcode-scanner';
 import CloseIcon from '@mui/icons-material/Close';
@@ -18,6 +20,8 @@ import FlashlightOnIcon from '@mui/icons-material/FlashlightOn';
 import FlashlightOffIcon from '@mui/icons-material/FlashlightOff';
 
 const BarcodeScanner = ({ open, onClose, onScan, onError, onManualAdd }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [torchEnabled, setTorchEnabled] = useState(false);
   const [scanning, setScanning] = useState(true);
   const [error, setError] = useState(null);
@@ -187,7 +191,7 @@ const BarcodeScanner = ({ open, onClose, onScan, onError, onManualAdd }) => {
       onClose={handleClose}
       maxWidth="sm"
       fullWidth
-      fullScreen={window.innerWidth < 600}
+      fullScreen={isMobile}
       // Ensure scanner renders above the AddNewPurchase overlay (zIndex 1500)
       // and above its sub-modals (we use ~1600 there).
       sx={{ zIndex: 1700 }}

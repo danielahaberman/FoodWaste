@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
-import { Box, Button, Typography, Container, Paper, Divider } from '@mui/material';
+import { Box, Button, Typography, Paper, Divider } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../../utils/authUtils';
 import PageWrapper from '../PageWrapper';
@@ -55,20 +55,8 @@ const Settings = () => {
   };
 
   return (
-    <PageWrapper 
-      title="Settings" 
-      maxWidth="sm"
-    >
-      <Container 
-        maxWidth="sm"
-        sx={{ 
-          maxWidth: { xs: '100%', sm: '600px' },
-          px: { xs: 2, sm: 2.5 },
-          py: { xs: 2.5, sm: 3 },
-          pb: 0 // PageWrapper handles bottom padding for nav bar
-        }}
-      >
-        <Paper 
+    <PageWrapper title="Settings">
+      <Paper
           elevation={0}
           sx={{ 
             mb: 2,
@@ -132,7 +120,11 @@ const Settings = () => {
           sx={{
             textAlign: 'center',
             py: 2,
-            px: 2
+            px: 2,
+            minHeight: 44,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
         >
           <Typography
@@ -144,6 +136,7 @@ const Settings = () => {
               fontWeight: 400,
               cursor: 'pointer',
               userSelect: 'none',
+              padding: '12px 16px',
               transition: 'opacity 0.2s',
               '&:active': {
                 opacity: 0.6
@@ -167,7 +160,6 @@ const Settings = () => {
             </Typography>
           )}
         </Box>
-      </Container>
     </PageWrapper>
   );
 };

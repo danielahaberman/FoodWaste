@@ -1,26 +1,18 @@
 // @ts-nocheck
 import React, { useState, useEffect } from "react";
-import ReactDOM from "react-dom";
 import dayjs from "dayjs";
 import { foodPurchaseAPI, surveyAPI, dailyTasksAPI } from "../../api";
-// MUI components
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { IconButton, Paper, Button, Box, Typography } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
-import LogoutIcon from '@mui/icons-material/Logout';
+import { Button, Box, Typography, Dialog } from "@mui/material";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { getCurrentUserId } from "../../utils/authUtils";
-
 import RestaurantIcon from '@mui/icons-material/Restaurant';
-import DeleteIcon from '@mui/icons-material/Delete';
-// Local components
 import AddNewPurchase from "./AddNewPurchase";
 import DateNavigator from "../DateNavigator";
 import FoodPurchaseList from "../FoodPurchaseList";
 import PageWrapper from "../PageWrapper";
 import DailyTasksPopup from "../DailyTasksPopup";
-import { Container } from "@mui/material";
 
 const FoodLog = () => {
   const [foodPurchases, setFoodPurchases] = useState([]);
@@ -166,120 +158,62 @@ const deletePurchase = async (purchaseId) => {
   const canModify = isWithin7Days && !isDateInFuture;
 
   return (
-    <PageWrapper 
-      title="Food Log" 
-      maxWidth="sm"
-      showLogo={true}
-    >
-      <Container 
-        maxWidth="sm"
-        sx={{ 
-          maxWidth: { xs: '100%', sm: '600px' },
-          px: { xs: 2, sm: 2.5 },
-          py: { xs: 2.5, sm: 3 },
-          pb: 0 // PageWrapper handles bottom padding for nav bar
-        }}
-      >
-        <LocalizationProvider dateAdapter={AdapterDayjs}>
-          <Box sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'space-between', 
-            gap: 1,
-            mb: 2
-          }}>
-            <DateNavigator value={selectedDate} onChange={setSelectedDate} datesWithFood={datesWithFood} />
-            <Button 
-              variant="contained" 
-              size="small" 
-              onClick={() => setLoggingPurchase(true)}
-              disabled={!canModify}
-              title={!canModify ? "Can only add food for the past 7 days" : "Add food for this date"}
-            >
-              Add
-            </Button>
-          </Box>
-          {!canModify && (
-            <Typography 
-              variant="caption" 
-              color="text.secondary" 
-              sx={{ 
-                textAlign: 'center', 
-                fontStyle: 'italic',
-                mb: 2,
-                display: 'block'
-              }}
-            >
-              View only - can only add/delete food for the past 7 days
-            </Typography>
-          )}
-        </LocalizationProvider>
-
-        <Box sx={{ 
-          mt: 2
-        }}>
-          {filteredPurchases.length > 0 ? (
-            <FoodPurchaseList 
-              deletePurchase={deletePurchase} 
-              purchases={filteredPurchases} 
-              canModify={canModify}
-            />
-          ) : (
-            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "50vh", color: "text.secondary", gap: 1 }}>
-              <RestaurantIcon sx={{ fontSize: 40, opacity: 0.6 }} />
-              <Box component="span" sx={{ fontStyle: "italic" }}>
-                No foods logged for {selectedDate.format('MMMM D, YYYY')} yet.
-              </Box>
-            </Box>
-          )}
+    <PageWrapper title="Food Log" showLogo>
+      <LocalizationProvider dateAdapter={AdapterDayjs}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 2 }}>
+          <DateNavigator value={selectedDate} onChange={setSelectedDate} datesWithFood={datesWithFood} />
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => setLoggingPurchase(true)}
+            disabled={!canModify}
+            title={!canModify ? "Can only add food for the past 7 days" : "Add food for this date"}
+          >
+            Add
+          </Button>
         </Box>
-
-        {loggingPurchase && (
-          ReactDOM.createPortal(
-            <Paper
-              sx={{
-                position: "fixed",
-                height: "100vh",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                width: "100vw",
-                maxWidth: "100%",
-                zIndex: 1500, // Higher than BottomBar (1400) to render on top
-                boxSizing: "border-box",
-                backgroundColor: "#fafafa",
-                overflow: "hidden",
-                display: "flex",
-                flexDirection: "column",
-                margin: 0,
-                padding: 0,
-              }}
-            >
-              <AddNewPurchase
-                setLoggingPurchase={setLoggingPurchase}
-                foodItems={foodItems}
-                fetchFoodItems={fetchFoodItems}
-                fetchFoodPurchases={fetchFoodPurchases}
-                selectedDate={selectedDate}
-              />
-            </Paper>,
-            document.body
-          )
+        {!canModify && (
+          <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center', fontStyle: 'italic', mb: 2, display: 'block' }}>
+            View only - can only add/delete food for the past 7 days
+          </Typography>
         )}
+      </LocalizationProvider>
 
-        {/* Daily Tasks Popup */}
-        {showDailyTasksPopup && (
-          <DailyTasksPopup
-            open={showDailyTasksPopup}
-            onClose={() => setShowDailyTasksPopup(false)}
-            onViewAllTasks={() => {
-              setShowDailyTasksPopup(false);
-              navigate("/tasks");
-            }}
+      <Box sx={{ mt: 2 }}>
+        {filteredPurchases.length > 0 ? (
+          <FoodPurchaseList
+            deletePurchase={deletePurchase}
+            purchases={filteredPurchases}
+            canModify={canModify}
           />
+        ) : (
+          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "40dvh", color: "text.secondary", gap: 1 }}>
+            <RestaurantIcon sx={{ fontSize: 40, opacity: 0.6 }} />
+            <Typography component="span" fontStyle="italic">
+              No foods logged for {selectedDate.format('MMMM D, YYYY')} yet.
+            </Typography>
+          </Box>
         )}
-      </Container>
+      </Box>
+
+      <Dialog open={loggingPurchase} onClose={() => setLoggingPurchase(false)} fullScreen sx={{ zIndex: 1500 }}>
+        <AddNewPurchase
+          setLoggingPurchase={setLoggingPurchase}
+          foodItems={foodItems}
+          fetchFoodItems={fetchFoodItems}
+          fetchFoodPurchases={fetchFoodPurchases}
+          selectedDate={selectedDate}
+        />
+      </Dialog>
+
+      <DailyTasksPopup
+        open={showDailyTasksPopup}
+        onClose={() => setShowDailyTasksPopup(false)}
+        onViewAllTasks={() => {
+          setShowDailyTasksPopup(false);
+          navigate("/tasks");
+        }}
+      />
     </PageWrapper>
   );
 };

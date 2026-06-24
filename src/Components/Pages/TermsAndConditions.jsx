@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { Button, Checkbox, FormControlLabel, Typography, Box, Paper, Snackbar, Alert } from "@mui/material";
+import { Button, Checkbox, FormControlLabel, Typography, Paper, Snackbar, Alert, Stack } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import PageLayout from "../PageLayout";
+import PageWrapper from "../PageWrapper";
 import { getCurrentUserId, logout, getIntendedDestination, clearIntendedDestination } from "../../utils/authUtils";
 import { authAPI } from "../../api";
 
@@ -71,51 +71,17 @@ function TermsAndConditions({ onTermsAccepted }) {
   };
 
   return (
-    <PageLayout backgroundColor="var(--color-muted)">
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "100vh",
-          padding: "24px",
-          boxSizing: 'border-box'
-        }}
-      >
-        <Paper
-          elevation={3}
-          sx={{
-            maxWidth: "640px",
-            width: "100%",
-            padding: "24px",
-            backgroundColor: "var(--color-surface)",
-            borderRadius: "12px",
-          }}
-        >
-          <Typography
-            variant="h4"
-            component="h1"
-            sx={{
-              textAlign: "center",
-              fontWeight: "bold",
-              color: "var(--color-text)",
-              marginBottom: "16px",
-            }}
-          >
+    <PageWrapper showHeader={false} reserveBottomNav={false} backgroundColor="var(--color-muted)">
+      <Stack spacing={2} alignItems="center" sx={{ width: '100%' }}>
+        <Paper elevation={3} sx={{ width: '100%', maxWidth: 640, p: 3, borderRadius: 2 }}>
+          <Typography variant="h4" component="h1" textAlign="center" fontWeight="bold" gutterBottom>
             Terms and Conditions
           </Typography>
 
-          <Box
-            sx={{
-              maxHeight: "400px",
-              overflowY: "auto",
-              backgroundColor: "var(--color-surface)",
-              padding: "16px",
-              borderRadius: "8px",
-              marginBottom: "16px",
-              border: "1px solid #e5e7eb",
-            }}
+          <Paper
+            variant="outlined"
+            className="selectable-text"
+            sx={{ maxHeight: 400, overflowY: 'auto', p: 2, mb: 2 }}
           >
             <Typography variant="body1" sx={{ lineHeight: 1.6 }}>
               <strong>Last updated: {new Date().toLocaleDateString()}</strong>
@@ -160,7 +126,7 @@ function TermsAndConditions({ onTermsAccepted }) {
               <br />
               We may revise these terms of service for this application at any time without notice. By using this application you are agreeing to be bound by the then current version of these Terms and Conditions of Use.
             </Typography>
-          </Box>
+          </Paper>
 
           <FormControlLabel
             control={
@@ -183,43 +149,21 @@ function TermsAndConditions({ onTermsAccepted }) {
             sx={{ marginBottom: "16px" }}
           />
 
-          <Box sx={{ display: "flex", gap: "16px", justifyContent: "center" }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="center">
             <Button
               variant="contained"
+              color="success"
               onClick={handleAccept}
               disabled={!accepted || isSubmitting}
-              sx={{
-                backgroundColor: "var(--color-success)",
-                color: "var(--color-primary-contrast)",
-                "&:disabled": {
-                  backgroundColor: "#e5e7eb",
-                  color: "#9ca3af",
-                },
-                "&:hover": {
-                  backgroundColor: "#2e7d32",
-                },
-              }}
             >
               {isSubmitting ? "Accepting..." : "Accept & Continue"}
             </Button>
-            <Button
-              variant="outlined"
-              onClick={handleDecline}
-              disabled={isSubmitting}
-              sx={{
-                borderColor: "#6b7280",
-                color: "var(--color-text)",
-                "&:hover": {
-                  borderColor: "#374151",
-                  backgroundColor: "#f3f4f6",
-                },
-              }}
-            >
+            <Button variant="outlined" onClick={handleDecline} disabled={isSubmitting}>
               Decline
             </Button>
-          </Box>
+          </Stack>
         </Paper>
-      </Box>
+      </Stack>
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}
@@ -230,7 +174,7 @@ function TermsAndConditions({ onTermsAccepted }) {
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </PageLayout>
+    </PageWrapper>
   );
 }
 

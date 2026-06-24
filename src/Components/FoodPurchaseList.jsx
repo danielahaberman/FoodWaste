@@ -48,8 +48,10 @@ const FoodPurchaseList = ({ purchases, deletePurchase, canModify = true }) => {
     }
 
     document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
     };
   }, []);
 
@@ -72,7 +74,7 @@ const FoodPurchaseList = ({ purchases, deletePurchase, canModify = true }) => {
                 "&:hover": { bgcolor: "rgba(255, 255, 255, 0.98)" },
                 borderRadius: 1,
                 mb: 1,
-                mx: 2, // Add horizontal margin to show background
+                mx: 0,
                 backdropFilter: "blur(10px)",
               }}
             >
@@ -144,7 +146,6 @@ const FoodPurchaseList = ({ purchases, deletePurchase, canModify = true }) => {
                 <IconButton
                   aria-label="delete purchase"
                   edge="end"
-                  size="small"
                   onClick={(e) => {
                     e.stopPropagation();
                     if (canModify) {

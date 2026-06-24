@@ -340,8 +340,7 @@ const Leaderboard = () => {
         onTouchEnd={handleTouchEnd}
         sx={{ 
           minHeight: { xs: 250, sm: 350 },
-          maxHeight: { xs: "45vh", sm: "55vh" },
-          overflow: "auto",
+          overflow: "visible",
           position: "relative"
         }}
       >

@@ -1,9 +1,11 @@
 // @ts-nocheck
 /* eslint-disable no-unused-vars */
 
-import './App.css';
 import React from 'react';
+import { ThemeProvider } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { appTheme } from './theme';
 import LoginPage from './Components/Pages/Login';
 import LandingPage from './Components/Pages/LandingPage';
 // import Users from './Components/Pages/Users';
@@ -30,9 +32,11 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <UpdateProvider>
-        <PWAProvider>
+      <ThemeProvider theme={appTheme}>
+        <CssBaseline />
+        <UpdateProvider>
           <BrowserRouter>
+            <PWAProvider>
             <RouteTracker />
             <Routes>
             {/* Admin routes (completely separate from user auth) */}
@@ -69,9 +73,10 @@ function App() {
               </TermsGuard>
             } />
           </Routes>
-        </BrowserRouter>
-      </PWAProvider>
+            </PWAProvider>
+          </BrowserRouter>
       </UpdateProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

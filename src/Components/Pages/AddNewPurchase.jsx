@@ -600,14 +600,30 @@ function AddNewPurchase({
           component="form"
           onSubmit={handleSubmit}
           sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: "90%",
-            maxWidth: 500,
+            position: isMobile ? "fixed" : "absolute",
+            ...(isMobile
+              ? {
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  width: "100%",
+                  maxWidth: "100%",
+                  height: "100dvh",
+                  borderRadius: 0,
+                  overflow: "auto",
+                  pt: "calc(24px + env(safe-area-inset-top, 0px))",
+                  pb: "calc(24px + env(safe-area-inset-bottom, 0px))",
+                }
+              : {
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
+                  width: "90%",
+                  maxWidth: 500,
+                  borderRadius: 2,
+                }),
             bgcolor: "background.paper",
-            borderRadius: 2,
             boxShadow: 24,
             p: 3,
             display: "flex",
@@ -623,10 +639,9 @@ function AddNewPurchase({
             <Typography variant="h6">Add New Food Item</Typography>
             <IconButton
               aria-label="close"
-              size="small"
               onClick={() => setShowNewFoodForm(false)}
             >
-              <CloseIcon fontSize="small" />
+              <CloseIcon />
             </IconButton>
           </Stack>
 
@@ -640,7 +655,6 @@ function AddNewPurchase({
                 setNewFoodItem((f) => ({ ...f, name: e.target.value }))
               }
               fullWidth
-              size="small"
               required
             />
             <TextField
@@ -652,7 +666,6 @@ function AddNewPurchase({
                 setNewFoodItem((f) => ({ ...f, price: e.target.value }))
               }
               fullWidth
-              size="small"
             />
 
             <Grid container spacing={2}>
@@ -671,7 +684,6 @@ function AddNewPurchase({
                     label: type.name,
                   }))}
                   required
-                  size="small"
                 />
               </Grid>
 
@@ -690,7 +702,6 @@ function AddNewPurchase({
                     label: type.name,
                   }))}
                   required
-                  size="small"
                 />
               </Grid>
             </Grid>
@@ -706,6 +717,7 @@ function AddNewPurchase({
               bgcolor: "#1976d2",
               color: "#fff",
               fontWeight: "bold",
+              minHeight: 44,
               '&:hover': {
                 bgcolor: "#1565c0",
               },
@@ -722,6 +734,7 @@ function AddNewPurchase({
          onClose={() => handlePurchaseConfirmation(false)}
          maxWidth="sm"
          fullWidth
+         fullScreen={isMobile}
          sx={{
            zIndex: SUB_MODAL_Z_INDEX,
            '& .MuiDialog-paper': {
@@ -802,6 +815,7 @@ function AddNewPurchase({
          onClose={() => setShowDateConfirmation(false)}
          maxWidth="sm"
          fullWidth
+         fullScreen={isMobile}
          sx={{
            zIndex: SUB_MODAL_Z_INDEX,
            '& .MuiDialog-paper': {

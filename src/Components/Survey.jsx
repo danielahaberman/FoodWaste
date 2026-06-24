@@ -264,7 +264,7 @@ const Survey = ({ questions }) => {
                       minHeight: { xs: 44, sm: 48 },
                       fontSize: { xs: "0.9rem", sm: "1rem" },
                       padding: { xs: "10px 14px", sm: "12px 16px" },
-                      whiteSpace: "nowrap",
+                      whiteSpace: "normal",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       borderRadius: 3,
