@@ -15,6 +15,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { setAuthenticated, getIntendedDestination, clearIntendedDestination, getUsername, saveUsername, isAuthenticated, getLastRoute } from "../../utils/authUtils";
 import { authAPI } from "../../api";
+import { usePWA } from "../../context/PWAContext";
 // import FoodEmojiBackground from "../FoodEmojiBackground";
 
 function LoginPage() {
@@ -23,6 +24,7 @@ function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { showPostLoginBanner } = usePWA();
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -50,6 +52,7 @@ function LoginPage() {
       saveUsername(email);
       // Set authentication first
       setAuthenticated(response.data.user_id, email);
+      showPostLoginBanner();
       
       // Check if there's a stored intended destination
       const intendedDestination = getIntendedDestination();

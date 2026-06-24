@@ -98,7 +98,7 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
         onClose();
         break;
       case "consume_waste":
-        // Route to the Consume/Waste page.
+<div className=""></div>        // Route to the Consume/Waste page.
         // (Previously this dispatched an event with no listener, so the button did nothing.)
         navigate("/summary");
         onClose();

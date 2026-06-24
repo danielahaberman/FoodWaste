@@ -4,7 +4,8 @@ export const PWA_STORAGE_KEYS = {
   SEEN: 'pwa-install-prompt-seen',
   DISMISSED: 'pwa-install-prompt-dismissed',
   PERMANENTLY_DISMISSED: 'pwa-install-prompt-permanently-dismissed',
-  ACCEPTED: 'pwa-install-prompt-accepted'
+  ACCEPTED: 'pwa-install-prompt-accepted',
+  BANNER_DISMISSED: 'pwa-install-banner-dismissed',
 };
 
 /**
@@ -23,6 +24,14 @@ export const isIOSDevice = () => {
     return true;
   }
   return false;
+};
+
+/**
+ * Chrome, Firefox, and Opera on iOS cannot install PWAs — Safari is required.
+ */
+export const isChromeOnIOS = () => {
+  if (!isIOSDevice()) return false;
+  return /CriOS|FxiOS|OPiOS|EdgiOS/.test(navigator.userAgent);
 };
 
 /**

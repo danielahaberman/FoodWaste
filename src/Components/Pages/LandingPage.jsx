@@ -3,14 +3,14 @@ import React, { useState, useEffect } from "react";
 import { Button, Box, Typography, Paper, Divider, IconButton, Tooltip } from "@mui/material";
 import { GetApp as InstallIcon, Refresh as RefreshIcon } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
-import PWAInstallPrompt from "../PWAInstallPrompt";
+import { usePWA } from "../../context/PWAContext";
 import { isStandaloneMode } from "../../utils/pwaUtils";
 import versionData from '../../../version.json';
 // import FoodEmojiBackground from "../FoodEmojiBackground";
 
 function LandingPage() {
   const navigate = useNavigate();
-  const [showPWAPrompt, setShowPWAPrompt] = useState(false);
+  const { openInstallPrompt } = usePWA();
   const [isStandalone, setIsStandalone] = useState(false);
 
   // NOTE: This page should NEVER check authentication or redirect users.
@@ -161,7 +161,7 @@ function LandingPage() {
                 size="large"
                 fullWidth
                 startIcon={<InstallIcon />}
-                onClick={() => setShowPWAPrompt(true)}
+                onClick={openInstallPrompt}
                 sx={{
                   backgroundColor: '#1976d2',
                   color: 'white',
@@ -209,12 +209,6 @@ function LandingPage() {
           </Typography>
         </Box>
       </Box>
-
-      {/* PWA Install Prompt */}
-      <PWAInstallPrompt 
-        open={showPWAPrompt} 
-        onClose={() => setShowPWAPrompt(false)} 
-      />
     </Box>
     // </FoodEmojiBackground>
   );

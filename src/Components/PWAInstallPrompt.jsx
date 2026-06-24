@@ -1,514 +1,186 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Dialog, 
-  DialogTitle, 
-  DialogContent, 
-  DialogActions, 
-  Button, 
-  Typography, 
+import React from 'react';
+import {
+  SwipeableDrawer,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Typography,
   Box,
   IconButton,
-  Stepper,
-  Step,
-  StepLabel,
-  StepContent,
   useMediaQuery,
-  useTheme
+  useTheme,
 } from '@mui/material';
-import { 
+import {
   Close as CloseIcon,
   GetApp as InstallIcon,
   Share as ShareIcon,
   Add as AddIcon,
-  MoreVert as MenuIcon,
-  PhoneAndroid as AndroidIcon,
-  PhoneIphone as IOSIcon
 } from '@mui/icons-material';
-import { PWA_STORAGE_KEYS, isIOSDevice, isStandaloneMode } from '../utils/pwaUtils';
+import { isChromeOnIOS } from '../utils/pwaUtils';
 
-const PWAInstallPrompt = ({ open, onClose }) => {
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [detectedIOS, setDetectedIOS] = useState(false);
-  const [selectedPlatform, setSelectedPlatform] = useState(null); // 'ios' or 'android'
-  const [isStandalone, setIsStandalone] = useState(false);
+const IOSInstructions = () => (
+  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+      <ShareIcon color="primary" sx={{ mt: 0.25 }} />
+      <Box>
+        <Typography variant="subtitle1" fontWeight={600}>
+          1. Tap Share
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Tap the Share button at the bottom of Safari (square with an arrow pointing up).
+        </Typography>
+      </Box>
+    </Box>
+    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+      <AddIcon color="primary" sx={{ mt: 0.25 }} />
+      <Box>
+        <Typography variant="subtitle1" fontWeight={600}>
+          2. Add to Home Screen
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Scroll the share menu and tap &quot;Add to Home Screen&quot;, then tap Add.
+        </Typography>
+      </Box>
+    </Box>
+  </Box>
+);
+
+const AndroidInstructions = ({ hasNativePrompt }) => (
+  <Box>
+    {hasNativePrompt ? (
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Tap Install App below to add Food Hero to your home screen.
+      </Typography>
+    ) : (
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Open your browser menu (⋮) and choose &quot;Install app&quot; or &quot;Add to Home screen&quot;.
+      </Typography>
+    )}
+  </Box>
+);
+
+const PromptContent = ({
+  isIOS,
+  canInstallAndroid,
+  onClose,
+  onInstall,
+  onPermanentDismiss,
+}) => {
+  const chromeOnIOS = isChromeOnIOS();
+
+  return (
+    <>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+        <Typography variant="h6" sx={{ color: '#1976d2', fontWeight: 'bold' }}>
+          Install App
+        </Typography>
+        <IconButton onClick={onClose} size="small" aria-label="Close">
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </Box>
+
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Install Food Hero for a full-screen app experience without the app store.
+      </Typography>
+
+      {chromeOnIOS ? (
+        <Typography
+          variant="body2"
+          sx={{
+            color: '#d32f2f',
+            p: 1.5,
+            backgroundColor: '#ffebee',
+            borderRadius: 1,
+            border: '1px solid #ffcdd2',
+          }}
+        >
+          Chrome on iPhone cannot install apps. Copy this URL and open it in Safari, then use Share → Add to Home Screen.
+        </Typography>
+      ) : isIOS ? (
+        <IOSInstructions />
+      ) : (
+        <AndroidInstructions hasNativePrompt={canInstallAndroid} />
+      )}
+
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 3 }}>
+        {!isIOS && canInstallAndroid && (
+          <Button
+            onClick={onInstall}
+            variant="contained"
+            startIcon={<InstallIcon />}
+            fullWidth
+            sx={{ backgroundColor: '#1976d2', '&:hover': { backgroundColor: '#1565c0' } }}
+          >
+            Install App
+          </Button>
+        )}
+        <Button onClick={onClose} variant="outlined" fullWidth>
+          Maybe Later
+        </Button>
+        <Button onClick={onPermanentDismiss} variant="text" size="small" sx={{ color: '#666' }}>
+          Don&apos;t Ask Again
+        </Button>
+      </Box>
+    </>
+  );
+};
+
+const PWAInstallPrompt = ({
+  open,
+  onClose,
+  onInstall,
+  onPermanentDismiss,
+  isIOS,
+  canInstallAndroid,
+}) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  useEffect(() => {
-    // Check if running on iOS (using improved detection)
-    const iOS = isIOSDevice();
-    // Check if it's Chrome on iOS (which doesn't support PWA installation)
-    const isChromeOnIOS = iOS && /CriOS|FxiOS|OPiOS/.test(navigator.userAgent);
-    // Only Safari on iOS supports PWA installation
-    const isSafariOnIOS = iOS && !isChromeOnIOS && /Safari/.test(navigator.userAgent) && !/Chrome|CriOS|FxiOS|OPiOS/.test(navigator.userAgent);
-    
-    setDetectedIOS(iOS);
-    // Set initial platform based on detection
-    // If Chrome on iOS, treat as Android (but won't be able to install)
-    setSelectedPlatform(iOS && !isChromeOnIOS ? 'ios' : 'android');
-
-    // Check if already installed (standalone mode)
-    const standalone = isStandaloneMode();
-    setIsStandalone(standalone);
-
-    // Listen for the beforeinstallprompt event (Android)
-    const handleBeforeInstallPrompt = (e) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    };
-  }, []);
-
-  const handleInstallClick = async () => {
-    if (deferredPrompt) {
-      // Show the install prompt for Android
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      
-      if (outcome === 'accepted') {
-        console.log('User accepted the install prompt');
-      } else {
-        console.log('User dismissed the install prompt');
-      }
-      
-      setDeferredPrompt(null);
-      onClose();
-    }
-  };
-
-  // Don't show if already installed
-  if (isStandalone) {
-    return null;
+  if (isMobile) {
+    return (
+      <SwipeableDrawer
+        anchor="bottom"
+        open={open}
+        onClose={onClose}
+        onOpen={() => {}}
+        disableSwipeToOpen
+        PaperProps={{
+          sx: {
+            borderTopLeftRadius: 16,
+            borderTopRightRadius: 16,
+            px: 2,
+            pt: 2,
+            pb: 'calc(16px + env(safe-area-inset-bottom))',
+            maxHeight: '85dvh',
+          },
+        }}
+      >
+        <PromptContent
+          isIOS={isIOS}
+          canInstallAndroid={canInstallAndroid}
+          onClose={onClose}
+          onInstall={onInstall}
+          onPermanentDismiss={onPermanentDismiss}
+        />
+      </SwipeableDrawer>
+    );
   }
 
   return (
-    <Dialog 
-      open={open} 
-      onClose={onClose}
-      fullScreen={isMobile}
-      maxWidth={isMobile ? false : "sm"}
-      fullWidth={!isMobile}
-      PaperProps={{
-        sx: {
-          borderRadius: { xs: 0, sm: 2 },
-          backgroundColor: 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(10px)',
-          margin: { xs: 0, sm: 2 },
-          maxHeight: { xs: '100dvh', sm: '90vh' },
-          height: { xs: '100dvh', sm: 'auto' },
-          display: 'flex',
-          flexDirection: 'column'
-        }
-      }}
-    >
-      <DialogTitle sx={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        pb: { xs: 0.5, sm: 1 },
-        px: { xs: 1.5, sm: 3 },
-        pt: { xs: 'calc(12px + env(safe-area-inset-top))', sm: 3 }
-      }}>
-        <Typography variant="h6" sx={{ 
-          color: '#1976d2', 
-          fontWeight: 'bold',
-          fontSize: { xs: '1rem', sm: '1.25rem' }
-        }}>
-          Install App
-        </Typography>
-        <IconButton onClick={onClose} size="small" sx={{ p: 0.5 }}>
-          <CloseIcon fontSize="small" />
-        </IconButton>
-      </DialogTitle>
-
-      <DialogContent sx={{ 
-        pt: { xs: 0.5, sm: 1 },
-        px: { xs: 1.5, sm: 3 },
-        pb: { xs: 1, sm: 2 },
-        flex: '1 1 auto',
-        overflow: 'auto'
-      }}>
-        <Typography variant="body1" sx={{ 
-          mb: { xs: 1.5, sm: 2 }, 
-          color: '#666',
-          fontSize: { xs: '0.875rem', sm: '1rem' },
-          lineHeight: 1.4
-        }}>
-          Install the app on your device for a better experience!
-        </Typography>
-
-        {/* Platform Selector */}
-        <Box sx={{ 
-          display: 'flex', 
-          gap: 1, 
-          mb: { xs: 1.5, sm: 2 },
-          justifyContent: 'center'
-        }}>
-          <Button
-            variant={selectedPlatform === 'ios' ? 'contained' : 'outlined'}
-            onClick={() => setSelectedPlatform('ios')}
-            startIcon={<IOSIcon />}
-            sx={{
-              flex: 1,
-              backgroundColor: selectedPlatform === 'ios' ? '#1976d2' : 'transparent',
-              color: selectedPlatform === 'ios' ? 'white' : '#1976d2',
-              borderColor: '#1976d2',
-              fontSize: { xs: '0.8rem', sm: '0.875rem' },
-              py: { xs: 0.75, sm: 0.5 },
-              '&:hover': {
-                backgroundColor: selectedPlatform === 'ios' ? '#1565c0' : 'rgba(25, 118, 210, 0.04)'
-              }
-            }}
-          >
-            iOS
-          </Button>
-          <Button
-            variant={selectedPlatform === 'android' ? 'contained' : 'outlined'}
-            onClick={() => setSelectedPlatform('android')}
-            startIcon={<AndroidIcon />}
-            sx={{
-              flex: 1,
-              backgroundColor: selectedPlatform === 'android' ? '#1976d2' : 'transparent',
-              color: selectedPlatform === 'android' ? 'white' : '#1976d2',
-              borderColor: '#1976d2',
-              fontSize: { xs: '0.8rem', sm: '0.875rem' },
-              py: { xs: 0.75, sm: 0.5 },
-              '&:hover': {
-                backgroundColor: selectedPlatform === 'android' ? '#1565c0' : 'rgba(25, 118, 210, 0.04)'
-              }
-            }}
-          >
-            Android
-          </Button>
-        </Box>
-
-        {selectedPlatform === 'ios' ? (
-          // iOS Instructions
-          <Box>
-            <Typography variant="h6" sx={{ 
-              mb: { xs: 1, sm: 1.5 }, 
-              color: '#1976d2',
-              fontSize: { xs: '0.95rem', sm: '1.25rem' },
-              fontWeight: 600
-            }}>
-              How to install on iOS:
-            </Typography>
-            
-            <Stepper 
-              orientation="vertical" 
-              sx={{ 
-                pl: 0,
-                '& .MuiStep-root': {
-                  paddingBottom: { xs: 0.5, sm: 1 }
-                },
-                '& .MuiStepLabel-root': { 
-                  px: { xs: 0, sm: 1 },
-                  paddingTop: { xs: 0.5, sm: 1 }
-                },
-                '& .MuiStepContent-root': {
-                  paddingLeft: { xs: 2.5, sm: 3.5 },
-                  marginTop: { xs: 0.25, sm: 0.5 }
-                }
-              }}
-            >
-              <Step active>
-                <StepLabel>
-                  <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: { xs: 0.5, sm: 1 }
-                  }}>
-                    <AddIcon color="primary" sx={{ fontSize: { xs: '1.1rem', sm: '1.5rem' } }} />
-                    <Typography variant="body1" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-                      Bookmark the app
-                    </Typography>
-                  </Box>
-                </StepLabel>
-                <StepContent>
-                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, lineHeight: 1.3 }}>
-                    First, bookmark this app in Safari by tapping the share icon and selecting "Add Bookmark"
-                  </Typography>
-                </StepContent>
-              </Step>
-              
-              <Step active>
-                <StepLabel>
-                  <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: { xs: 0.5, sm: 1 }
-                  }}>
-                    <MenuIcon color="primary" sx={{ fontSize: { xs: '1.1rem', sm: '1.5rem' } }} />
-                    <Typography variant="body1" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-                      Tap the three dot menu
-                    </Typography>
-                  </Box>
-                </StepLabel>
-                <StepContent>
-                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, lineHeight: 1.3 }}>
-                    Tap the three dots (⋯) menu icon in Safari's address bar
-                  </Typography>
-                </StepContent>
-              </Step>
-              
-              <Step active>
-                <StepLabel>
-                  <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: { xs: 0.5, sm: 1 }
-                  }}>
-                    <ShareIcon color="primary" sx={{ fontSize: { xs: '1.1rem', sm: '1.5rem' } }} />
-                    <Typography variant="body1" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-                      Tap the Share icon
-                    </Typography>
-                  </Box>
-                </StepLabel>
-                <StepContent>
-                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, lineHeight: 1.3 }}>
-                    In the menu, tap the Share icon (square with arrow pointing up)
-                  </Typography>
-                </StepContent>
-              </Step>
-              
-              <Step active>
-                <StepLabel>
-                  <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: { xs: 0.5, sm: 1 }
-                  }}>
-                    <AddIcon color="primary" sx={{ fontSize: { xs: '1.1rem', sm: '1.5rem' } }} />
-                    <Typography variant="body1" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-                      Tap "Add to Home Screen"
-                    </Typography>
-                  </Box>
-                </StepLabel>
-                <StepContent>
-                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, lineHeight: 1.3 }}>
-                    Scroll down in the share menu and tap "Add to Home Screen"
-                  </Typography>
-                </StepContent>
-              </Step>
-            </Stepper>
-          </Box>
-        ) : (
-          // Android Instructions (or Chrome on iOS)
-          <Box>
-            {(() => {
-              const isChromeOnIOS = isIOSDevice() && /CriOS|FxiOS|OPiOS/.test(navigator.userAgent);
-              
-              if (isChromeOnIOS) {
-                return (
-                  <Typography variant="body2" sx={{ 
-                    mb: { xs: 1, sm: 1.5 }, 
-                    color: '#d32f2f',
-                    fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                    textAlign: 'center',
-                    p: 1.5,
-                    backgroundColor: '#ffebee',
-                    borderRadius: 1,
-                    border: '1px solid #ffcdd2'
-                  }}>
-                    ⚠️ Chrome on iOS doesn't support PWA installation. Please use Safari to install this app.
-                  </Typography>
-                );
-              }
-              
-              return deferredPrompt ? (
-                <Typography variant="body2" sx={{ 
-                  mb: { xs: 1, sm: 1.5 }, 
-                  color: '#1976d2',
-                  fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                  fontStyle: 'italic',
-                  textAlign: 'center',
-                  p: 1,
-                  backgroundColor: 'rgba(25, 118, 210, 0.08)',
-                  borderRadius: 1
-                }}>
-                  💡 Quick install: Tap "Install App" below, or follow the manual steps if needed.
-                </Typography>
-              ) : (
-                <Typography variant="body2" sx={{ 
-                  mb: { xs: 1, sm: 1.5 }, 
-                  color: '#666',
-                  fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                  textAlign: 'center',
-                  p: 1,
-                  backgroundColor: '#f5f5f5',
-                  borderRadius: 1
-                }}>
-                  Follow these steps to install the app manually:
-                </Typography>
-              );
-            })()}
-            
-            <Typography variant="h6" sx={{ 
-              mb: { xs: 1, sm: 1.5 }, 
-              color: '#1976d2',
-              fontSize: { xs: '0.95rem', sm: '1.25rem' },
-              fontWeight: 600
-            }}>
-              How to install on Android:
-            </Typography>
-            
-            <Stepper 
-              orientation="vertical" 
-              sx={{ 
-                pl: 0,
-                '& .MuiStep-root': {
-                  paddingBottom: { xs: 0.5, sm: 1 }
-                },
-                '& .MuiStepLabel-root': { 
-                  px: { xs: 0, sm: 1 },
-                  paddingTop: { xs: 0.5, sm: 1 }
-                },
-                '& .MuiStepContent-root': {
-                  paddingLeft: { xs: 2.5, sm: 3.5 },
-                  marginTop: { xs: 0.25, sm: 0.5 }
-                }
-              }}
-            >
-              <Step active>
-                <StepLabel>
-                  <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: { xs: 0.5, sm: 1 }
-                  }}>
-                    <MenuIcon color="primary" sx={{ fontSize: { xs: '1.1rem', sm: '1.5rem' } }} />
-                    <Typography variant="body1" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-                      Open the browser menu
-                    </Typography>
-                  </Box>
-                </StepLabel>
-                <StepContent>
-                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, lineHeight: 1.3 }}>
-                    Tap the three dots icon (⋮) in the top-right corner of your browser
-                  </Typography>
-                </StepContent>
-              </Step>
-              
-              <Step active>
-                <StepLabel>
-                  <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: { xs: 0.5, sm: 1 }
-                  }}>
-                    <InstallIcon color="primary" sx={{ fontSize: { xs: '1.1rem', sm: '1.5rem' } }} />
-                    <Typography variant="body1" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-                      Tap "Install app" or "Add to Home screen"
-                    </Typography>
-                  </Box>
-                </StepLabel>
-                <StepContent>
-                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, lineHeight: 1.3 }}>
-                    Look for "Install app" or "Add to Home screen" in the menu and tap it
-                  </Typography>
-                </StepContent>
-              </Step>
-              
-              <Step active>
-                <StepLabel>
-                  <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: { xs: 0.5, sm: 1 }
-                  }}>
-                    <AddIcon color="primary" sx={{ fontSize: { xs: '1.1rem', sm: '1.5rem' } }} />
-                    <Typography variant="body1" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-                      Confirm installation
-                    </Typography>
-                  </Box>
-                </StepLabel>
-                <StepContent>
-                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, lineHeight: 1.3 }}>
-                    Tap "Install" in the popup to add the app to your home screen
-                  </Typography>
-                </StepContent>
-              </Step>
-            </Stepper>
-          </Box>
-        )}
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ display: 'none' }}>Install App</DialogTitle>
+      <DialogContent sx={{ pt: 3 }}>
+        <PromptContent
+          isIOS={isIOS}
+          canInstallAndroid={canInstallAndroid}
+          onClose={onClose}
+          onInstall={onInstall}
+          onPermanentDismiss={onPermanentDismiss}
+        />
       </DialogContent>
-
-      <DialogActions sx={{ 
-        p: { xs: 1.5, sm: 3 }, 
-        pb: { xs: 'calc(12px + env(safe-area-inset-bottom))', sm: 3 },
-        pt: { xs: 0.5, sm: 1 },
-        flexDirection: { xs: 'column', sm: 'row' },
-        gap: { xs: 0.75, sm: 1 },
-        '& > *': {
-          width: { xs: '100%', sm: 'auto' },
-          margin: { xs: '0 !important', sm: '0 8px !important' },
-          minWidth: { xs: 'auto', sm: 'auto' }
-        }
-      }}>
-        <Button 
-          onClick={() => {
-            localStorage.setItem(PWA_STORAGE_KEYS.PERMANENTLY_DISMISSED, 'true');
-            onClose();
-          }}
-          variant="text"
-          sx={{
-            color: '#666',
-            '&:hover': { 
-              backgroundColor: 'rgba(0, 0, 0, 0.04)'
-            },
-            fontSize: { xs: '0.75rem', sm: '0.875rem' },
-            py: { xs: 0.5, sm: 0.5 },
-            order: { xs: -1, sm: 0 },
-            alignSelf: { xs: 'flex-end', sm: 'auto' },
-            minWidth: { xs: 'auto', sm: 'auto' },
-            px: { xs: 1, sm: 1.5 }
-          }}
-        >
-          Don't Ask Again
-        </Button>
-
-        {selectedPlatform === 'ios' ? null : (
-          deferredPrompt ? (
-            <Button 
-              onClick={handleInstallClick}
-              variant="contained"
-              startIcon={<InstallIcon sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }} />}
-              sx={{
-                backgroundColor: '#1976d2',
-                '&:hover': { backgroundColor: '#1565c0' },
-                fontSize: { xs: '0.875rem', sm: '1rem' },
-                py: { xs: 1, sm: 0.75 },
-                px: { xs: 2, sm: 2 }
-              }}
-            >
-              Install App
-            </Button>
-          ) : null
-        )}
-        
-        <Button 
-          onClick={onClose}
-          variant="outlined"
-          sx={{
-            borderColor: '#1976d2',
-            color: '#1976d2',
-            '&:hover': { 
-              borderColor: '#1565c0',
-              backgroundColor: 'rgba(25, 118, 210, 0.04)'
-            },
-            fontSize: { xs: '0.875rem', sm: '1rem' },
-            py: { xs: 1, sm: 0.75 },
-            px: { xs: 2, sm: 2 }
-          }}
-        >
-          Maybe Later
-        </Button>
-      </DialogActions>
+      <DialogActions sx={{ display: 'none' }} />
     </Dialog>
   );
 };

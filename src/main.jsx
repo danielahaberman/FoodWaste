@@ -34,46 +34,28 @@ window.addEventListener('unhandledrejection', (event) => {
   });
 });
 
-// Register service worker for PWA functionality (caching disabled)
-// ServiceWorker is registered only to satisfy PWA manifest requirements
-// It does not cache anything - all requests go directly to network
+// Register minimal service worker for PWA installability
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    // Register the service worker first, then clean up old registrations
-    // This prevents race conditions from unregistering before registering
     navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
       .then((registration) => {
-        console.log('Service Worker registered successfully:', registration.scope);
-        
-        // Check for service worker updates periodically
-        setInterval(() => {
-          registration.update();
-        }, 5 * 60 * 1000); // Check for updates every 5 minutes
-        
-        // Listen for service worker updates
+        console.log('Service Worker registered:', registration.scope);
+
         registration.addEventListener('updatefound', () => {
           const newWorker = registration.installing;
           if (newWorker) {
             newWorker.addEventListener('statechange', () => {
               if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                // New service worker is ready, notify app
-                console.log('New service worker available, app update detected');
-                // Dispatch custom event that UpdateProvider can listen to
                 window.dispatchEvent(new CustomEvent('sw-update-available'));
               }
             });
           }
         });
-        
-        // Clean up any old service worker registrations (except the current one)
+
         navigator.serviceWorker.getRegistrations().then((registrations) => {
           registrations.forEach((reg) => {
             if (reg !== registration && reg.scope !== registration.scope) {
-              reg.unregister().then((success) => {
-                if (success) {
-                  console.log('Old service worker unregistered:', reg.scope);
-                }
-              });
+              reg.unregister();
             }
           });
         });
@@ -85,8 +67,7 @@ if ('serviceWorker' in navigator) {
           stage: 'registration',
         });
       });
-    
-    // Add utility function to unregister service worker (for debugging)
+
     window.unregisterServiceWorker = () => {
       navigator.serviceWorker.getRegistrations().then((registrations) => {
         registrations.forEach((registration) => {
