@@ -14,7 +14,7 @@ import {
   GetApp as InstallIcon,
   Refresh as RefreshIcon,
   Restaurant as FoodIcon,
-  Eco as EcoIcon,
+  EnergySavingsLeaf as EcoIcon,
   EmojiEvents as StreakIcon,
   Login as LoginIcon,
   PersonAdd as RegisterIcon,
