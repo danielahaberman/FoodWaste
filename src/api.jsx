@@ -2,6 +2,7 @@
 // src/api.js
 import axios from "axios";
 import { logError } from "./utils/errorLogger";
+import { getAuthToken, getAdminToken, clearAdminAuth, logout } from "./utils/authUtils";
 
 // Use relative URLs if VITE_API_URL is not set (same origin)
 // This prevents CORS issues when frontend and backend are on the same domain
@@ -28,6 +29,26 @@ const api = axios.create({
 // Add request interceptor for logging
 api.interceptors.request.use(
   (config) => {
+    const url = config.url || '';
+    const isPublicAuthRoute =
+      url.includes('/auth/login') ||
+      url.includes('/auth/register') ||
+      url.includes('/auth/admin/login');
+
+    if (!isPublicAuthRoute) {
+      if (url.startsWith('/admin')) {
+        const adminToken = getAdminToken();
+        if (adminToken) {
+          config.headers.Authorization = `Bearer ${adminToken}`;
+        }
+      } else {
+        const token = getAuthToken();
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+      }
+    }
+
     // Log all requests in development
     if (import.meta.env.DEV) {
       const fullURL = (config.baseURL || '') + config.url;
@@ -85,7 +106,8 @@ api.interceptors.response.use(
 
       // Log API errors (but not auth errors to avoid spam)
       const isAuthRequest = error.config?.url?.includes('/auth/login') || 
-                           error.config?.url?.includes('/auth/register');
+                           error.config?.url?.includes('/auth/register') ||
+                           error.config?.url?.includes('/auth/admin/login');
       
       if (!isAuthRequest && status >= 500) {
         // Log server errors
@@ -99,11 +121,18 @@ api.interceptors.response.use(
         });
       }
       
-      // Only redirect to login if it's NOT already a login/register request
-      // This prevents redirecting when user is already on login page with wrong credentials
-      if ((status === 401 || status === 403) && !isAuthRequest) {
-        console.warn("Redirecting to login...");
-        window.location.href = "/";
+      // Only redirect to login on 401 (invalid/expired session), not 403 (forbidden/mismatch)
+      if (status === 401 && !isAuthRequest) {
+        const isAdminRequest = error.config?.url?.startsWith('/admin');
+        if (isAdminRequest) {
+          console.warn("Admin session expired, redirecting to admin login...");
+          clearAdminAuth();
+          window.location.href = "/admin";
+        } else {
+          console.warn("Session expired or invalid, redirecting to login...");
+          logout();
+          window.location.href = "/auth/login";
+        }
       }
     }
     return Promise.reject(error);
@@ -114,6 +143,7 @@ api.interceptors.response.use(
 export const authAPI = {
   login: (credentials) => api.post("/auth/login", credentials),
   register: (userData) => api.post("/auth/register", userData),
+  adminLogin: (credentials) => api.post("/auth/admin/login", credentials),
   acceptTerms: (userId) => api.post("/auth/accept-terms", { user_id: userId }),
   getTermsStatus: (userId) => api.get(`/auth/terms-status/${userId}`),
 };
@@ -123,9 +153,9 @@ export const foodPurchaseAPI = {
   getWeeklySummary: (params) => api.get("/purchases/weekly-summary", { params }),
   getFoodPurchases: (params) => api.get("/food-purchases", { params }),
   getFoodItems: (params) => api.get("/food-items", { params }),
-    getFrequentlyAddedFoods: (params) => api.get("/frequently-added-foods", { params }),
-    getPopularFoodItems: (params) => api.get("/popular-food-items", { params }),
-    getRecentPurchases: (params) => api.get("/recent-purchases", { params }),
+  getFrequentlyAddedFoods: (params) => api.get("/frequently-added-foods", { params }),
+  getPopularFoodItems: (params) => api.get("/popular-food-items", { params }),
+  getRecentPurchases: (params) => api.get("/recent-purchases", { params }),
   addFoodItem: (foodData) => api.post("/add-food-item", foodData),
   addPurchase: (purchaseData) => api.post("/purchase", purchaseData),
   deletePurchase: (purchaseId, params) => api.delete(`/purchase/${purchaseId}`, { params }),

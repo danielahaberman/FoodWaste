@@ -41,7 +41,7 @@ function LoginPage() {
       setError("");
       const response = await authAPI.login({ username: email, password });
       saveUsername(email);
-      setAuthenticated(response.data.user_id, email);
+      setAuthenticated(response.data.user_id, email, response.data.token);
       showPostLoginBanner();
 
       const intendedDestination = getIntendedDestination();
@@ -58,7 +58,6 @@ function LoginPage() {
         const responseData = err.response.data || {};
         const serverMessage = responseData.error || responseData.message;
         if (status === 401) setError(serverMessage || "Invalid username or password");
-        else if (status === 404) setError(serverMessage || "User not found");
         else if (status === 400) setError(serverMessage || "Please fill in all fields");
         else setError(serverMessage || "Server error. Please try again.");
       } else if (err.request) {

@@ -2,7 +2,12 @@
 // authRoutes.js
 import express from 'express';
 import bcrypt from 'bcrypt';
-import pool from './db.js'; // your pg Pool instance
+import pool from './db.js';
+import {
+  signUserToken,
+  signAdminToken,
+  getAdminCredentials,
+} from './middleware/auth.js';
 
 const router = express.Router();
 
@@ -25,11 +30,12 @@ router.post('/register', async (req, res) => {
     `;
 
     const { rows } = await pool.query(query, [username, hashedPassword]);
+    const user = rows[0];
+    const token = signUserToken(user.id, user.username);
 
-    res.status(201).json(rows[0]);
+    res.status(201).json({ ...user, token });
   } catch (err) {
     console.error('Error registering user:', err);
-    // Check if it's a unique constraint violation (username already exists)
     if (err.code === '23505') {
       return res.status(409).json({ error: 'Username is already taken' });
     }
@@ -39,14 +45,6 @@ router.post('/register', async (req, res) => {
 
 // Login route
 router.post('/login', async (req, res) => {
-  console.log('🔐 Login attempt:', {
-    path: req.path,
-    url: req.url,
-    method: req.method,
-    origin: req.headers.origin,
-    host: req.headers.host,
-    body: { username: req.body?.username, hasPassword: !!req.body?.password }
-  });
   const { username, password } = req.body;
 
   if (!username || !password) {
@@ -59,19 +57,37 @@ router.post('/login', async (req, res) => {
     const user = rows[0];
 
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(401).json({ error: 'Invalid username or password' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: 'Invalid username or password' });
     }
 
-    res.json({ message: 'Login successful', user_id: user.id });
+    const token = signUserToken(user.id, user.username);
+    res.json({ message: 'Login successful', user_id: user.id, username: user.username, token });
   } catch (err) {
     console.error('Error logging in:', err);
     res.status(500).json({ error: 'Error logging in' });
   }
+});
+
+// Admin login route (hardcoded credentials)
+router.post('/admin/login', async (req, res) => {
+  const { username, password } = req.body;
+  const { username: adminUsername, password: adminPassword } = getAdminCredentials();
+
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password are required' });
+  }
+
+  if (username !== adminUsername || password !== adminPassword) {
+    return res.status(401).json({ error: 'Invalid admin credentials' });
+  }
+
+  const token = signAdminToken(username);
+  res.json({ message: 'Admin login successful', token });
 });
 
 export default router;

@@ -44,6 +44,8 @@ export default {
           '/purchase',
           '/purchases',
           '/food',       // covers /food-items, /food-purchases, etc.
+          '/frequently-added-foods',
+          '/add-food-item',
           '/popular-food-items',
           '/recent-purchases',
           '/quantity',   // covers /quantity-types
@@ -51,7 +53,6 @@ export default {
           '/survey-response',
           '/consumption',// covers /consumption-log, /consumption-summary, etc.
           '/health',
-          '/today',      // daily-tasks "today" endpoint in this app
         ];
 
         return Object.fromEntries(prefixes.map((p) => [p, proxyFor()]));

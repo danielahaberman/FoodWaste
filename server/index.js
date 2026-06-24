@@ -20,6 +20,7 @@ process.env.TZ = 'America/New_York';
 
 import pool from "./db.js"; // Your pg Pool instance
 import authRoutes from "./authRoutes.js"; // Import auth routes
+import { requireAuth, requireAdmin, requireSelfUserId } from "./middleware/auth.js";
 import moment from "moment-timezone";
 import questions from "./SurveyQuestions.js";
 import foodItems from "./FoodItems.js";
@@ -129,18 +130,6 @@ app.options('*', cors(corsOptions));
 
 // Apply CORS to all routes
 app.use(cors(corsOptions));
-// Middleware to verify user ID in request
-function requireUserId(req, res, next) {
-  const user_id = req.body.user_id || req.query.user_id;
-
-  if (!user_id) {
-    return res.status(403).json({ error: "User ID is required." });
-  }
-
-  req.user_id = user_id;
-  next();
-}
-
 // Health check endpoint
 app.get("/health", (req, res) => {
   res.json({ 
@@ -164,8 +153,8 @@ app.use("/auth", authRoutes);
 console.log("✅ Auth routes mounted at /auth");
 
 // Terms acceptance endpoints
-app.post("/auth/accept-terms", requireUserId, async (req, res) => {
-  const { user_id } = req.body;
+app.post("/auth/accept-terms", requireAuth, async (req, res) => {
+  const user_id = req.user_id;
   const termsVersion = "1.0"; // You can make this dynamic based on your terms versioning
   
   try {
@@ -180,7 +169,7 @@ app.post("/auth/accept-terms", requireUserId, async (req, res) => {
   }
 });
 
-app.get("/auth/terms-status/:userId", async (req, res) => {
+app.get("/auth/terms-status/:userId", requireAuth, requireSelfUserId, async (req, res) => {
   const { userId } = req.params;
   
   try {
@@ -383,7 +372,7 @@ async function mapOffQuantityToAppQuantityType(offQuantity, appQuantityTypes) {
 }
 
 // POST purchase
-app.post("/purchase", requireUserId, async (req, res) => {
+app.post("/purchase", requireAuth, async (req, res) => {
 const { user_id, name, category, category_id, price, quantity, quantity_type, quantity_type_id, purchase_date, barcode, image_url, brand, source, categories_tags, ingredients_text } = req.body;
 
 // Convert purchase_date to US East Coast timezone and truncate to just date part
@@ -563,7 +552,7 @@ const query = `
     res.status(500).json({ error: err.message });
   }
 });
-app.delete("/purchase/:id", requireUserId, async (req, res) => {
+app.delete("/purchase/:id", requireAuth, async (req, res) => {
   const purchaseId = req.params.id;
   const userId = req.user_id;
 
@@ -629,7 +618,7 @@ app.get("/popular-food-items", async (req, res) => {
 });
 
 // GET recent purchases (per-user, distinct items ordered by most recent purchase date)
-app.get("/recent-purchases", requireUserId, async (req, res) => {
+app.get("/recent-purchases", requireAuth, async (req, res) => {
   const userId = req.user_id;
   const { limit = 20 } = req.query;
 
@@ -683,7 +672,7 @@ app.get("/recent-purchases", requireUserId, async (req, res) => {
 });
 
 // GET frequently-added-foods
-app.get("/frequently-added-foods", requireUserId, async (req, res) => {
+app.get("/frequently-added-foods", requireAuth, async (req, res) => {
   const { user_id } = req.query;
   
   if (!user_id) {
@@ -787,7 +776,7 @@ app.get("/frequently-added-foods", requireUserId, async (req, res) => {
 });
 
 // GET food-items
-app.get("/food-items", requireUserId, async (req, res) => {
+app.get("/food-items", requireAuth, async (req, res) => {
   let user_id = parseInt(req.query.user_id, 10);
   if (isNaN(user_id)) {
     return res.status(400).json({ error: "Invalid user_id" });
@@ -829,7 +818,7 @@ app.get("/food-items", requireUserId, async (req, res) => {
 
 
 // GET food-purchases
-app.get("/food-purchases", requireUserId, async (req, res) => {
+app.get("/food-purchases", requireAuth, async (req, res) => {
   const { user_id } = req.query;
 
   const query = `
@@ -874,7 +863,7 @@ app.get("/food-purchases", requireUserId, async (req, res) => {
 });
 
 // POST consumption or waste log
-app.post("/consumption-log", requireUserId, async (req, res) => {
+app.post("/consumption-log", requireAuth, async (req, res) => {
   const { user_id, purchase_id, action, quantity, percentage } = req.body;
 
   if (!purchase_id || !action || (quantity === undefined && percentage === undefined)) {
@@ -933,7 +922,7 @@ app.post("/consumption-log", requireUserId, async (req, res) => {
 
 // POST log consumed + wasted in one request (transactional)
 // This supports a "3-way" UI: consumed / wasted / unmarked, where users log partial amounts over time.
-app.post("/consumption-log/split", requireUserId, async (req, res) => {
+app.post("/consumption-log/split", requireAuth, async (req, res) => {
   const { user_id, purchase_id, consumed_quantity, wasted_quantity } = req.body;
 
   if (!purchase_id) {
@@ -1036,7 +1025,7 @@ app.post("/consumption-log/split", requireUserId, async (req, res) => {
 });
 
 // GET summary of consumption/waste totals per purchase
-app.get("/consumption-summary", requireUserId, async (req, res) => {
+app.get("/consumption-summary", requireAuth, async (req, res) => {
   const { user_id, purchase_id } = req.query;
   try {
     const q = `
@@ -1053,7 +1042,7 @@ app.get("/consumption-summary", requireUserId, async (req, res) => {
 });
 
 // GET batch summary for many purchases
-app.get("/consumption-summary/batch", requireUserId, async (req, res) => {
+app.get("/consumption-summary/batch", requireAuth, async (req, res) => {
   const { user_id, purchase_ids } = req.query;
   if (!purchase_ids) {
     return res.status(400).json({ error: "purchase_ids is required" });
@@ -1084,7 +1073,7 @@ app.get("/consumption-summary/batch", requireUserId, async (req, res) => {
 });
 
 // GET overall summary across all time
-app.get("/consumption-summary/overall", requireUserId, async (req, res) => {
+app.get("/consumption-summary/overall", requireAuth, async (req, res) => {
   const { user_id } = req.query;
   try {
     const q = `
@@ -1104,7 +1093,7 @@ app.get("/consumption-summary/overall", requireUserId, async (req, res) => {
 });
 
 // GET weekly summary (based on purchases in the specified week)
-app.get("/consumption-summary/week", requireUserId, async (req, res) => {
+app.get("/consumption-summary/week", requireAuth, async (req, res) => {
   const { user_id, week_start } = req.query;
   try {
     const start = week_start ? moment.tz(week_start, 'America/New_York').startOf('week') : moment.tz('America/New_York').startOf('week');
@@ -1179,7 +1168,7 @@ app.get("/consumption-summary/week", requireUserId, async (req, res) => {
 });
 
 // GET consumption trends (percentage wasted over time)
-app.get("/consumption-trends", requireUserId, async (req, res) => {
+app.get("/consumption-trends", requireAuth, async (req, res) => {
   const { user_id, period = 'week', count, offset = 0 } = req.query;
   try {
     if (period !== 'day' && period !== 'week' && period !== 'month') {
@@ -1246,7 +1235,7 @@ app.get("/consumption-trends", requireUserId, async (req, res) => {
 });
 
 // GET waste by category (optionally bounded by purchase_date range)
-app.get("/consumption-by-category", requireUserId, async (req, res) => {
+app.get("/consumption-by-category", requireAuth, async (req, res) => {
   const { user_id, from, to } = req.query;
   try {
     let whereDates = "";
@@ -1301,7 +1290,7 @@ app.get("/consumption-by-category", requireUserId, async (req, res) => {
 });
 
 // List logs for a purchase
-app.get("/consumption-logs", requireUserId, async (req, res) => {
+app.get("/consumption-logs", requireAuth, async (req, res) => {
   const { user_id, purchase_id } = req.query;
   if (!purchase_id) {
     return res.status(400).json({ error: "purchase_id is required" });
@@ -1319,7 +1308,7 @@ app.get("/consumption-logs", requireUserId, async (req, res) => {
 });
 
 // Reset all logs for a purchase (make it fully "unmarked" again)
-app.delete("/consumption-logs", requireUserId, async (req, res) => {
+app.delete("/consumption-logs", requireAuth, async (req, res) => {
   const userId = req.user_id;
   const { purchase_id } = req.query;
   if (!purchase_id) {
@@ -1337,7 +1326,7 @@ app.delete("/consumption-logs", requireUserId, async (req, res) => {
 });
 
 // Update a log (quantity/action/percentage)
-app.patch("/consumption-log/:id", requireUserId, async (req, res) => {
+app.patch("/consumption-log/:id", requireAuth, async (req, res) => {
   const { id } = req.params;
   const { user_id } = req;
   const { action, quantity, percentage } = req.body;
@@ -1395,7 +1384,7 @@ app.patch("/consumption-log/:id", requireUserId, async (req, res) => {
 });
 
 // Delete a log
-app.delete("/consumption-log/:id", requireUserId, async (req, res) => {
+app.delete("/consumption-log/:id", requireAuth, async (req, res) => {
   const { id } = req.params;
   const { user_id } = req;
   try {
@@ -1408,7 +1397,7 @@ app.delete("/consumption-log/:id", requireUserId, async (req, res) => {
 });
 
 // Auto-mark remaining quantities as wasted for a given week
-app.post("/consumption-log/auto-waste-week", requireUserId, async (req, res) => {
+app.post("/consumption-log/auto-waste-week", requireAuth, async (req, res) => {
   const { user_id, week_start } = req.body; // ISO date or MM/DD/YYYY
   try {
     console.log('Auto-waste-week request:', { user_id, week_start });
@@ -1462,7 +1451,7 @@ app.post("/consumption-log/auto-waste-week", requireUserId, async (req, res) => 
 });
 
 // Auto-mark remaining quantities as consumed for a given week
-app.post("/consumption-log/auto-consume-week", requireUserId, async (req, res) => {
+app.post("/consumption-log/auto-consume-week", requireAuth, async (req, res) => {
   const { user_id, week_start } = req.body; // ISO date or MM/DD/YYYY
   try {
     const start = week_start ? moment.tz(week_start, 'MM/DD/YYYY', 'America/New_York') : moment.tz('America/New_York').subtract(1, 'week').startOf('week');
@@ -1512,7 +1501,7 @@ app.post("/consumption-log/auto-consume-week", requireUserId, async (req, res) =
 
 
 // GET purchases weekly summary
-app.get("/purchases/weekly-summary", requireUserId, async (req, res) => {
+app.get("/purchases/weekly-summary", requireAuth, async (req, res) => {
   const { user_id } = req.query;
 
   const query = `
@@ -1571,7 +1560,7 @@ app.get("/purchases/weekly-summary", requireUserId, async (req, res) => {
 });
 
 // POST add-food-item
-app.post("/add-food-item", requireUserId, async (req, res) => {
+app.post("/add-food-item", requireAuth, async (req, res) => {
   let {
     user_id,
     name,
@@ -1669,10 +1658,11 @@ app.get("/survey-questions", async (req, res) => {
 });
 
 // POST survey-response
-app.post("/survey-response", async (req, res) => {
-  const { userId, questionId, response } = req.body;
+app.post("/survey-response", requireAuth, async (req, res) => {
+  const userId = req.user_id;
+  const { questionId, response } = req.body;
 
-  if (!userId || !questionId || typeof response !== "string") {
+  if (!questionId || typeof response !== "string") {
     return res.status(400).json({ error: "Missing or invalid fields" });
   }
 
@@ -1729,11 +1719,12 @@ app.post("/survey-response", async (req, res) => {
 });
 
 // GET survey responses for a user and stage
-app.get("/api/surveys/responses", async (req, res) => {
-  const { userId, stage } = req.query;
+app.get("/api/surveys/responses", requireAuth, async (req, res) => {
+  const userId = req.user_id;
+  const { stage } = req.query;
 
-  if (!userId || !stage) {
-    return res.status(400).json({ error: "userId and stage are required" });
+  if (!stage) {
+    return res.status(400).json({ error: "stage is required" });
   }
 
   try {
@@ -1761,8 +1752,8 @@ app.get("/api/surveys/responses", async (req, res) => {
 });
 
 // GET survey status
-app.get("/api/surveys/status/:userId", async (req, res) => {
-  const userId = req.params.userId;
+app.get("/api/surveys/status/:userId", requireAuth, requireSelfUserId, async (req, res) => {
+  const userId = req.user_id;
 
   try {
     const countsQuery = `
@@ -1858,7 +1849,7 @@ app.get("/api/surveys/status/:userId", async (req, res) => {
 });
 
 // DELETE food-item
-app.delete("/food-items/:id", requireUserId, async (req, res) => {
+app.delete("/food-items/:id", requireAuth, async (req, res) => {
   const foodItemId = req.params.id;
   const userId = req.user_id;
 
@@ -1876,6 +1867,7 @@ app.delete("/food-items/:id", requireUserId, async (req, res) => {
 });
 
 // Admin Analytics Endpoints
+app.use("/admin", requireAdmin);
 
 // GET admin analytics overview
 app.get("/admin/analytics/overview", async (req, res) => {
@@ -2895,7 +2887,7 @@ const updateUserStreak = async (userId, completedToday) => {
 };
 
 // GET today's daily tasks for user
-app.get("/api/daily-tasks/today", requireUserId, async (req, res) => {
+app.get("/api/daily-tasks/today", requireAuth, async (req, res) => {
   const { user_id } = req.query;
   const today = moment.tz('America/New_York').format('YYYY-MM-DD');
   
@@ -2987,7 +2979,7 @@ app.get("/api/daily-tasks/today", requireUserId, async (req, res) => {
 });
 
 // POST mark popup as shown for today
-app.post("/api/daily-tasks/mark-popup-shown", requireUserId, async (req, res) => {
+app.post("/api/daily-tasks/mark-popup-shown", requireAuth, async (req, res) => {
   const { user_id } = req.body;
   const today = moment.tz('America/New_York').format('YYYY-MM-DD');
   
@@ -3004,7 +2996,7 @@ app.post("/api/daily-tasks/mark-popup-shown", requireUserId, async (req, res) =>
 });
 
 // GET user's streak information
-app.get("/api/daily-tasks/streak", requireUserId, async (req, res) => {
+app.get("/api/daily-tasks/streak", requireAuth, async (req, res) => {
   const { user_id } = req.query;
   
   try {
@@ -3100,7 +3092,7 @@ app.get("/api/leaderboard/total-completions", async (req, res) => {
 });
 
 // Unified Food Items Search Endpoint (searches local DB + Open Food Facts)
-app.get("/api/food-items/search", requireUserId, async (req, res) => {
+app.get("/api/food-items/search", requireAuth, async (req, res) => {
   const { term, user_id, pageSize } = req.query;
 
   console.log(`[SEARCH] Starting search - term: "${term}", user_id: ${user_id}`);
@@ -3791,7 +3783,7 @@ app.get("/api/openfoodfacts/categories", async (req, res) => {
 // POST endpoint removed - caching is now handled automatically in GET endpoint
 
 // DELETE clear all cache (admin function)
-app.delete("/api/openfoodfacts/clear", async (req, res) => {
+app.delete("/api/openfoodfacts/clear", requireAdmin, async (req, res) => {
   try {
     await pool.query("DELETE FROM off_product_cache");
     await pool.query("DELETE FROM off_search_cache");
@@ -3803,7 +3795,7 @@ app.delete("/api/openfoodfacts/clear", async (req, res) => {
 });
 
 // Cleanup expired cache entries (can be called periodically)
-app.post("/api/openfoodfacts/cleanup", async (req, res) => {
+app.post("/api/openfoodfacts/cleanup", requireAdmin, async (req, res) => {
   try {
     const result1 = await pool.query(
       "DELETE FROM off_product_cache WHERE expires_at < CURRENT_TIMESTAMP"
@@ -3845,15 +3837,6 @@ app.use((req, res) => {
 
 
 
-
-// Catch-all for 404 (must be after all routes)
-app.use((req, res) => {
-  console.log(`❌ 404 - Endpoint not found: ${req.method} ${req.path}`);
-  console.log(`   Origin: ${req.headers.origin || 'no origin'}`);
-  console.log(`   Host: ${req.headers.host || 'no host'}`);
-  console.log(`   URL: ${req.url}`);
-  res.status(404).json({ error: "Endpoint not found", path: req.path, method: req.method });
-});
 
     // Start server
     const PORT = process.env.PORT || 5001;

@@ -2,11 +2,13 @@
 
 export const USER_ID_KEY = "userId";
 export const USERNAME_KEY = "username";
+export const AUTH_TOKEN_KEY = "authToken";
+export const ADMIN_TOKEN_KEY = "adminToken";
 export const INTENDED_DESTINATION_KEY = "intendedDestination";
 export const AUTH_EXPIRY_KEY = "authExpiry";
 export const LOGIN_DATE_KEY = "loginDate";
 export const LAST_ROUTE_KEY = "lastRoute";
-export const AUTH_FEATURE_FLAG = "auth-session-v1"; // Feature flag for new auth system
+export const AUTH_FEATURE_FLAG = "auth-session-v2";
 const AUTH_DURATION_DAYS = 7; // Keep user logged in for 7 days
 
 // Routes that shouldn't be persisted (public/auth pages)
@@ -35,6 +37,7 @@ export const migrateAuthData = () => {
 		const authKeysToClear = [
 			USER_ID_KEY,
 			USERNAME_KEY,
+			AUTH_TOKEN_KEY,
 			AUTH_EXPIRY_KEY,
 			LOGIN_DATE_KEY,
 			INTENDED_DESTINATION_KEY,
@@ -80,7 +83,11 @@ export const clearLastRoute = () => {
 export const isAuthenticated = () => {
 	try {
 		const userId = localStorage.getItem(USER_ID_KEY);
-		if (!userId) {
+		const token = localStorage.getItem(AUTH_TOKEN_KEY);
+		if (!userId || !token) {
+			if (userId && !token) {
+				logout();
+			}
 			return false;
 		}
 
@@ -90,7 +97,6 @@ export const isAuthenticated = () => {
 			const expiryTimestamp = parseInt(expiryTime, 10);
 			const now = Date.now();
 			if (now > expiryTimestamp) {
-				// Auth has expired, clear it
 				console.log('[isAuthenticated] Auth expired, clearing session');
 				logout();
 				return false;
@@ -100,7 +106,6 @@ export const isAuthenticated = () => {
 		return true;
 	} catch (error) {
 		console.error('[isAuthenticated] Error:', error);
-		// On error (e.g., localStorage not available), default to not authenticated
 		return false;
 	}
 };
@@ -113,13 +118,22 @@ export const getCurrentUserId = () => {
 	return null;
 };
 
-export const setAuthenticated = (userId, username = null) => {
+export const getAuthToken = () => {
+	if (!isAuthenticated()) {
+		return null;
+	}
+	return localStorage.getItem(AUTH_TOKEN_KEY);
+};
+
+export const setAuthenticated = (userId, username = null, token = null) => {
 	console.log("[setAuthenticated] Setting auth for userId:", userId);
 	
-	// Ensure feature flag is set when user logs in with new system
 	localStorage.setItem(AUTH_FEATURE_FLAG, "true");
 	
 	localStorage.setItem(USER_ID_KEY, userId);
+	if (token) {
+		localStorage.setItem(AUTH_TOKEN_KEY, token);
+	}
 	// Save username if provided
 	if (username) {
 		localStorage.setItem(USERNAME_KEY, username);
@@ -154,11 +168,27 @@ export const getUsername = () => {
 export const logout = () => {
 	localStorage.removeItem(USER_ID_KEY);
 	localStorage.removeItem(USERNAME_KEY);
+	localStorage.removeItem(AUTH_TOKEN_KEY);
 	localStorage.removeItem(AUTH_EXPIRY_KEY);
 	localStorage.removeItem(INTENDED_DESTINATION_KEY);
 	localStorage.removeItem(LOGIN_DATE_KEY);
-	clearLastRoute(); // Clear last route on logout
-	// Note: We keep AUTH_FEATURE_FLAG so user stays on new system even after logout
+	clearLastRoute();
+};
+
+export const setAdminAuthenticated = (token) => {
+	if (token) {
+		sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
+	}
+	sessionStorage.setItem("adminAuthenticated", "true");
+};
+
+export const getAdminToken = () => sessionStorage.getItem(ADMIN_TOKEN_KEY);
+
+export const isAdminAuthenticated = () => !!getAdminToken();
+
+export const clearAdminAuth = () => {
+	sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+	sessionStorage.removeItem("adminAuthenticated");
 };
 
 

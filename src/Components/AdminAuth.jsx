@@ -12,6 +12,7 @@ import {
 } from '@mui/material';
 import { Lock, AdminPanelSettings, Home } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { authAPI } from '../api';
 
 const AdminAuth = ({ onLogin }) => {
   const navigate = useNavigate();
@@ -28,7 +29,6 @@ const AdminAuth = ({ onLogin }) => {
       ...prev,
       [name]: value
     }));
-    // Clear error when user starts typing
     if (error) setError('');
   };
 
@@ -37,20 +37,15 @@ const AdminAuth = ({ onLogin }) => {
     setLoading(true);
     setError('');
 
-    // Hardcoded admin credentials
-    const ADMIN_USERNAME = 'admin';
-    const ADMIN_PASSWORD = 'Admin_Food_Waste';
-
-    // Simulate a small delay for better UX
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    if (credentials.username === ADMIN_USERNAME && credentials.password === ADMIN_PASSWORD) {
-      onLogin();
-    } else {
-      setError('Invalid username or password');
+    try {
+      const response = await authAPI.adminLogin(credentials);
+      onLogin(response.data.token);
+    } catch (err) {
+      const serverMessage = err.response?.data?.error;
+      setError(serverMessage || 'Invalid username or password');
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
