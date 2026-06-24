@@ -140,6 +140,7 @@ function BottomBar() {
         ...frostedBar,
         boxSizing: "border-box",
         flexShrink: 0,
+        zIndex: 1100,
         width: "100%",
         pt: 0.5,
         pb: 'calc(8px + env(safe-area-inset-bottom, 0px))',

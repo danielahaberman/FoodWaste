@@ -1,23 +1,23 @@
 import React from 'react';
 import {
-  AppBar,
   Box,
   Container,
   Stack,
-  Toolbar,
   Typography,
 } from '@mui/material';
 import { frostedSurface } from '../themeStyles';
 
+/** Height of the bottom tab bar — used for snackbars/overlays, not page scroll padding. */
 export const BOTTOM_NAV_HEIGHT = 'calc(88px + env(safe-area-inset-bottom, 0px))';
 
 /**
- * Unified page shell for app routes and public scrollable pages.
+ * Unified page shell: fixed header (+ optional subheader), single scroll region, bottom nav lives in SidebarLayout.
  */
 const PageWrapper = ({
   title,
   children,
   headerAction,
+  subHeader = null,
   showLogo = false,
   logoSrc = '/appIcon2.png',
   showHeader = true,
@@ -25,38 +25,39 @@ const PageWrapper = ({
   backgroundColor = '#fafafa',
   contentMaxWidth = '600px',
 }) => {
-  const useFrostedHeader = showHeader;
-
   return (
     <Box
       sx={{
         display: 'flex',
         flexDirection: 'column',
         flex: 1,
-        minHeight: reserveBottomNav ? 0 : '100dvh',
+        height: '100%',
+        minHeight: 0,
         width: '100%',
         backgroundColor,
         overflow: 'hidden',
       }}
     >
       {showHeader && (
-        <AppBar
-          position="sticky"
-          elevation={0}
-          color="transparent"
+        <Box
+          component="header"
           sx={{
-            ...(useFrostedHeader ? frostedSurface : {}),
+            ...frostedSurface,
             flexShrink: 0,
+            zIndex: 10,
           }}
         >
-          <Toolbar
+          <Stack
+            direction="row"
+            alignItems="center"
+            spacing={1.5}
             sx={{
               maxWidth: contentMaxWidth,
               mx: 'auto',
               width: '100%',
               minHeight: { xs: 48, sm: 52 },
               px: { xs: 2, sm: 2.5 },
-              gap: 1.5,
+              py: { xs: 0.75, sm: 1 },
             }}
           >
             {showLogo && (
@@ -80,25 +81,48 @@ const PageWrapper = ({
                 fontWeight: 600,
                 letterSpacing: '-0.01em',
                 color: 'text.primary',
+                minWidth: 0,
               }}
+              noWrap
             >
               {title}
             </Typography>
             {headerAction}
-          </Toolbar>
-        </AppBar>
+          </Stack>
+        </Box>
+      )}
+
+      {subHeader && (
+        <Box
+          sx={{
+            flexShrink: 0,
+            zIndex: 9,
+            backgroundColor,
+            borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
+          }}
+        >
+          <Box
+            sx={{
+              maxWidth: contentMaxWidth,
+              mx: 'auto',
+              width: '100%',
+              px: { xs: 2, sm: 2.5 },
+            }}
+          >
+            {subHeader}
+          </Box>
+        </Box>
       )}
 
       <Box
         component="main"
         sx={{
           flex: 1,
+          minHeight: 0,
           overflow: 'auto',
           overflowX: 'hidden',
           WebkitOverflowScrolling: 'touch',
-          position: 'relative',
-          zIndex: 0,
-          pb: reserveBottomNav ? BOTTOM_NAV_HEIGHT : 'calc(16px + env(safe-area-inset-bottom, 0px))',
+          overscrollBehavior: 'contain',
         }}
       >
         <Container
@@ -109,6 +133,9 @@ const PageWrapper = ({
             mx: 'auto',
             px: { xs: 2, sm: 2.5 },
             py: { xs: 2, sm: 2.5 },
+            pb: reserveBottomNav
+              ? { xs: 2, sm: 2.5 }
+              : 'calc(16px + env(safe-area-inset-bottom, 0px))',
           }}
         >
           {children}

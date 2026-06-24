@@ -740,7 +740,7 @@ function ConsumeWaste({ onGoToDate }) {
     }
   };
 
-  const pageTitle = 'Weekly Summary';
+  const pageTitle = activeWeekOf ? "Log consume & waste" : "Weekly Summary";
 
   if (loading)
     return (
@@ -765,7 +765,19 @@ function ConsumeWaste({ onGoToDate }) {
       </PageWrapper>
     );
 
-  const headerActions = !activeWeekOf ? (
+  const headerActions = activeWeekOf ? (
+    <IconButton
+      size="small"
+      aria-label="Back to weekly summary"
+      onClick={() => setActiveWeekOf(null)}
+      sx={{
+        backgroundColor: "rgba(0, 0, 0, 0.04)",
+        "&:hover": { backgroundColor: "rgba(0, 0, 0, 0.08)" },
+      }}
+    >
+      <ArrowBackIosIcon fontSize="small" />
+    </IconButton>
+  ) : (
     <IconButton
       size="small"
       aria-label="Refresh summary"
@@ -778,12 +790,22 @@ function ConsumeWaste({ onGoToDate }) {
     >
       {loading ? <CircularProgress size={18} /> : <RefreshIcon fontSize="small" />}
     </IconButton>
+  );
+
+  const weekDetailSubHeader = activeWeekOf ? (
+    <Typography variant="caption" color="text.secondary" sx={{ display: "block", py: 0.75 }}>
+      {formatWeekRange(activeWeekOf)}
+    </Typography>
   ) : null;
 
   const { editableWeeks, weeks: editableWeekList } = buildEditableWeekList();
 
   return (
-    <PageWrapper title={pageTitle} headerAction={headerActions} showHeader={!activeWeekOf}>
+    <PageWrapper
+      title={pageTitle}
+      headerAction={headerActions}
+      subHeader={weekDetailSubHeader}
+    >
 
         {!activeWeekOf && (
           <Stack spacing={1.5}>
@@ -1044,27 +1066,6 @@ function ConsumeWaste({ onGoToDate }) {
 
         return (
           <Stack spacing={1.5}>
-            <Stack direction="row" alignItems="center" spacing={1}>
-              <IconButton
-                onClick={() => setActiveWeekOf(null)}
-                aria-label="Back to weekly summary"
-                sx={{
-                  backgroundColor: "rgba(0, 0, 0, 0.04)",
-                  "&:hover": { backgroundColor: "rgba(0, 0, 0, 0.08)" },
-                }}
-              >
-                <ArrowBackIosIcon fontSize="small" />
-              </IconButton>
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography variant="subtitle1" fontWeight={700} lineHeight={1.25}>
-                  Log consume &amp; waste
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {formatWeekRange(activeWeekOf)}
-                </Typography>
-              </Box>
-            </Stack>
-
             <Paper elevation={0} sx={{ ...cardSx, p: 2, mb: 1.5 }}>
               <SummaryLegend />
               <Box
@@ -1557,14 +1558,14 @@ function ConsumeWaste({ onGoToDate }) {
 
 		{/* Overall trends dialog */}
 		<Dialog open={overallOpen && isTabActive} onClose={() => setOverallOpen(false)} fullScreen>
+			<Box sx={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden' }}>
 			<Box sx={{ 
-				position: 'sticky', 
-				top: 0, 
-				zIndex: 1000,
+				flexShrink: 0,
 				backgroundColor: 'primary.main',
 				color: 'white',
 				px: { xs: 2, sm: 3 },
-				py: 2,
+				pt: 'calc(12px + env(safe-area-inset-top, 0px))',
+				pb: 2,
 				display: 'flex',
 				alignItems: 'center',
 				justifyContent: 'space-between',
@@ -1586,13 +1587,12 @@ function ConsumeWaste({ onGoToDate }) {
 					<CloseIcon />
 				</IconButton>
 			</Box>
-			<Box sx={{ display:'flex', flexDirection:'column', height:'100vh' }}>
-				<Tabs value={tabIndex} onChange={(_, v)=>setTabIndex(v)} variant="fullWidth">
+				<Tabs value={tabIndex} onChange={(_, v)=>setTabIndex(v)} variant="fullWidth" sx={{ flexShrink: 0 }}>
 					<Tab label="Overall" />
 					<Tab label="Trend" />
 					<Tab label="Category" />
 				</Tabs>
-				<Box sx={{ flex:1, overflow:'hidden' }}>
+				<Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
 					<SwipeableViews index={tabIndex} onChangeIndex={setTabIndex} style={{ height:'100%' }} containerStyle={{ height:'100%' }}>
 						{/* Overall Pie */}
 						<Box sx={{ height:'100%', overflow:'auto', p:2 }}>

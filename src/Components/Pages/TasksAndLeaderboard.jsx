@@ -12,76 +12,60 @@ import PageWrapper from "../PageWrapper";
 const TasksAndLeaderboard = () => {
   const [tabValue, setTabValue] = useState(0);
 
-  return (
-    <PageWrapper title="Tasks & Leaderboard">
-      <Box
+  const subHeader = (
+    <Box
+      sx={{
+        py: 1,
+        p: 0.5,
+        borderRadius: 3,
+        backgroundColor: "rgba(0, 0, 0, 0.04)",
+      }}
+    >
+      <Tabs
+        value={tabValue}
+        onChange={(_, v) => setTabValue(v)}
+        variant="fullWidth"
+        TabIndicatorProps={{ sx: { display: "none" } }}
         sx={{
-          display: "flex",
-          flexDirection: "column",
-          height: "100%",
-          width: "100%",
+          minHeight: 44,
+          "& .MuiTabs-flexContainer": { gap: 0.5 },
+          "& .MuiTab-root": {
+            minHeight: 44,
+            py: 1,
+            px: 1.5,
+            borderRadius: 2.5,
+            textTransform: "none",
+            fontWeight: 600,
+            fontSize: "0.875rem",
+            color: "text.secondary",
+            transition: "background-color 0.2s ease, color 0.2s ease",
+            "&.Mui-selected": {
+              color: "primary.main",
+              backgroundColor: "white",
+              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08)",
+            },
+          },
         }}
       >
-        <Box
-          sx={{
-            flexShrink: 0,
-            mb: 2,
-            p: 0.5,
-            borderRadius: 3,
-            backgroundColor: "rgba(0, 0, 0, 0.04)",
-          }}
-        >
-          <Tabs
-            value={tabValue}
-            onChange={(_, v) => setTabValue(v)}
-            variant="fullWidth"
-            TabIndicatorProps={{ sx: { display: "none" } }}
-            sx={{
-              minHeight: 44,
-              "& .MuiTabs-flexContainer": { gap: 0.5 },
-              "& .MuiTab-root": {
-                minHeight: 44,
-                py: 1,
-                px: 1.5,
-                borderRadius: 2.5,
-                textTransform: "none",
-                fontWeight: 600,
-                fontSize: "0.875rem",
-                color: "text.secondary",
-                transition: "background-color 0.2s ease, color 0.2s ease",
-                "&.Mui-selected": {
-                  color: "primary.main",
-                  backgroundColor: "white",
-                  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08)",
-                },
-              },
-            }}
-          >
-            <Tab
-              disableRipple
-              icon={<ChecklistIcon sx={{ fontSize: 20 }} />}
-              iconPosition="start"
-              label="Daily Tasks"
-            />
-            <Tab
-              disableRipple
-              icon={<TrophyIcon sx={{ fontSize: 20 }} />}
-              iconPosition="start"
-              label="Leaderboard"
-            />
-          </Tabs>
-        </Box>
+        <Tab
+          disableRipple
+          icon={<ChecklistIcon sx={{ fontSize: 20 }} />}
+          iconPosition="start"
+          label="Daily Tasks"
+        />
+        <Tab
+          disableRipple
+          icon={<TrophyIcon sx={{ fontSize: 20 }} />}
+          iconPosition="start"
+          label="Leaderboard"
+        />
+      </Tabs>
+    </Box>
+  );
 
-        <Box
-          sx={{
-            flex: 1,
-            overflow: "auto",
-            overflowX: "hidden",
-          }}
-        >
-          {tabValue === 0 ? <DailyTasks showCloseButton={false} /> : <Leaderboard />}
-        </Box>
-      </Box>
+  return (
+    <PageWrapper title="Tasks & Leaderboard" subHeader={subHeader}>
+      {tabValue === 0 ? <DailyTasks showCloseButton={false} /> : <Leaderboard />}
     </PageWrapper>
   );
 };

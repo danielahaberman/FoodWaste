@@ -68,15 +68,19 @@ const Survey = ({ questions }) => {
   const stageLabel = getStageLabel(surveyTitle);
   const userId = getCurrentUserId();
 
-  const progressPercent = useMemo(() => {
-    if (!questions?.length) return 0;
-    return Math.round(((currentIndex + 1) / questions.length) * 100);
-  }, [currentIndex, questions?.length]);
-
   const answeredCount = useMemo(
-    () => questions.filter((q) => responses[q.id] != null && responses[q.id] !== "").length,
+    () =>
+      questions.filter((q) => {
+        const value = responses[q.id];
+        return value != null && value !== "";
+      }).length,
     [questions, responses]
   );
+
+  const progressPercent = useMemo(() => {
+    if (!questions?.length) return 0;
+    return Math.round((answeredCount / questions.length) * 100);
+  }, [answeredCount, questions?.length]);
 
   useEffect(() => {
     if (!isTabActive) {
@@ -461,7 +465,7 @@ const Survey = ({ questions }) => {
               </Typography>
             </Box>
             <Chip
-              label={`${currentIndex + 1} / ${questions.length}`}
+              label={`Question ${currentIndex + 1} of ${questions.length}`}
               size="small"
               sx={{ fontWeight: 700, flexShrink: 0 }}
             />
@@ -480,7 +484,7 @@ const Survey = ({ questions }) => {
 
           <Stack direction="row" justifyContent="space-between" alignItems="center">
             <Typography variant="caption" color="text.secondary">
-              {progressPercent}% complete
+              {answeredCount} of {questions.length} answered ({progressPercent}%)
             </Typography>
             {resumedFromSaved && (
               <Typography variant="caption" color="primary.main" fontWeight={600}>

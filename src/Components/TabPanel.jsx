@@ -7,8 +7,9 @@ const TabPanel = memo(function TabPanel({ visible, children }) {
     <TabVisibilityContext.Provider value={visible}>
       <Box
         sx={{
+          position: 'absolute',
+          inset: 0,
           display: visible ? 'flex' : 'none',
-          flex: 1,
           flexDirection: 'column',
           minHeight: 0,
           width: '100%',
