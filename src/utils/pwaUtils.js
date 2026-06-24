@@ -34,6 +34,21 @@ export const isChromeOnIOS = () => {
   return /CriOS|FxiOS|OPiOS|EdgiOS/.test(navigator.userAgent);
 };
 
+export const isAndroidDevice = () => /Android/i.test(navigator.userAgent);
+
+/**
+ * True for phones/tablets where a home-screen install is the intended UX.
+ * Desktop browsers are excluded even if they support PWA install via the omnibar.
+ */
+export const isMobileLikeDevice = () => {
+  if (isIOSDevice()) return true;
+  if (isAndroidDevice()) return true;
+  if (typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches) {
+    return true;
+  }
+  return false;
+};
+
 /**
  * Check if the app is running in standalone mode (installed as PWA)
  */

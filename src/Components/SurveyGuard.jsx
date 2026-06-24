@@ -3,36 +3,42 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { surveyAPI } from "../api";
 import { getCurrentUserId } from "../utils/authUtils";
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
   Typography,
   Box,
-  useMediaQuery,
-  useTheme,
+  Stack,
 } from "@mui/material";
+import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
+import EventNoteOutlinedIcon from "@mui/icons-material/EventNoteOutlined";
+import AppConfirmDialog from "./AppConfirmDialog";
 
 function SurveyGuard({ children }) {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [surveyStatus, setSurveyStatus] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showWeeklyModal, setShowWeeklyModal] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
+  const isPublicPage = (pathname) => {
+    const publicPages = ["/", "/auth/login", "/auth/register", "/terms", "/survey"];
+    return publicPages.includes(pathname);
+  };
+
   useEffect(() => {
     checkSurveyStatus();
   }, []);
+
+  // Never overlay other tabs with survey modals; close when user opens the survey page.
+  useEffect(() => {
+    if (isPublicPage(location.pathname)) {
+      setShowWelcomeModal(false);
+      setShowWeeklyModal(false);
+    }
+  }, [location.pathname]);
 
   const checkSurveyStatus = async () => {
     try {
       const userId = getCurrentUserId();
       if (!userId) {
-        setIsLoading(false);
         return;
       }
 
@@ -47,7 +53,6 @@ function SurveyGuard({ children }) {
       ]);
       
       setSurveyStatus(response.data);
-      setIsLoading(false);
 
       // Check if user hasn't completed initial survey and is trying to access protected pages
       const surveyModalShown = localStorage.getItem('surveyModalShown');
@@ -71,14 +76,7 @@ function SurveyGuard({ children }) {
       }
     } catch (error) {
       console.error("Error checking survey status:", error);
-      // On error, allow access (don't block the app)
-      setIsLoading(false);
     }
-  };
-
-  const isPublicPage = (pathname) => {
-    const publicPages = ["/", "/auth/login", "/auth/register", "/terms", "/survey"];
-    return publicPages.includes(pathname);
   };
 
   const handleStartSurvey = () => {
@@ -110,61 +108,49 @@ function SurveyGuard({ children }) {
 
 
 
-  // If still loading, show nothing
-  if (isLoading) {
-    return null;
-  }
-
-  // If user hasn't completed initial survey and is on a protected page, show modal
+  // Never block page rendering while survey status loads.
   if (surveyStatus && !surveyStatus.initialCompleted && !isPublicPage(location.pathname)) {
     return (
       <>
         {children}
-        <Dialog
-          open={showWelcomeModal}
-          onClose={() => {}}
+        <AppConfirmDialog
+          open={showWelcomeModal && !isPublicPage(location.pathname)}
+          tone="primary"
+          icon={<AssignmentOutlinedIcon />}
+          title="Welcome to Food Hero!"
           maxWidth="sm"
-          fullWidth
-          fullScreen={isMobile}
+          scrollable
+          zIndex={1500}
           disableEscapeKeyDown
+          hideCloseButton
+          primaryAction={{
+            label: "Start survey",
+            onClick: handleStartSurvey,
+          }}
         >
-          <DialogTitle sx={{ textAlign: 'center', color: 'primary.main' }}>
-            🎯 Welcome to Food Hero!
-          </DialogTitle>
-          <DialogContent>
-            <Typography variant="body1" sx={{ mb: 2, textAlign: 'center' }}>
-              Before you start logging your food purchases, we need to learn a bit about you.
+          <Stack spacing={1.5}>
+            <Typography variant="body2" sx={{ lineHeight: 1.55 }}>
+              Before you start logging food purchases, we need to learn a bit about you.
             </Typography>
-            <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
-              <strong>Why is this important?</strong>
+            <Typography variant="body2" fontWeight={600}>
+              Why is this important?
             </Typography>
-            <Box component="ul" sx={{ pl: 2, mb: 2 }}>
-              <Typography component="li" variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
+            <Box component="ul" sx={{ m: 0, pl: 2.25 }}>
+              <Typography component="li" variant="body2" color="text.secondary" sx={{ mb: 0.75 }}>
                 Helps us understand your household and shopping habits
               </Typography>
-              <Typography component="li" variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
+              <Typography component="li" variant="body2" color="text.secondary" sx={{ mb: 0.75 }}>
                 Provides personalized insights and recommendations
               </Typography>
-              <Typography component="li" variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
+              <Typography component="li" variant="body2" color="text.secondary">
                 Contributes to our food waste research
               </Typography>
             </Box>
-            <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
-              The survey takes about 2-3 minutes to complete.
+            <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
+              Takes about 2–3 minutes to complete.
             </Typography>
-          </DialogContent>
-          <DialogActions sx={{ justifyContent: 'center', pb: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}>
-            <Button
-              variant="contained"
-              onClick={handleStartSurvey}
-              size="large"
-              color="primary"
-              sx={{ minWidth: 150 }}
-            >
-              Start Survey
-            </Button>
-          </DialogActions>
-        </Dialog>
+          </Stack>
+        </AppConfirmDialog>
       </>
     );
   }
@@ -173,90 +159,103 @@ function SurveyGuard({ children }) {
   return (
     <>
       {children}
-      {/* Weekly Survey Reminder Modal */}
-      <Dialog
-        open={showWeeklyModal}
+      {/* Weekly Survey Reminder Modal — hidden on survey route */}
+      <AppConfirmDialog
+        open={showWeeklyModal && !isPublicPage(location.pathname)}
         onClose={() => {
           const daysSince = surveyStatus?.daysSinceLastWeekly;
           if (daysSince !== null && daysSince <= 9) {
             handleRemindLater();
           }
         }}
+        tone={
+          surveyStatus?.daysSinceLastWeekly === null ||
+          surveyStatus?.daysSinceLastWeekly > 9
+            ? "warning"
+            : "primary"
+        }
+        icon={<EventNoteOutlinedIcon />}
+        title={
+          surveyStatus?.daysSinceLastWeekly === null ||
+          surveyStatus?.daysSinceLastWeekly > 9
+            ? "Weekly survey required"
+            : "Weekly check-in"
+        }
         maxWidth="sm"
-        fullWidth
-        fullScreen={isMobile}
-        disableEscapeKeyDown={surveyStatus?.daysSinceLastWeekly === null || surveyStatus?.daysSinceLastWeekly > 9}
+        scrollable
+        zIndex={1500}
+        disableEscapeKeyDown={
+          surveyStatus?.daysSinceLastWeekly === null ||
+          surveyStatus?.daysSinceLastWeekly > 9
+        }
+        hideCloseButton={
+          surveyStatus?.daysSinceLastWeekly === null ||
+          surveyStatus?.daysSinceLastWeekly > 9
+        }
+        primaryAction={{
+          label: "Start survey",
+          onClick: handleStartWeeklySurvey,
+        }}
+        secondaryAction={
+          surveyStatus?.daysSinceLastWeekly !== null &&
+          surveyStatus?.daysSinceLastWeekly <= 9
+            ? {
+                label: "Remind me tomorrow",
+                onClick: handleRemindLater,
+              }
+            : undefined
+        }
       >
-        <DialogTitle sx={{ textAlign: 'center', color: 'primary.main' }}>
-          {surveyStatus?.daysSinceLastWeekly === null || surveyStatus?.daysSinceLastWeekly > 9 
-            ? '⚠️ Weekly Survey Required!' 
-            : '📊 Weekly Check-In Time!'}
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="body1" sx={{ mb: 2, textAlign: 'center' }}>
-            {surveyStatus?.daysSinceLastWeekly === null || surveyStatus?.daysSinceLastWeekly > 9
-              ? 'You must complete your weekly survey to continue using the app.'
-              : 'It\'s time for your weekly survey! Help us track your food waste journey.'}
+        <Stack spacing={1.5}>
+          <Typography variant="body2" sx={{ lineHeight: 1.55 }}>
+            {surveyStatus?.daysSinceLastWeekly === null ||
+            surveyStatus?.daysSinceLastWeekly > 9
+              ? "Please complete your weekly survey to continue using the app."
+              : "It's time for your weekly survey. Help us track your food waste journey."}
           </Typography>
-          
+
           {surveyStatus?.daysSinceLastWeekly > 9 && (
-            <Typography variant="body2" sx={{ mb: 2, color: 'error.main', textAlign: 'center', fontWeight: 'bold' }}>
-              Your survey is overdue by {surveyStatus.daysSinceLastWeekly - 7} days. Please complete it now.
+            <Typography variant="body2" color="error.main" fontWeight={600}>
+              Your survey is overdue by {surveyStatus.daysSinceLastWeekly - 7} days.
             </Typography>
           )}
-          
-          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
-            <strong>Why complete weekly surveys?</strong>
+
+          <Typography variant="body2" fontWeight={600}>
+            Why complete weekly surveys?
           </Typography>
-          <Box component="ul" sx={{ pl: 2, mb: 2 }}>
-            <Typography component="li" variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
+          <Box component="ul" sx={{ m: 0, pl: 2.25 }}>
+            <Typography component="li" variant="body2" color="text.secondary" sx={{ mb: 0.75 }}>
               Track your progress over time
             </Typography>
-            <Typography component="li" variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
+            <Typography component="li" variant="body2" color="text.secondary" sx={{ mb: 0.75 }}>
               Help us understand changing habits and patterns
             </Typography>
-            <Typography component="li" variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
+            <Typography component="li" variant="body2" color="text.secondary">
               Contribute valuable data to reduce food waste
             </Typography>
           </Box>
-          {surveyStatus?.daysSinceLastWeekly && surveyStatus.daysSinceLastWeekly <= 9 && (
-            <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
-              It's been {surveyStatus.daysSinceLastWeekly} days since your last weekly survey.
-              {surveyStatus.daysSinceLastWeekly >= 7 && surveyStatus.daysSinceLastWeekly <= 9 && (
-                <span style={{ color: '#1976d2', fontWeight: 'bold' }}>
-                  {' '}You have {10 - surveyStatus.daysSinceLastWeekly} day{10 - surveyStatus.daysSinceLastWeekly > 1 ? 's' : ''} left to complete it.
-                </span>
-              )}
-            </Typography>
-          )}
-          <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic', mt: 1 }}>
-            The survey takes about 2-3 minutes to complete.
+
+          {surveyStatus?.daysSinceLastWeekly &&
+            surveyStatus.daysSinceLastWeekly <= 9 && (
+              <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
+                It&apos;s been {surveyStatus.daysSinceLastWeekly} days since your last weekly
+                survey.
+                {surveyStatus.daysSinceLastWeekly >= 7 &&
+                  surveyStatus.daysSinceLastWeekly <= 9 && (
+                    <>
+                      {" "}
+                      You have {10 - surveyStatus.daysSinceLastWeekly} day
+                      {10 - surveyStatus.daysSinceLastWeekly > 1 ? "s" : ""} left to complete it.
+                    </>
+                  )}
+              </Typography>
+            )}
+
+          <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
+            Takes about 2–3 minutes to complete.
           </Typography>
-        </DialogContent>
-        <DialogActions sx={{ justifyContent: 'center', pb: 'calc(24px + env(safe-area-inset-bottom, 0px))', gap: 2, flexWrap: 'wrap' }}>
-          <Button
-            variant="contained"
-            onClick={handleStartWeeklySurvey}
-            size="large"
-            color="primary"
-            sx={{ minWidth: 150 }}
-          >
-            Start Survey
-          </Button>
-          {/* Only show "Remind Me Tomorrow" if within grace period */}
-          {surveyStatus?.daysSinceLastWeekly !== null && surveyStatus?.daysSinceLastWeekly <= 9 && (
-            <Button
-              variant="outlined"
-              onClick={handleRemindLater}
-              size="large"
-              color="primary"
-              sx={{ minWidth: 150 }}
-            >
-              Remind Me Tomorrow
-            </Button>
-          )}
-        </DialogActions>
-      </Dialog>
+        </Stack>
+      </AppConfirmDialog>
     </>
   );
 }

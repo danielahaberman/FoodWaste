@@ -1,6 +1,6 @@
 // @ts-nocheck
 /* eslint-disable react/prop-types */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, startTransition } from "react";
 import { Box, IconButton, Typography, Badge, Paper } from "@mui/material";
 import {
   Restaurant as RestaurantIcon,
@@ -55,6 +55,11 @@ function BottomBar() {
     window.addEventListener('taskCompleted', handleTaskUpdate);
     return () => window.removeEventListener('taskCompleted', handleTaskUpdate);
   }, []);
+
+  const goTo = (path) => {
+    if (location.pathname === path) return;
+    startTransition(() => navigate(path));
+  };
 
   const NavItem = ({ icon, label, onClick, color, isActive, route, isMain }) => (
     <Box
@@ -153,7 +158,7 @@ function BottomBar() {
       <NavItem
         icon={<CalendarIcon />}
         label="Summary"
-        onClick={() => navigate("/summary")}
+        onClick={() => goTo("/summary")}
         color="#1976d2"
         isActive={location.pathname === "/summary"}
         route="/summary"
@@ -162,7 +167,7 @@ function BottomBar() {
       <NavItem
         icon={<AssignmentIcon />}
         label="Survey"
-        onClick={() => navigate("/survey")}
+        onClick={() => goTo("/survey")}
         color="#1976d2"
         isActive={location.pathname === "/survey"}
         route="/survey"
@@ -171,7 +176,7 @@ function BottomBar() {
       <NavItem
         icon={<RestaurantIcon />}
         label="Log"
-        onClick={() => navigate("/log")}
+        onClick={() => goTo("/log")}
         color="#1976d2"
         isActive={location.pathname === "/log"}
         route="/log"
@@ -202,7 +207,7 @@ function BottomBar() {
           )
         }
         label="Tasks"
-        onClick={() => navigate("/tasks")}
+        onClick={() => goTo("/tasks")}
         color="#1976d2"
         isActive={location.pathname === "/tasks"}
         route="/tasks"
@@ -211,7 +216,7 @@ function BottomBar() {
       <NavItem
         icon={<SettingsIcon />}
         label="Settings"
-        onClick={() => navigate("/settings")}
+        onClick={() => goTo("/settings")}
         color="#1976d2"
         isActive={location.pathname === "/settings"}
         route="/settings"

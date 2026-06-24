@@ -96,6 +96,8 @@ const PageWrapper = ({
           overflow: 'auto',
           overflowX: 'hidden',
           WebkitOverflowScrolling: 'touch',
+          position: 'relative',
+          zIndex: 0,
           pb: reserveBottomNav ? BOTTOM_NAV_HEIGHT : 'calc(16px + env(safe-area-inset-bottom, 0px))',
         }}
       >

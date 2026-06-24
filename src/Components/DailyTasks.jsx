@@ -8,25 +8,34 @@ import {
   Button,
   LinearProgress,
   Stack,
-  Card,
-  CardContent,
   IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Badge,
+  CircularProgress,
 } from "@mui/material";
 import {
   Restaurant as FoodIcon,
   Assignment as SurveyIcon,
-  Delete as WasteIcon,
+  DeleteOutline as WasteIcon,
   LocalFireDepartment as FireIcon,
   CheckCircle as CheckIcon,
   Close as CloseIcon,
+  ChevronRight as ChevronRightIcon,
 } from "@mui/icons-material";
 import { dailyTasksAPI } from "../api";
 import { getCurrentUserId } from "../utils/authUtils";
+import AppConfirmDialog from "./AppConfirmDialog";
+
+const TASK_ACCENTS = {
+  food: { bg: "rgba(25, 118, 210, 0.12)", color: "#1976d2", Icon: FoodIcon },
+  survey: { bg: "rgba(103, 58, 183, 0.12)", color: "#673ab7", Icon: SurveyIcon },
+  consume_waste: { bg: "rgba(46, 125, 50, 0.12)", color: "#2e7d32", Icon: WasteIcon },
+};
+
+const cardSx = {
+  borderRadius: 3,
+  border: "none",
+  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06)",
+  backgroundColor: "white",
+};
 
 const DailyTasks = ({ onClose, showCloseButton = true }) => {
   const navigate = useNavigate();
@@ -48,11 +57,10 @@ const DailyTasks = ({ onClose, showCloseButton = true }) => {
         dailyTasksAPI.getTodayTasks({ user_id: userId }),
         dailyTasksAPI.getStreak({ user_id: userId }),
       ]);
-      
+
       setDailyTasks(tasksResponse.data);
       setStreak(streakResponse.data);
-      
-      // Show celebration if all tasks completed
+
       if (tasksResponse.data?.all_tasks_completed && !showCelebration) {
         setShowCelebration(true);
       }
@@ -67,14 +75,13 @@ const DailyTasks = ({ onClose, showCloseButton = true }) => {
     fetchDailyTasks();
   }, []);
 
-  // Listen for task completion events to refresh data
   useEffect(() => {
     const handleTaskCompleted = () => {
       fetchDailyTasks();
     };
-    
-    window.addEventListener('taskCompleted', handleTaskCompleted);
-    return () => window.removeEventListener('taskCompleted', handleTaskCompleted);
+
+    window.addEventListener("taskCompleted", handleTaskCompleted);
+    return () => window.removeEventListener("taskCompleted", handleTaskCompleted);
   }, []);
 
   const handleTaskNavigation = (taskType) => {
@@ -86,8 +93,6 @@ const DailyTasks = ({ onClose, showCloseButton = true }) => {
         navigate("/survey");
         break;
       case "consume_waste":
-        // Route to the Consume/Waste page.
-        // (Previously this dispatched an event with no listener, so the button did nothing.)
         navigate("/summary");
         if (onClose) onClose();
         break;
@@ -105,277 +110,290 @@ const DailyTasks = ({ onClose, showCloseButton = true }) => {
     return count;
   };
 
-  const getProgressPercentage = () => {
-    const completed = getTaskCompletionCount();
-    return (completed / 3) * 100;
-  };
+  const completedCount = getTaskCompletionCount();
+  const progressPct = (completedCount / 3) * 100;
 
   const tasks = [
     {
       id: "food",
       title: "Log your first food item",
       description: "Add at least one food item to your log today",
-      icon: <FoodIcon />,
       completed: dailyTasks?.log_food_completed || false,
-      buttonText: "Go",
-      color: "primary",
     },
     {
       id: "survey",
       title: "Complete your survey",
       description: "Complete any available survey",
-      icon: <SurveyIcon />,
       completed: dailyTasks?.complete_survey_completed || false,
-      buttonText: "Go",
-      color: "secondary",
     },
     {
       id: "consume_waste",
       title: "Log your consume/waste",
       description: "Track what you consumed or wasted today",
-      icon: <WasteIcon />,
       completed: dailyTasks?.log_consume_waste_completed || false,
-      buttonText: "Go",
-      color: "success",
     },
   ];
 
   if (loading) {
     return (
-      <Box sx={{ p: 3, textAlign: "center" }}>
-        <Typography>Loading daily tasks...</Typography>
+      <Box sx={{ py: 8, display: "flex", justifyContent: "center" }}>
+        <CircularProgress size={32} />
       </Box>
     );
   }
 
   return (
-    <Box sx={{ 
-      p: { xs: 1, sm: 2 }, 
-      maxWidth: 600, 
-      mx: "auto",
-      width: "100%"
-    }}>
-      {/* Header - only show if showCloseButton is true */}
+    <Box sx={{ px: { xs: 0, sm: 0.5 }, pb: 3, width: "100%" }}>
       {showCloseButton && (
-        <Box sx={{ 
-          display: "flex", 
-          alignItems: "center", 
-          justifyContent: "space-between", 
-          mb: 3 
-        }}>
-          <Typography 
-            variant="h4" 
-            sx={{ 
-              fontWeight: "bold", 
-              color: "primary.main",
-              fontSize: { xs: "1.5rem", sm: "2rem" }
-            }}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            mb: 2.5,
+          }}
+        >
+          <Typography
+            variant="h5"
+            sx={{ fontWeight: 600, letterSpacing: "-0.02em" }}
           >
             Daily Tasks
           </Typography>
-          <IconButton onClick={onClose} size="small">
+          <IconButton onClick={onClose} aria-label="Close">
             <CloseIcon />
           </IconButton>
         </Box>
       )}
 
-      {/* Streak Display */}
-      <Paper sx={{ 
-        p: { xs: 1, sm: 1.5 }, 
-        mb: 2, 
-        background: "linear-gradient(135deg, #ff6b35 0%, #f7931e 100%)" 
-      }}>
-        <Stack 
-          direction="row" 
-          alignItems="center" 
-          spacing={{ xs: 1, sm: 1.5 }}
+      {/* Streak + progress hero */}
+      <Paper elevation={0} sx={{ ...cardSx, mb: 2.5, overflow: "hidden" }}>
+        <Box
+          sx={{
+            px: 2.5,
+            py: 2,
+            background:
+              "linear-gradient(135deg, #1565c0 0%, #42a5f5 100%)",
+            color: "white",
+          }}
         >
-          <FireIcon sx={{ fontSize: { xs: 20, sm: 24 }, color: "white" }} />
-          <Box>
-            <Typography 
-              variant="body1" 
-              sx={{ 
-                color: "white", 
-                fontWeight: "bold",
-                fontSize: { xs: "0.875rem", sm: "1rem" },
-                lineHeight: 1.2
+          <Stack direction="row" alignItems="center" spacing={1.5}>
+            <Box
+              sx={{
+                width: 44,
+                height: 44,
+                borderRadius: 2.5,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: "rgba(255, 255, 255, 0.2)",
               }}
             >
-              Current Streak: {streak?.current_streak || 0} day(s)
+              <FireIcon sx={{ fontSize: 26 }} />
+            </Box>
+            <Box sx={{ flex: 1 }}>
+              <Typography
+                variant="body2"
+                sx={{ opacity: 0.9, fontWeight: 500, mb: 0.25 }}
+              >
+                Your streak
+              </Typography>
+              <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+                {streak?.current_streak || 0}{" "}
+                {(streak?.current_streak || 0) === 1 ? "day" : "days"}
+              </Typography>
+            </Box>
+            <Box sx={{ textAlign: "right" }}>
+              <Typography variant="caption" sx={{ opacity: 0.85, display: "block" }}>
+                Best
+              </Typography>
+              <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                {streak?.longest_streak || 0} days
+              </Typography>
+            </Box>
+          </Stack>
+        </Box>
+
+        <Box sx={{ px: 2.5, py: 2 }}>
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="baseline"
+            sx={{ mb: 1 }}
+          >
+            <Typography variant="body2" fontWeight={600} color="text.primary">
+              Today&apos;s progress
             </Typography>
-            <Typography 
-              variant="body2" 
-              sx={{ 
-                color: "white", 
-                opacity: 0.9,
-                fontSize: { xs: "0.7rem", sm: "0.75rem" },
-                lineHeight: 1.2
-              }}
-            >
-              Longest: {streak?.longest_streak || 0} day(s)
+            <Typography variant="body2" color="text.secondary">
+              {completedCount}/3 complete
             </Typography>
-          </Box>
-        </Stack>
+          </Stack>
+          <LinearProgress
+            variant="determinate"
+            value={progressPct}
+            sx={{
+              height: 8,
+              borderRadius: 4,
+              backgroundColor: "rgba(25, 118, 210, 0.12)",
+              "& .MuiLinearProgress-bar": {
+                borderRadius: 4,
+                background: "linear-gradient(90deg, #1976d2, #42a5f5)",
+              },
+            }}
+          />
+        </Box>
       </Paper>
 
-      {/* Progress Bar */}
-      <Box sx={{ mb: 2 }}>
-        <Box sx={{ 
-          display: "flex", 
-          justifyContent: "space-between", 
-          mb: 0.5,
-          flexWrap: "wrap",
-          gap: 1
-        }}>
-          <Typography 
-            variant="body2" 
-            color="text.secondary"
-            sx={{ fontSize: { xs: "0.7rem", sm: "0.75rem" } }}
-          >
-            Progress
-          </Typography>
-          <Typography 
-            variant="body2" 
-            color="text.secondary"
-            sx={{ fontSize: { xs: "0.7rem", sm: "0.75rem" } }}
-          >
-            {getTaskCompletionCount()}/3 tasks completed
-          </Typography>
-        </Box>
-        <LinearProgress
-          variant="determinate"
-          value={getProgressPercentage()}
-          sx={{ height: { xs: 4, sm: 6 }, borderRadius: 3 }}
-        />
-      </Box>
+      {/* Task list */}
+      <Stack spacing={1.5}>
+        {tasks.map((task) => {
+          const accent = TASK_ACCENTS[task.id];
+          const TaskIcon = accent.Icon;
 
-      {/* Tasks List */}
-      <Stack spacing={{ xs: 1, sm: 1.5 }}>
-        {tasks.map((task) => (
-          <Card
-            key={task.id}
-            sx={{
-              border: task.completed ? "2px solid #4caf50" : "1px solid #e0e0e0",
-              backgroundColor: task.completed ? "#f8fff8" : "white",
-            }}
-          >
-            <CardContent sx={{ p: { xs: 1, sm: 1.5 }, "&:last-child": { pb: { xs: 1, sm: 1.5 } } }}>
-              <Stack 
-                direction={{ xs: "column", sm: "row" }} 
-                alignItems={{ xs: "flex-start", sm: "center" }} 
-                spacing={{ xs: 1, sm: 1.5 }}
-              >
-                <Box sx={{ flex: 1, width: "100%" }}>
-                  <Stack 
-                    direction="row" 
-                    alignItems="center" 
-                    spacing={1}
-                    sx={{ mb: 0.25 }}
-                  >
-                    <Box
-                      sx={{
-                        p: 0.25,
-                        borderRadius: "50%",
-                        backgroundColor: task.completed ? "#4caf50" : "#f5f5f5",
-                        color: task.completed ? "white" : "text.secondary",
-                        minWidth: 20,
-                        minHeight: 20,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0
-                      }}
-                    >
-                      {task.completed ? <CheckIcon sx={{ fontSize: 12 }} /> : React.cloneElement(task.icon, { sx: { fontSize: 12 } })}
-                    </Box>
-                    <Typography 
-                      variant="body1" 
-                      sx={{ 
-                        fontWeight: "bold", 
-                        fontSize: { xs: "0.875rem", sm: "1rem" },
-                        lineHeight: 1.2
-                      }}
-                    >
-                      {task.title}
-                    </Typography>
-                  </Stack>
-                  <Typography 
-                    variant="body2" 
-                    color="text.secondary"
-                    sx={{ 
-                      fontSize: { xs: "0.7rem", sm: "0.75rem" },
-                      lineHeight: 1.2
+          return (
+            <Paper
+              key={task.id}
+              elevation={0}
+              onClick={
+                task.completed ? undefined : () => handleTaskNavigation(task.id)
+              }
+              sx={{
+                ...cardSx,
+                p: 2,
+                cursor: task.completed ? "default" : "pointer",
+                transition: "box-shadow 0.2s ease, transform 0.15s ease",
+                border: task.completed
+                  ? "1.5px solid rgba(46, 125, 50, 0.35)"
+                  : "1.5px solid transparent",
+                backgroundColor: task.completed ? "#f6fbf6" : "white",
+                ...(!task.completed && {
+                  "&:hover": {
+                    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
+                    transform: "translateY(-1px)",
+                  },
+                  "&:active": { transform: "translateY(0)" },
+                }),
+              }}
+            >
+              <Stack direction="row" alignItems="center" spacing={1.5}>
+                <Box
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 2.5,
+                    flexShrink: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: task.completed
+                      ? "rgba(46, 125, 50, 0.15)"
+                      : accent.bg,
+                    color: task.completed ? "#2e7d32" : accent.color,
+                  }}
+                >
+                  {task.completed ? (
+                    <CheckIcon sx={{ fontSize: 26 }} />
+                  ) : (
+                    <TaskIcon sx={{ fontSize: 24 }} />
+                  )}
+                </Box>
+
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography
+                    variant="subtitle1"
+                    sx={{
+                      fontWeight: 600,
+                      fontSize: "0.95rem",
+                      lineHeight: 1.3,
+                      color: task.completed ? "text.secondary" : "text.primary",
+                      textDecoration: task.completed ? "line-through" : "none",
                     }}
+                  >
+                    {task.title}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mt: 0.25, lineHeight: 1.4, fontSize: "0.8125rem" }}
                   >
                     {task.description}
                   </Typography>
                 </Box>
 
-                <Button
-                  variant={task.completed ? "outlined" : "contained"}
-                  color={task.completed ? "success" : task.color}
-                  disabled={task.completed}
-                  onClick={() => handleTaskNavigation(task.id)}
-                  size="small"
-                  sx={{ 
-                    minWidth: { xs: "100%", sm: 100 },
-                    width: { xs: "100%", sm: "auto" },
-                    fontSize: { xs: "0.7rem", sm: "0.75rem" },
-                    py: { xs: 0.5, sm: 0.25 },
-                    px: { xs: 1, sm: 1.5 },
-                    height: { xs: 32, sm: 28 }
-                  }}
-                >
-                  {task.completed ? "Completed" : task.buttonText}
-                </Button>
+                {!task.completed ? (
+                  <IconButton
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleTaskNavigation(task.id);
+                    }}
+                    sx={{
+                      flexShrink: 0,
+                      backgroundColor: "rgba(25, 118, 210, 0.08)",
+                      color: "primary.main",
+                      "&:hover": { backgroundColor: "rgba(25, 118, 210, 0.15)" },
+                    }}
+                    aria-label={`Go to ${task.title}`}
+                  >
+                    <ChevronRightIcon />
+                  </IconButton>
+                ) : (
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      flexShrink: 0,
+                      fontWeight: 600,
+                      color: "success.main",
+                      px: 1,
+                    }}
+                  >
+                    Done
+                  </Typography>
+                )}
               </Stack>
-            </CardContent>
-          </Card>
-        ))}
+            </Paper>
+          );
+        })}
       </Stack>
 
-      {/* Completion Message */}
       {dailyTasks?.all_tasks_completed && (
-        <Paper sx={{ 
-          p: { xs: 1.5, sm: 2 }, 
-          mt: 3, 
-          backgroundColor: "#e8f5e8", 
-          border: "1px solid #4caf50" 
-        }}>
-          <Typography 
-            variant="h6" 
-            sx={{ 
-              color: "#2e7d32", 
-              textAlign: "center", 
-              fontWeight: "bold",
-              fontSize: { xs: "1rem", sm: "1.25rem" }
-            }}
+        <Paper
+          elevation={0}
+          sx={{
+            ...cardSx,
+            mt: 2.5,
+            p: 2.5,
+            textAlign: "center",
+            backgroundColor: "#f1f8f1",
+            border: "1.5px solid rgba(46, 125, 50, 0.25)",
+          }}
+        >
+          <Typography
+            variant="subtitle1"
+            sx={{ fontWeight: 600, color: "success.dark" }}
           >
-            🎉 All tasks completed! Great job maintaining your streak!
+            All done for today!
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            Great job keeping your streak alive.
           </Typography>
         </Paper>
       )}
 
-      {/* Celebration Dialog */}
-      <Dialog open={showCelebration} onClose={() => setShowCelebration(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ textAlign: "center", color: "primary.main" }}>
-          🎉 Congratulations!
-        </DialogTitle>
-        <DialogContent sx={{ textAlign: "center" }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            You've completed all your daily tasks!
-          </Typography>
-          <Typography variant="body1" sx={{ mb: 2 }}>
-            Your streak is now {streak?.current_streak || 0} day(s) long. Keep it up!
-          </Typography>
-          <FireIcon sx={{ fontSize: 48, color: "#ff6b35", mb: 2 }} />
-        </DialogContent>
-        <DialogActions sx={{ justifyContent: "center" }}>
-          <Button variant="contained" onClick={() => setShowCelebration(false)}>
-            Awesome!
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <AppConfirmDialog
+        open={showCelebration}
+        onClose={() => setShowCelebration(false)}
+        tone="success"
+        icon={<FireIcon />}
+        title="All tasks complete!"
+        primaryAction={{
+          label: "Awesome!",
+          onClick: () => setShowCelebration(false),
+        }}
+      >
+        <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.55 }}>
+          Your streak is now <strong>{streak?.current_streak || 0} days</strong>. Keep it up!
+        </Typography>
+      </AppConfirmDialog>
     </Box>
   );
 };

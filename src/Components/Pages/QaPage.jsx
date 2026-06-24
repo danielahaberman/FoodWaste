@@ -29,50 +29,48 @@ function QaPage() {
   const [searchParams] = useSearchParams();
   const stageParam = searchParams.get('stage');
 
-  useEffect(() => {
-    const fetchSurveyStatus = async () => {
-      try {
-        setLoadingStatus(true);
-        const userId = getCurrentUserId();
-        if (!userId) {
-          setErrorStatus("You must be logged in to view surveys.");
-          setLoadingStatus(false);
-          return;
-        }
-        const res = await surveyAPI.getSurveyStatus(userId);
+  const fetchSurveyStatus = async () => {
+    try {
+      setLoadingStatus(true);
+      const userId = getCurrentUserId();
+      if (!userId) {
+        setErrorStatus("You must be logged in to view surveys.");
+        setLoadingStatus(false);
+        return;
+      }
+      const res = await surveyAPI.getSurveyStatus(userId);
 
-        setInitialCompleted(res.data.initialCompleted);
-        setLastWeeklyCompletion(res.data.lastWeeklyCompletion);
+      setInitialCompleted(res.data.initialCompleted);
+      setLastWeeklyCompletion(res.data.lastWeeklyCompletion);
 
-        // If stage parameter is provided, use it (for initial survey redirect)
-        if (stageParam) {
-          const qRes = await surveyAPI.getSurveyQuestions({ stage: stageParam });
+      if (stageParam) {
+        const qRes = await surveyAPI.getSurveyQuestions({ stage: stageParam });
+        setSurveyQuestions(qRes.data);
+      } else {
+        const completedThisWeek =
+          res.data.lastWeeklyCompletion &&
+          dayjs(res.data.lastWeeklyCompletion).week() === dayjs().week() &&
+          dayjs(res.data.lastWeeklyCompletion).year() === dayjs().year();
+
+        if (!res.data.initialCompleted || !completedThisWeek) {
+          const stage = res.data.initialCompleted ? "weekly" : "initial";
+          const qRes = await surveyAPI.getSurveyQuestions({ stage });
           setSurveyQuestions(qRes.data);
         } else {
-          // Only fetch questions if initial not completed OR last weekly completion is not this week
-          const completedThisWeek =
-            res.data.lastWeeklyCompletion &&
-            dayjs(res.data.lastWeeklyCompletion).week() === dayjs().week() &&
-            dayjs(res.data.lastWeeklyCompletion).year() === dayjs().year();
-
-          if (!res.data.initialCompleted || !completedThisWeek) {
-            const stage = res.data.initialCompleted ? "weekly" : "initial";
-            const qRes = await surveyAPI.getSurveyQuestions({ stage });
-            setSurveyQuestions(qRes.data);
-          } else {
-            setSurveyQuestions([]); // empty to indicate no questions this week
-          }
+          setSurveyQuestions([]);
         }
-
-        setErrorStatus(null);
-      } catch (err) {
-        console.error("Failed to load survey status:", err);
-        setErrorStatus("Failed to load survey status.");
-      } finally {
-        setLoadingStatus(false);
       }
-    };
 
+      setErrorStatus(null);
+    } catch (err) {
+      console.error("Failed to load survey status:", err);
+      setErrorStatus("Failed to load survey status.");
+    } finally {
+      setLoadingStatus(false);
+    }
+  };
+
+  useEffect(() => {
     fetchSurveyStatus();
   }, []);
 

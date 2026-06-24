@@ -1,21 +1,15 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from "react";
-import { Button, Typography, Divider, IconButton, Tooltip, Stack } from "@mui/material";
+import React from "react";
+import { Button, Typography, Divider, IconButton, Tooltip } from "@mui/material";
 import { GetApp as InstallIcon, Refresh as RefreshIcon } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { usePWA } from "../../context/PWAContext";
-import { isStandaloneMode } from "../../utils/pwaUtils";
 import versionData from '../../../version.json';
 import AuthLayout from "../AuthLayout";
 
 function LandingPage() {
   const navigate = useNavigate();
-  const { openInstallPrompt } = usePWA();
-  const [isStandalone, setIsStandalone] = useState(false);
-
-  useEffect(() => {
-    setIsStandalone(isStandaloneMode());
-  }, []);
+  const { openInstallPrompt, showInstallCTA } = usePWA();
 
   const handleClearStorage = () => {
     if (window.confirm('This will clear all app data (localStorage and sessionStorage). This will log you out and reset all preferences. Continue?')) {
@@ -64,7 +58,7 @@ function LandingPage() {
         Register
       </Button>
 
-      {!isStandalone && (
+      {showInstallCTA && (
         <>
           <Divider>
             <Typography variant="body2" color="text.secondary">OR</Typography>

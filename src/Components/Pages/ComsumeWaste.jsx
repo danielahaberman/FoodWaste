@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { foodPurchaseAPI, consumptionAPI } from "../../api";
 import moment from "moment-timezone";
+import RestartAltOutlinedIcon from "@mui/icons-material/RestartAltOutlined";
 import {
   Box,
   Typography,
@@ -31,8 +32,10 @@ import {
   useTheme,
 } from "@mui/material";
 import PageWrapper from "../PageWrapper";
+import AppConfirmDialog from "../AppConfirmDialog";
 import { useNavigate } from "react-router-dom";
 import { getCurrentUserId } from "../../utils/authUtils";
+import { useIsTabActive } from "../../context/TabVisibilityContext";
 import SwipeableViews from 'react-swipeable-views';
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import RestaurantIcon from "@mui/icons-material/Restaurant";
@@ -58,6 +61,7 @@ ChartJS.register(ArcElement, ChartTooltip, CategoryScale, LinearScale, PointElem
 
 function ConsumeWaste({ onGoToDate }) {
   const navigate = useNavigate();
+  const isTabActive = useIsTabActive();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [weeklySummary, setWeeklySummary] = useState([]);
@@ -106,6 +110,13 @@ function ConsumeWaste({ onGoToDate }) {
   useEffect(() => {
     fetchWeeklyPurchaseSummary();
   }, []);
+
+  useEffect(() => {
+    if (!isTabActive) {
+      setSelectedPurchase(null);
+      setOverallOpen(false);
+    }
+  }, [isTabActive]);
 
   const purchasesFlat = useMemo(() => weeklySummary.flatMap(w => w.purchases), [weeklySummary]);
 
@@ -1147,7 +1158,7 @@ function ConsumeWaste({ onGoToDate }) {
         );
       })()}
 
-      <Dialog open={!!selectedPurchase} onClose={closeDialog} fullWidth maxWidth="sm" fullScreen={isMobile}>
+      <Dialog open={!!selectedPurchase && isTabActive} onClose={closeDialog} fullWidth maxWidth="sm" fullScreen={isMobile}>
         <DialogTitle>Log Consumed / Wasted - {selectedPurchase?.name}</DialogTitle>
         <DialogContent>
           {selectedPurchase && (() => {
@@ -1313,35 +1324,32 @@ function ConsumeWaste({ onGoToDate }) {
       </Dialog>
 
       {/* Confirm reset */}
-      <Dialog
+      <AppConfirmDialog
         open={resetConfirmOpen}
-        onClose={() => (resetting ? null : setResetConfirmOpen(false))}
-        maxWidth="xs"
-        fullWidth
+        onClose={() => !resetting && setResetConfirmOpen(false)}
+        tone="warning"
+        icon={<RestartAltOutlinedIcon />}
+        title="Reset this item?"
+        primaryAction={{
+          label: resetting ? "Resetting…" : "Reset",
+          color: "error",
+          onClick: resetMarksForSelected,
+          disabled: resetting,
+        }}
+        secondaryAction={{
+          label: "Cancel",
+          onClick: () => setResetConfirmOpen(false),
+          disabled: resetting,
+        }}
       >
-        <DialogTitle>Reset this item?</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary">
-            This will delete all consumed/wasted marks for this item and make it fully unmarked again.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setResetConfirmOpen(false)} disabled={resetting}>
-            Cancel
-          </Button>
-          <Button
-            color="error"
-            variant="contained"
-            onClick={resetMarksForSelected}
-            disabled={resetting}
-          >
-            Reset
-          </Button>
-        </DialogActions>
-      </Dialog>
+        <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.55 }}>
+          This will delete all consumed/wasted marks for this item and make it fully unmarked
+          again.
+        </Typography>
+      </AppConfirmDialog>
 
 		{/* Overall trends dialog */}
-		<Dialog open={overallOpen} onClose={() => setOverallOpen(false)} fullScreen>
+		<Dialog open={overallOpen && isTabActive} onClose={() => setOverallOpen(false)} fullScreen>
 			<Box sx={{ 
 				position: 'sticky', 
 				top: 0, 

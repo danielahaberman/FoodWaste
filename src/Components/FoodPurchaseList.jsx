@@ -1,15 +1,14 @@
 /* eslint-disable react/prop-types */
-import React, { useState, useEffect, useRef } from "react";
+import React from "react";
 import {
-  List,
-  ListItemButton,
-  ListItemText,
-  Divider,
   Typography,
   IconButton,
   Box,
+  Paper,
+  Stack,
+  Chip,
 } from "@mui/material";
-import DeleteIcon from "@mui/icons-material/Delete";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 
 const categoryEmojiMap = {
   Fruits: "🍎",
@@ -36,141 +35,130 @@ const categoryEmojiMap = {
   Household: "🏠",
 };
 
+const cardSx = {
+  borderRadius: 2.5,
+  border: "none",
+  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06)",
+  backgroundColor: "white",
+};
+
 const FoodPurchaseList = ({ purchases, deletePurchase, canModify = true }) => {
-  const [activeId, setActiveId] = useState(null);
-  const listRef = useRef(null);
-
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (listRef.current && !listRef.current.contains(event.target)) {
-        setActiveId(null);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("touchstart", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("touchstart", handleClickOutside);
-    };
-  }, []);
-
   return (
-    <List ref={listRef} disablePadding>
-      {purchases.map(({ id, name, emoji, image, quantity, quantity_type, price, purchase_date, category, category_name }) => {
-        const isActive = activeId === id;
-        const cat = category || category_name;
-        const displayEmoji = emoji || (cat ? categoryEmojiMap[cat] : null) || "🍽️";
+    <Stack spacing={1}>
+      {purchases.map(
+        ({
+          id,
+          name,
+          emoji,
+          image,
+          quantity,
+          quantity_type,
+          price,
+          category,
+          category_name,
+        }) => {
+          const cat = category || category_name;
+          const displayEmoji =
+            emoji || (cat ? categoryEmojiMap[cat] : null) || "🍽️";
+          const qtyLabel = [quantity, quantity_type].filter(Boolean).join(" ");
 
-        return (
-          <React.Fragment key={id}>
-            <ListItemButton
-              onClick={() => setActiveId(isActive ? null : id)}
-              sx={{
-                bgcolor: isActive ? "action.selected" : "rgba(255, 255, 255, 0.95)",
-                py: 1.5,
-                px: 2,
-                position: "relative",
-                "&:hover": { bgcolor: "rgba(255, 255, 255, 0.98)" },
-                borderRadius: 1,
-                mb: 1,
-                mx: 0,
-                backdropFilter: "blur(10px)",
-              }}
-            >
-              <ListItemText
-                primary={
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    {/* Image if available, otherwise emoji or category fallback */}
-                    {image ? (
-                      <Box
-                        component="span"
-                        sx={{
-                          width: '32px',
-                          height: '32px',
-                          borderRadius: 1,
-                          overflow: 'hidden',
-                          backgroundColor: '#f5f5f5',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0,
-                        }}
-                      >
-                        <img
-                          src={image}
-                          alt={name}
-                          style={{
-                            maxWidth: '100%',
-                            maxHeight: '100%',
-                            objectFit: 'contain',
-                          }}
-                          onError={(e) => {
-                            // Fallback to emoji if image fails
-                            e.target.style.display = 'none';
-                            e.target.parentElement.innerHTML = `<span style="font-size: 1.3em;">${displayEmoji}</span>`;
-                          }}
-                        />
-                      </Box>
-                    ) : (
-                      <Box component="span" aria-label="emoji" role="img" sx={{ fontSize: "1.3em", display:'inline-flex', alignItems:'center' }}>
-                        {displayEmoji}
-                      </Box>
-                    )}
-                    <Typography
-                      variant="subtitle2"
-                      fontWeight="bold"
-                      color="text.primary"
-                      component="span"
-                    >
-                      {name}
-                    </Typography>
-                  </Box>
-                }
-                secondary={
-                  <Box display="flex" gap={2} flexWrap="wrap" mt={0.5}>
-                    <Typography variant="body2" color="text.secondary" noWrap>
-                      {quantity} {quantity_type} — ${Number(price || 0).toFixed(2)}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" noWrap>
-                      {new Date(purchase_date).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </Typography>
-                  </Box>
-                }
-              />
-              {isActive && (
-                <IconButton
-                  aria-label="delete purchase"
-                  edge="end"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (canModify) {
-                      deletePurchase(id);
-                      setActiveId(null);
-                    }
-                  }}
-                  disabled={!canModify}
-                  title={!canModify ? "Can only delete food from the past 7 days" : "Delete this food item"}
+          return (
+            <Paper key={id} elevation={0} sx={{ ...cardSx, p: 1.25 }}>
+              <Stack direction="row" alignItems="center" spacing={1.25}>
+                <Box
                   sx={{
-                    position: "absolute",
-                    right: 8,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    color: canModify ? "error.main" : "action.disabled",
+                    width: 48,
+                    height: 48,
+                    borderRadius: 2,
+                    flexShrink: 0,
+                    backgroundColor: "rgba(0, 0, 0, 0.04)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    overflow: "hidden",
+                    fontSize: "1.5rem",
                   }}
                 >
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
-              )}
-            </ListItemButton>
-          </React.Fragment>
-        );
-      })}
-    </List>
+                  {image ? (
+                    <Box
+                      component="img"
+                      src={image}
+                      alt=""
+                      loading="lazy"
+                      sx={{ width: "100%", height: "100%", objectFit: "contain" }}
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                      }}
+                    />
+                  ) : (
+                    displayEmoji
+                  )}
+                </Box>
+
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography
+                    variant="subtitle2"
+                    fontWeight={600}
+                    noWrap
+                    sx={{ fontSize: "0.9rem" }}
+                  >
+                    {name}
+                  </Typography>
+                  <Stack
+                    direction="row"
+                    alignItems="center"
+                    spacing={0.75}
+                    sx={{ mt: 0.35, flexWrap: "wrap", gap: 0.5 }}
+                  >
+                    {qtyLabel && (
+                      <Typography variant="caption" color="text.secondary">
+                        {qtyLabel}
+                      </Typography>
+                    )}
+                    {cat && (
+                      <Chip
+                        label={cat}
+                        size="small"
+                        sx={{
+                          height: 20,
+                          fontSize: "0.65rem",
+                          fontWeight: 600,
+                          backgroundColor: "rgba(0, 0, 0, 0.05)",
+                        }}
+                      />
+                    )}
+                  </Stack>
+                </Box>
+
+                <Typography
+                  variant="subtitle2"
+                  fontWeight={700}
+                  sx={{ flexShrink: 0, color: "text.primary", minWidth: 52, textAlign: "right" }}
+                >
+                  ${Number(price || 0).toFixed(2)}
+                </Typography>
+
+                {canModify && (
+                  <IconButton
+                    aria-label={`Delete ${name}`}
+                    size="small"
+                    onClick={() => deletePurchase(id)}
+                    sx={{
+                      flexShrink: 0,
+                      color: "error.main",
+                      backgroundColor: "rgba(211, 47, 47, 0.08)",
+                      "&:hover": { backgroundColor: "rgba(211, 47, 47, 0.15)" },
+                    }}
+                  >
+                    <DeleteOutlineIcon fontSize="small" />
+                  </IconButton>
+                )}
+              </Stack>
+            </Paper>
+          );
+        }
+      )}
+    </Stack>
   );
 };
 

@@ -1,117 +1,85 @@
 // @ts-nocheck
 import React, { useState } from "react";
+import { Box, Tabs, Tab } from "@mui/material";
 import {
-  Box,
-  Typography,
-  Tabs,
-  Tab,
-  Paper,
-} from "@mui/material";
-import {
-  Checklist as ChecklistIcon,
-  EmojiEvents as TrophyIcon,
+  ChecklistRounded as ChecklistIcon,
+  EmojiEventsOutlined as TrophyIcon,
 } from "@mui/icons-material";
-import { useNavigate } from "react-router-dom";
 import DailyTasks from "../DailyTasks";
 import Leaderboard from "./Leaderboard";
 import PageWrapper from "../PageWrapper";
-import { frostedSurface } from "../../themeStyles";
 
 const TasksAndLeaderboard = () => {
-  const navigate = useNavigate();
   const [tabValue, setTabValue] = useState(0);
-
-  const handleTabChange = (event, newValue) => {
-    setTabValue(newValue);
-  };
 
   return (
     <PageWrapper title="Tasks & Leaderboard">
-      <Box sx={{ 
-        display: "flex", 
-        flexDirection: "column",
-        height: "100%",
-        width: "100%"
-      }}>
-        <Paper sx={{ 
-          position: 'sticky',
-          top: 0,
-          zIndex: 998,
-          mb: 0, 
-          borderRadius: 0,
-          flexShrink: 0,
-          elevation: 0,
-          ...frostedSurface,
-        }}>
-            <Tabs
-              value={tabValue}
-              onChange={handleTabChange}
-              variant="fullWidth"
-              sx={{
-                "& .MuiTab-root": {
-                  minHeight: { xs: 48, sm: 60 },
-                  fontSize: { xs: "0.875rem", sm: "1rem" },
-                  py: { xs: 1, sm: 1.5 }
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          height: "100%",
+          width: "100%",
+        }}
+      >
+        <Box
+          sx={{
+            flexShrink: 0,
+            mb: 2,
+            p: 0.5,
+            borderRadius: 3,
+            backgroundColor: "rgba(0, 0, 0, 0.04)",
+          }}
+        >
+          <Tabs
+            value={tabValue}
+            onChange={(_, v) => setTabValue(v)}
+            variant="fullWidth"
+            TabIndicatorProps={{ sx: { display: "none" } }}
+            sx={{
+              minHeight: 44,
+              "& .MuiTabs-flexContainer": { gap: 0.5 },
+              "& .MuiTab-root": {
+                minHeight: 44,
+                py: 1,
+                px: 1.5,
+                borderRadius: 2.5,
+                textTransform: "none",
+                fontWeight: 600,
+                fontSize: "0.875rem",
+                color: "text.secondary",
+                transition: "background-color 0.2s ease, color 0.2s ease",
+                "&.Mui-selected": {
+                  color: "primary.main",
+                  backgroundColor: "white",
+                  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08)",
                 },
-              }}
-            >
-              <Tab
-                label={
-                  <Box sx={{ 
-                    display: "flex", 
-                    alignItems: "center", 
-                    gap: { xs: 0.5, sm: 1 },
-                    flexDirection: { xs: "column", sm: "row" }
-                  }}>
-                    <ChecklistIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />
-                    <Typography 
-                      variant="body1" 
-                      sx={{ 
-                        fontWeight: "bold",
-                        fontSize: { xs: "0.75rem", sm: "1rem" }
-                      }}
-                    >
-                      Daily Tasks
-                    </Typography>
-                  </Box>
-                }
-              />
-              <Tab
-                label={
-                  <Box sx={{ 
-                    display: "flex", 
-                    alignItems: "center", 
-                    gap: { xs: 0.5, sm: 1 },
-                    flexDirection: { xs: "column", sm: "row" }
-                  }}>
-                    <TrophyIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />
-                    <Typography 
-                      variant="body1" 
-                      sx={{ 
-                        fontWeight: "bold",
-                        fontSize: { xs: "0.75rem", sm: "1rem" }
-                      }}
-                    >
-                      Leaderboard
-                    </Typography>
-                  </Box>
-                }
-              />
-            </Tabs>
-        </Paper>
+              },
+            }}
+          >
+            <Tab
+              disableRipple
+              icon={<ChecklistIcon sx={{ fontSize: 20 }} />}
+              iconPosition="start"
+              label="Daily Tasks"
+            />
+            <Tab
+              disableRipple
+              icon={<TrophyIcon sx={{ fontSize: 20 }} />}
+              iconPosition="start"
+              label="Leaderboard"
+            />
+          </Tabs>
+        </Box>
 
-        {/* Tab Content - Scrollable */}
-        <Box sx={{ 
-          flex: 1, 
-          overflow: "auto",
-          overflowX: "hidden",
-        }}>
-          {tabValue === 0 && (
-            <DailyTasks showCloseButton={false} />
-          )}
-          {tabValue === 1 && (
-            <Leaderboard />
-          )}
+        <Box
+          sx={{
+            flex: 1,
+            overflow: "auto",
+            overflowX: "hidden",
+          }}
+        >
+          {tabValue === 0 ? <DailyTasks showCloseButton={false} /> : <Leaderboard />}
         </Box>
       </Box>
     </PageWrapper>

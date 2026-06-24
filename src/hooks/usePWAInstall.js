@@ -3,8 +3,10 @@ import {
   PWA_STORAGE_KEYS,
   isPWAPermanentlyDismissed,
   isIOSDevice,
+  isAndroidDevice,
   isStandaloneMode,
   isChromeOnIOS,
+  isMobileLikeDevice,
 } from '../utils/pwaUtils';
 
 export const usePWAInstall = () => {
@@ -59,7 +61,7 @@ export const usePWAInstall = () => {
   }, []);
 
   const openInstallPrompt = useCallback(() => {
-    if (isStandaloneMode() || isPWAPermanentlyDismissed()) {
+    if (isStandaloneMode() || isPWAPermanentlyDismissed() || !isMobileLikeDevice()) {
       return;
     }
     setShowInstallPrompt(true);
@@ -67,7 +69,7 @@ export const usePWAInstall = () => {
   }, []);
 
   const showPostLoginBanner = useCallback(() => {
-    if (isStandaloneMode() || isPWAPermanentlyDismissed()) {
+    if (isStandaloneMode() || isPWAPermanentlyDismissed() || !isMobileLikeDevice()) {
       return;
     }
     if (localStorage.getItem(PWA_STORAGE_KEYS.BANNER_DISMISSED) === 'true') {
@@ -112,20 +114,34 @@ export const usePWAInstall = () => {
   const canInstallAndroid = deferredPrompt !== null;
   const canInstallIOS = isIOS && !isChromeOnIOS();
   const canInstall = canInstallAndroid || canInstallIOS;
+  const isMobileLike = isMobileLikeDevice();
+  const canShowInstallPromptContent = canInstall || isIOS || isAndroidDevice();
 
   const shouldShowPrompt =
-    showInstallPrompt && !isStandalone && canInstall && !isDailyTasksPopupOpen;
+    showInstallPrompt &&
+    isMobileLike &&
+    !isStandalone &&
+    canShowInstallPromptContent &&
+    !isDailyTasksPopupOpen;
 
   const shouldShowBanner =
+    isMobileLike &&
     showInstallBanner &&
     !isStandalone &&
     !isPWAPermanentlyDismissed() &&
     !isDailyTasksPopupOpen &&
     (canInstallIOS || canInstallAndroid);
 
+  const showInstallCTA =
+    isMobileLike &&
+    !isStandalone &&
+    !isPWAPermanentlyDismissed() &&
+    (isIOS || isAndroidDevice());
+
   return {
     showInstallPrompt: shouldShowPrompt,
     showInstallBanner: shouldShowBanner,
+    showInstallCTA,
     openInstallPrompt,
     showPostLoginBanner,
     dismissInstallBanner,

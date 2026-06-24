@@ -14,8 +14,6 @@ import {
   Card,
   CardContent,
   LinearProgress,
-  useMediaQuery,
-  useTheme,
 } from "@mui/material";
 import {
   Restaurant as FoodIcon,
@@ -27,11 +25,17 @@ import {
 } from "@mui/icons-material";
 import { dailyTasksAPI } from "../api";
 import { getCurrentUserId } from "../utils/authUtils";
+import { getAppDialogSx } from "./AppConfirmDialog";
+
+const appDialogSx = {
+  ...getAppDialogSx({ zIndex: 1500, maxWidth: "sm", scrollable: true }),
+  "& .MuiBackdrop-root": {
+    zIndex: 1499,
+  },
+};
 
 const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
   const navigate = useNavigate();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const dialogActionsSx = {
     justifyContent: "space-between",
     px: 3,
@@ -213,19 +217,8 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
         onClose={handleClose} 
         maxWidth="sm" 
         fullWidth
-        fullScreen={isMobile}
-        PaperProps={{
-          sx: {
-            zIndex: 1501,
-          }
-        }}
-        sx={{
-          zIndex: 1500,
-          '& .MuiBackdrop-root': {
-            zIndex: 1499,
-            backgroundColor: 'rgba(0, 0, 0, 0.3)',
-          }
-        }}
+        scroll="paper"
+        sx={appDialogSx}
       >
         <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -316,24 +309,13 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
 
   if (loading) {
     return (
-      <Dialog 
-        open={open} 
-        onClose={handleClose} 
-        maxWidth="sm" 
+      <Dialog
+        open={open}
+        onClose={handleClose}
+        maxWidth="sm"
         fullWidth
-        fullScreen={isMobile}
-        PaperProps={{
-          sx: {
-            zIndex: 1501, // Higher than backdrop to ensure dialog content appears above
-          }
-        }}
-        sx={{
-          zIndex: 1500, // Higher than bottom nav (1400) to ensure it appears above
-          '& .MuiBackdrop-root': {
-            zIndex: 1499, // Backdrop should be below the dialog content
-            backgroundColor: 'rgba(0, 0, 0, 0.3)', // Reduced opacity for less opaque background
-          }
-        }}
+        scroll="paper"
+        sx={appDialogSx}
       >
         <DialogContent sx={{ textAlign: "center", py: 4 }}>
           <Typography>Loading daily tasks...</Typography>
@@ -346,24 +328,13 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
   const completedCount = getTaskCompletionCount();
 
   return (
-    <Dialog 
-      open={open} 
-      onClose={handleClose} 
-      maxWidth="sm" 
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      maxWidth="sm"
       fullWidth
-      fullScreen={isMobile}
-      PaperProps={{
-        sx: {
-          zIndex: 1501, // Higher than backdrop to ensure dialog content appears above
-        }
-      }}
-      sx={{
-        zIndex: 1500, // Higher than bottom nav (1400) to ensure it appears above
-        '& .MuiBackdrop-root': {
-          zIndex: 1499, // Backdrop should be below the dialog content
-          backgroundColor: 'rgba(0, 0, 0, 0.3)', // Reduced opacity for less opaque background
-        }
-      }}
+      scroll="paper"
+      sx={appDialogSx}
     >
       <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>

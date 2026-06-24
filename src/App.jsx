@@ -8,16 +8,9 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { appTheme } from './theme';
 import LoginPage from './Components/Pages/Login';
 import LandingPage from './Components/Pages/LandingPage';
-// import Users from './Components/Pages/Users';
-import SidebarLayout from './SideBarLayout'; // Import your SidebarLayout component
-import RegisterPage from './Components/Pages/RegisterPage'; // Import RegisterPage
-import FoodLog from './Components/Pages/FoodLog';
-import QaPage from './Components/Pages/QaPage';
+import SidebarLayout from './SideBarLayout';
+import RegisterPage from './Components/Pages/RegisterPage';
 import TermsAndConditions from './Components/Pages/TermsAndConditions';
-import Resources from './Components/Pages/Resources';
-import TasksAndLeaderboard from './Components/Pages/TasksAndLeaderboard';
-import ConsumeWaste from './Components/Pages/ComsumeWaste';
-import Settings from './Components/Pages/Settings';
 import TermsGuard from './Components/TermsGuard';
 import AuthGuard from './Components/AuthGuard';
 import SurveyGuard from './Components/SurveyGuard';
@@ -37,45 +30,44 @@ function App() {
         <UpdateProvider>
           <BrowserRouter>
             <PWAProvider>
-            <RouteTracker />
-            <Routes>
-            {/* Admin routes (completely separate from user auth) */}
-            <Route path="/admin" element={<AdminGuard />} />
-            
-            {/* User routes with guards */}
-            <Route path="/*" element={
-              <TermsGuard>
-                <AuthGuard>
-                  <SurveyGuard>
-                    <Routes>
-                      {/* Pages that don't require SidebarLayout */}
-                      <Route path="/" element={<LandingPage />} />
-                      <Route path="/auth/login" element={<LoginPage />} />
-                      <Route path="/auth/register" element={<RegisterPage />} />
-                      <Route path="/terms" element={<TermsAndConditions />} />
-                      <Route path="/error" element={<ErrorPage />} />
-                     
-                      {/* SidebarLayout wrapped routes */}
-                      <Route element={<SidebarLayout />}>
-                        <Route path="/summary" element={<ConsumeWaste />} />
-                        <Route path="/survey" element={<QaPage />} />
-                        <Route path="/log" element={<FoodLog/>} />
-                        <Route path="/tasks" element={<TasksAndLeaderboard />} />
-                        <Route path="/settings" element={<Settings />} />
-                        <Route path="/resources" element={<Resources />} />
-                        {/* Legacy route redirects */}
-                        <Route path="/home" element={<FoodLog/>} />
-                        <Route path="/tasks-leaderboard" element={<TasksAndLeaderboard />} />
-                      </Route>
-                    </Routes>
-                  </SurveyGuard>
-                </AuthGuard>
-              </TermsGuard>
-            } />
-          </Routes>
+              <RouteTracker />
+              <Routes>
+                {/* Admin routes (completely separate from user auth) */}
+                <Route path="/admin" element={<AdminGuard />} />
+
+                {/* User routes with guards */}
+                <Route path="/*" element={
+                  <TermsGuard>
+                    <AuthGuard>
+                      <SurveyGuard>
+                        <Routes>
+                          {/* Pages that don't require SidebarLayout */}
+                          <Route path="/" element={<LandingPage />} />
+                          <Route path="/auth/login" element={<LoginPage />} />
+                          <Route path="/auth/register" element={<RegisterPage />} />
+                          <Route path="/terms" element={<TermsAndConditions />} />
+                          <Route path="/error" element={<ErrorPage />} />
+
+                          {/* Bottom-nav shell — pages kept mounted for fast tab switching */}
+                          <Route element={<SidebarLayout />}>
+                            <Route path="/summary" />
+                            <Route path="/survey" />
+                            <Route path="/log" />
+                            <Route path="/tasks" />
+                            <Route path="/settings" />
+                            <Route path="/resources" />
+                            <Route path="/home" />
+                            <Route path="/tasks-leaderboard" />
+                          </Route>
+                        </Routes>
+                      </SurveyGuard>
+                    </AuthGuard>
+                  </TermsGuard>
+                } />
+              </Routes>
             </PWAProvider>
           </BrowserRouter>
-      </UpdateProvider>
+        </UpdateProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );

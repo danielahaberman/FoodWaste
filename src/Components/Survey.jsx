@@ -10,16 +10,16 @@ import {
   TextField,
   Stack,
   CircularProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Snackbar,
   Alert,
 } from "@mui/material";
+import AppConfirmDialog from "./AppConfirmDialog";
 import { getCurrentUserId } from "../utils/authUtils";
+import { useIsTabActive } from "../context/TabVisibilityContext";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 
 const Survey = ({ questions }) => {
+  const isTabActive = useIsTabActive();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [responses, setResponses] = useState({}); // object keyed by questionId
   const [showCompletionModal, setShowCompletionModal] = useState(false);
@@ -29,7 +29,13 @@ const Survey = ({ questions }) => {
   
   const surveyTitle = questions[0]?.stage || 'Survey';
   const userId = getCurrentUserId();
-  
+
+  useEffect(() => {
+    if (!isTabActive) {
+      setShowCompletionModal(false);
+    }
+  }, [isTabActive]);
+
   // Load saved responses from backend on mount
   useEffect(() => {
     const loadSavedProgress = async () => {
@@ -37,17 +43,15 @@ const Survey = ({ questions }) => {
         setIsLoadingProgress(false);
         return;
       }
-      
+
       try {
-        // Fetch saved responses from backend
         const response = await surveyAPI.getSurveyResponses({
           userId,
           stage: surveyTitle
         });
-        
+
         const savedResponses = response.data || {};
-        
-        // Find the first unanswered question
+
         let startIndex = 0;
         for (let i = 0; i < questions.length; i++) {
           const questionId = questions[i].id;
@@ -55,24 +59,22 @@ const Survey = ({ questions }) => {
             startIndex = i;
             break;
           }
-          // If all questions are answered, start at the last one
           if (i === questions.length - 1) {
             startIndex = i;
           }
         }
-        
+
         setResponses(savedResponses);
         setCurrentIndex(startIndex);
       } catch (error) {
         console.error("Error loading saved survey progress:", error);
-        // On error, start from the beginning
         setCurrentIndex(0);
         setResponses({});
       } finally {
         setIsLoadingProgress(false);
       }
     };
-    
+
     loadSavedProgress();
   }, [userId, surveyTitle, questions]);
   
@@ -213,10 +215,6 @@ const Survey = ({ questions }) => {
   const renderQuestion = (question) => {
     if (!question) return null;
     
-    console.log("question object:", question)
-    console.log("question.question:", question.question)
-    console.log("question.question_text:", question.question_text)
-    console.log("All question keys:", Object.keys(question))
     const questionId = question.id;
     const currentResponse = responses[questionId] ?? "";
 
@@ -257,11 +255,12 @@ const Survey = ({ questions }) => {
                 return (
                   <Button
                     key={idx}
+                    type="button"
                     variant={isSelected ? "contained" : "outlined"}
                     color={isSelected ? "primary" : "inherit"}
                     onClick={() => handleResponse(optionValue)}
                     sx={{
-                      minHeight: { xs: 44, sm: 48 },
+                      minHeight: { xs: 48, sm: 48 },
                       fontSize: { xs: "0.9rem", sm: "1rem" },
                       padding: { xs: "10px 14px", sm: "12px 16px" },
                       whiteSpace: "normal",
@@ -275,6 +274,10 @@ const Survey = ({ questions }) => {
                       color: isSelected ? 'white' : 'rgba(0, 0, 0, 0.85)',
                       boxShadow: isSelected ? '0 2px 8px rgba(25, 118, 210, 0.25)' : 'none',
                       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      position: 'relative',
+                      zIndex: 1,
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent',
                       '&:hover': {
                         backgroundColor: isSelected ? 'primary.dark' : 'white',
                         borderColor: isSelected ? 'primary.dark' : 'primary.main',
@@ -515,7 +518,9 @@ const Survey = ({ questions }) => {
             borderRadius: 4,
             border: 'none',
             boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06)',
-            backgroundColor: 'white'
+            backgroundColor: 'white',
+            position: 'relative',
+            zIndex: 1,
           }}
         >
           {currentQuestion && renderQuestion(currentQuestion)}
@@ -612,92 +617,47 @@ const Survey = ({ questions }) => {
         </Paper>
       </Box>
 
-             {/* Completion Modal */}
-       <Dialog
-         open={showCompletionModal}
+       <AppConfirmDialog
+         open={showCompletionModal && isTabActive}
          onClose={() => setShowCompletionModal(false)}
+         tone="success"
+         icon={<CheckCircleOutlineIcon />}
+         title={getCompletionMessage().title}
          maxWidth="sm"
-         fullWidth
-         sx={{
-           '& .MuiDialog-paper': {
-             margin: { xs: 2, sm: 4 },
-             maxHeight: { xs: 'calc(100% - 16px)', sm: 'calc(100% - 32px)' }
-           }
+         scrollable
+         zIndex={1500}
+         primaryAction={{
+           label: "Go to home",
+           onClick: handleGoHome,
          }}
        >
-         <DialogTitle 
-           sx={{ 
-             textAlign: 'center', 
-             color: 'primary.main',
-             fontSize: { xs: "1.3rem", sm: "1.5rem" },
-             pb: 2
-           }}
-         >
-           {getCompletionMessage().title}
-         </DialogTitle>
-         <DialogContent sx={{ px: { xs: 2, sm: 3 } }}>
-           <Typography 
-             variant="body1" 
-             sx={{ 
-               mb: 2, 
-               textAlign: 'center',
-               fontSize: { xs: "1rem", sm: "1.1rem" }
-             }}
-           >
+         <Stack spacing={1.5}>
+           <Typography variant="body2" sx={{ lineHeight: 1.55 }}>
              {getCompletionMessage().message}
            </Typography>
-           <Typography 
-             variant="body2" 
-             sx={{ 
-               mb: 2, 
-               color: 'text.secondary',
-               fontSize: { xs: "0.95rem", sm: "1rem" }
-             }}
-           >
-             <strong>What's next?</strong>
+           <Typography variant="body2" fontWeight={600}>
+             What&apos;s next?
            </Typography>
            {getCompletionMessage().nextSteps.map((step, index) => (
-             <Typography 
-               key={index} 
-               variant="body2" 
-               sx={{ 
-                 mb: 1, 
-                 color: 'text.secondary',
-                 fontSize: { xs: "0.9rem", sm: "0.95rem" },
-                 lineHeight: 1.4
-               }}
+             <Typography
+               key={index}
+               variant="body2"
+               color="text.secondary"
+               sx={{ lineHeight: 1.45 }}
              >
                • {step}
              </Typography>
            ))}
-           <Typography 
-             variant="body2" 
-             sx={{ 
-               color: 'text.secondary', 
-               fontStyle: 'italic', 
-               mt: 2,
-               fontSize: { xs: "0.9rem", sm: "0.95rem" },
-               lineHeight: 1.4
-             }}
+           <Typography
+             variant="caption"
+             color="text.secondary"
+             sx={{ fontStyle: "italic", lineHeight: 1.45 }}
            >
-             Your responses help us understand food waste patterns and improve our recommendations.
+             Your responses help us understand food waste patterns and improve our
+             recommendations.
            </Typography>
-         </DialogContent>
-         <DialogActions sx={{ justifyContent: 'center', pb: 3, px: { xs: 2, sm: 3 } }}>
-           <Button
-             variant="contained"
-             onClick={handleGoHome}
-             size="large"
-             sx={{ 
-               minWidth: { xs: 140, sm: 120 },
-               fontSize: { xs: "1rem", sm: "1.1rem" },
-               py: { xs: 1.5, sm: 1 }
-             }}
-           >
-             Go to Home
-           </Button>
-         </DialogActions>
-       </Dialog>
+         </Stack>
+       </AppConfirmDialog>
 
        {/* Error Snackbar */}
        <Snackbar

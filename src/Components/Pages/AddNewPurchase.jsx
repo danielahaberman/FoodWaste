@@ -3,6 +3,7 @@ import React from "react";
 import dayjs from "dayjs";
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import {
   Box,
   Button,
@@ -12,23 +13,21 @@ import {
   Stack,
   TextField,
   Typography,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Paper,
   Chip,
   Grid,
   Tabs,
   Tab,
-  Card,
 } from "@mui/material";
+import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import { useEffect, useState } from "react";
 import { useMediaQuery, useTheme } from "@mui/material";
 import { foodPurchaseAPI, foodDataAPI } from "../../api";
 import FoodItemSearchDropdown from "../SearchFoodItems";
 import AddPurchaseCard from "../AddPurchaseCard";
 import MobileSelect from "../MobileSelect";
+import AppConfirmDialog from "../AppConfirmDialog";
 import { getCurrentUserId } from "../../utils/authUtils";
 import { Alert, Snackbar } from "@mui/material";
 import { mapToAppCategory } from "../../utils/categoryMapper";
@@ -373,36 +372,56 @@ function AddNewPurchase({
           >
             <CloseIcon />
           </IconButton>
-          <Typography
-            variant="h6"
-            sx={{ flexGrow: 1, textAlign: "center", fontWeight: 600 }}
-          >
-            Add Purchase
-          </Typography>
-          {/* Keep a spacer so the title stays centered */}
+          <Box sx={{ flexGrow: 1, textAlign: 'center' }}>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Add Purchase
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {selectedDate.format('MMM D, YYYY')}
+            </Typography>
+          </Box>
           <Box sx={{ width: 48 }} />
         </Stack>
       </Paper>
 
       {/* Tabs for Recents / Add Food */}
       {!selectedRecentItem && (
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', px: { xs: 2, sm: 2.5 } }}>
-          <Tabs 
-            value={activeView} 
-            onChange={(e, newValue) => setActiveView(newValue)}
+        <Box sx={{ px: { xs: 2, sm: 2.5 }, pt: 1.5, pb: 0.5, flexShrink: 0 }}>
+          <Box
             sx={{
-              minHeight: '48px',
-              '& .MuiTab-root': {
-                minHeight: '48px',
-                textTransform: 'none',
-                fontSize: '0.875rem',
-                fontWeight: 500,
-              }
+              p: 0.5,
+              borderRadius: 3,
+              backgroundColor: 'rgba(0, 0, 0, 0.04)',
             }}
           >
-            <Tab label="Your Recents" />
-            <Tab label="Add Food" />
-          </Tabs>
+            <Tabs
+              value={activeView}
+              onChange={(e, newValue) => setActiveView(newValue)}
+              variant="fullWidth"
+              TabIndicatorProps={{ sx: { display: 'none' } }}
+              sx={{
+                minHeight: 44,
+                '& .MuiTabs-flexContainer': { gap: 0.5 },
+                '& .MuiTab-root': {
+                  minHeight: 44,
+                  py: 1,
+                  borderRadius: 2.5,
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  fontSize: '0.875rem',
+                  color: 'text.secondary',
+                  '&.Mui-selected': {
+                    color: 'primary.main',
+                    backgroundColor: 'white',
+                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+                  },
+                },
+              }}
+            >
+              <Tab label="Your Recents" disableRipple />
+              <Tab label="Add Food" disableRipple />
+            </Tabs>
+          </Box>
         </Box>
       )}
 
@@ -448,71 +467,45 @@ function AddNewPurchase({
         ) : activeView === 0 ? (
           <Box
             sx={{
-              px: 2.5,
-              pt: 2,
+              px: { xs: 2, sm: 2.5 },
+              pt: 1.5,
               pb: 2,
               overflowY: 'auto',
               overflowX: 'hidden',
               flex: 1,
               minHeight: 0,
-              '&::-webkit-scrollbar': {
-                width: '6px',
-              },
-              '&::-webkit-scrollbar-track': {
-                backgroundColor: 'rgba(0, 0, 0, 0.05)',
-                borderRadius: '3px',
-              },
-              '&::-webkit-scrollbar-thumb': {
-                backgroundColor: 'rgba(0, 0, 0, 0.2)',
-                borderRadius: '3px',
-                '&:hover': {
-                  backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                },
-              },
             }}
           >
             {recentPurchases.length === 0 ? (
-              <Box
+              <Paper
+                elevation={0}
                 sx={{
-                  height: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  p: 3,
                   textAlign: 'center',
-                  px: 2,
+                  borderRadius: 3,
+                  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+                  backgroundColor: 'white',
                 }}
               >
-                <Typography variant="body2" color="text.secondary">
-                  No recent purchases yet.
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  No recent purchases yet. Search for food on the Add Food tab.
                 </Typography>
-              </Box>
+                <Button
+                  variant="contained"
+                  onClick={() => setActiveView(1)}
+                  sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
+                >
+                  Add Food
+                </Button>
+              </Paper>
             ) : (
-              <Box
-                sx={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
-                  gap: 2,
-                }}
-              >
+              <Stack spacing={1}>
                 {recentPurchases.map((food, index) => (
-                  <Card
+                  <Paper
                     key={`${food.food_item_id || food.id || food.name}-${index}`}
-                    sx={{
-                      p: 2,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease-in-out',
-                      '&:hover': {
-                        transform: 'translateY(-4px)',
-                        boxShadow: 4,
-                      },
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      textAlign: 'center',
-                      gap: 0.75,
-                    }}
+                    elevation={0}
                     onClick={() => {
-                      const foodItem = {
+                      setSelectedRecentItem({
                         name: food.name,
                         category: food.category,
                         category_id: food.category_id,
@@ -522,58 +515,80 @@ function AddNewPurchase({
                         quantity_type_id: food.quantity_type_id,
                         emoji: food.emoji,
                         image: food.image,
-                      };
-                      setSelectedRecentItem(foodItem);
+                      });
+                    }}
+                    sx={{
+                      p: 1.25,
+                      borderRadius: 2.5,
+                      cursor: 'pointer',
+                      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+                      backgroundColor: 'white',
+                      transition: 'box-shadow 0.2s ease, transform 0.15s ease',
+                      '&:hover': {
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+                        transform: 'translateY(-1px)',
+                      },
                     }}
                   >
-                    <Box sx={{ fontSize: '2em', mb: 0.25 }}>
-                      {food.image ? (
-                        <img
-                          src={food.image}
-                          alt={food.name}
-                          loading="lazy"
-                          decoding="async"
-                          style={{
-                            width: '40px',
-                            height: '40px',
-                            objectFit: 'contain',
-                          }}
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                            e.target.parentElement.innerHTML = `<span style="font-size: 1.5em;">${food.emoji || '🍽️'}</span>`;
+                    <Stack direction="row" alignItems="center" spacing={1.25}>
+                      <Box
+                        sx={{
+                          width: 48,
+                          height: 48,
+                          borderRadius: 2,
+                          flexShrink: 0,
+                          backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          overflow: 'hidden',
+                          fontSize: '1.5rem',
+                        }}
+                      >
+                        {food.image ? (
+                          <Box
+                            component="img"
+                            src={food.image}
+                            alt=""
+                            loading="lazy"
+                            sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                          />
+                        ) : (
+                          food.emoji || '🍽️'
+                        )}
+                      </Box>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography variant="subtitle2" fontWeight={600} noWrap>
+                          {food.name}
+                        </Typography>
+                        {food.category && (
+                          <Typography variant="caption" color="text.secondary" noWrap>
+                            {food.category}
+                          </Typography>
+                        )}
+                      </Box>
+                      {food.purchase_count ? (
+                        <Chip
+                          label={`${food.purchase_count}×`}
+                          size="small"
+                          sx={{
+                            height: 24,
+                            fontWeight: 600,
+                            fontSize: '0.7rem',
+                            backgroundColor: 'rgba(25, 118, 210, 0.1)',
+                            color: 'primary.main',
                           }}
                         />
-                      ) : (
-                        food.emoji || '🍽️'
-                      )}
-                    </Box>
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        fontWeight: 500,
-                        fontSize: '0.7rem',
-                        lineHeight: 1.3,
-                        mt: 0.25,
-                      }}
-                    >
-                      {food.name.length > 15 ? food.name.substring(0, 15) + '...' : food.name}
-                    </Typography>
-                    {food.purchase_count ? (
-                      <Chip
-                        label={`${food.purchase_count}x`}
-                        size="small"
-                        sx={{ mt: 0.25, height: '18px', fontSize: '0.6rem', px: 0.5 }}
-                        color="primary"
-                        variant="outlined"
-                      />
-                    ) : null}
-                  </Card>
+                      ) : null}
+                      <ChevronRightIcon sx={{ color: 'text.disabled' }} />
+                    </Stack>
+                  </Paper>
                 ))}
-              </Box>
+              </Stack>
             )}
           </Box>
         ) : activeView === 1 ? (
-          <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', px: 2.5, minHeight: 0 }}>
+          <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', px: { xs: 2, sm: 2.5 }, minHeight: 0 }}>
             <FoodItemSearchDropdown
               setHideNew={setHideNew}
               foodItems={foodItems}
@@ -728,181 +743,65 @@ function AddNewPurchase({
          </Box>
        </Modal>
 
-       {/* Purchase Confirmation Modal */}
-       <Dialog
+       <AppConfirmDialog
          open={showPurchaseConfirmation}
          onClose={() => handlePurchaseConfirmation(false)}
-         maxWidth="sm"
-         fullWidth
-         fullScreen={isMobile}
-         sx={{
-           zIndex: SUB_MODAL_Z_INDEX,
-           '& .MuiDialog-paper': {
-             margin: { xs: 2, sm: 3 },
-             maxHeight: { xs: '90vh', sm: 'auto' },
-             borderRadius: { xs: 2, sm: 3 }
-           }
+         zIndex={SUB_MODAL_Z_INDEX}
+         tone="success"
+         icon={<CheckCircleOutlineIcon />}
+         title="Food item added!"
+         primaryAction={{
+           label: "Yes, add as purchase",
+           onClick: () => handlePurchaseConfirmation(true),
+         }}
+         secondaryAction={{
+           label: "No, just save the item",
+           onClick: () => handlePurchaseConfirmation(false),
          }}
        >
-         <DialogTitle sx={{ 
-           textAlign: 'center', 
-           color: 'primary.main',
-           fontSize: { xs: '1.1rem', sm: '1.25rem' },
-           fontWeight: 600,
-           px: { xs: 2, sm: 3 },
-           pt: { xs: 2, sm: 3 }
-         }}>
-           ✅ Food Item Added!
-         </DialogTitle>
-         <DialogContent sx={{ px: { xs: 2, sm: 3 }, py: { xs: 1, sm: 2 } }}>
-           <Typography variant="body1" sx={{ 
-             mb: 2, 
-             textAlign: 'center',
-             fontSize: { xs: '0.95rem', sm: '1rem' },
-             lineHeight: 1.4
-           }}>
-             <strong>{newlyCreatedFoodItem?.name}</strong> has been added to your food items.
+         <Stack spacing={1.25}>
+           <Typography variant="body2" sx={{ lineHeight: 1.55 }}>
+             <strong>{newlyCreatedFoodItem?.name}</strong> was saved to your food items.
            </Typography>
-           <Typography variant="body2" sx={{ 
-             mb: 2, 
-             color: 'text.secondary',
-             textAlign: 'center',
-             fontSize: { xs: '0.9rem', sm: '0.95rem' }
-           }}>
-             Would you also like to mark it as a purchase for today?
+           <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.55 }}>
+             Would you also like to log it as a purchase for today?
            </Typography>
-         </DialogContent>
-         <DialogActions sx={{ 
-           justifyContent: 'center', 
-           pb: { xs: 2, sm: 3 },
-           px: { xs: 2, sm: 3 },
-           flexDirection: { xs: 'column', sm: 'row' },
-           gap: { xs: 1.5, sm: 2 }
-         }}>
-           <Button
-             variant="outlined"
-             onClick={() => handlePurchaseConfirmation(false)}
-             size="large"
-             fullWidth={isMobile}
-             sx={{
-               minHeight: { xs: 48, sm: 40 },
-               fontSize: { xs: '0.95rem', sm: '1rem' },
-               py: { xs: 1.5, sm: 1 }
-             }}
-           >
-             No, Just Add Food Item
-           </Button>
-           <Button
-             variant="contained"
-             onClick={() => handlePurchaseConfirmation(true)}
-             size="large"
-             color="primary"
-             fullWidth={isMobile}
-             sx={{
-               minHeight: { xs: 48, sm: 40 },
-               fontSize: { xs: '0.95rem', sm: '1rem' },
-               py: { xs: 1.5, sm: 1 }
-             }}
-           >
-             Yes, Add as Purchase
-           </Button>
-         </DialogActions>
-       </Dialog>
+         </Stack>
+       </AppConfirmDialog>
 
-       {/* Date Confirmation Modal */}
-       <Dialog
+       <AppConfirmDialog
          open={showDateConfirmation}
          onClose={() => setShowDateConfirmation(false)}
-         maxWidth="sm"
-         fullWidth
-         fullScreen={isMobile}
-         sx={{
-           zIndex: SUB_MODAL_Z_INDEX,
-           '& .MuiDialog-paper': {
-             margin: { xs: 2, sm: 3 },
-             maxHeight: { xs: '90vh', sm: 'auto' },
-             borderRadius: { xs: 2, sm: 3 }
-           }
+         zIndex={SUB_MODAL_Z_INDEX}
+         tone="warning"
+         icon={<WarningAmberRoundedIcon />}
+         title="Adding food to a past day"
+         primaryAction={{
+           label: "Add to today",
+           onClick: () => handleConfirmDateChoice(true),
+         }}
+         secondaryAction={{
+           label: "Keep selected date",
+           onClick: () => handleConfirmDateChoice(false),
          }}
        >
-         <DialogTitle sx={{ 
-           textAlign: 'center', 
-           color: 'warning.main',
-           fontSize: { xs: '1.1rem', sm: '1.25rem' },
-           fontWeight: 600,
-           px: { xs: 2, sm: 3 },
-           pt: { xs: 2, sm: 3 }
-         }}>
-           ⚠️ Adding Food to Previous Day
-         </DialogTitle>
-         <DialogContent sx={{ px: { xs: 2, sm: 3 }, py: { xs: 1, sm: 2 } }}>
-           <Typography variant="body1" sx={{ 
-             mb: 2, 
-             textAlign: 'center',
-             fontSize: { xs: '0.95rem', sm: '1rem' },
-             lineHeight: 1.4
-           }}>
-             You're adding <strong>{pendingFoodItem?.name}</strong> to{' '}
-             <strong>{selectedDate.format('MMM D, YYYY')}</strong>
+         <Stack spacing={1.25}>
+           <Typography variant="body2" sx={{ lineHeight: 1.55 }}>
+             You&apos;re adding <strong>{pendingFoodItem?.name}</strong> to{" "}
+             <strong>{selectedDate.format("MMM D, YYYY")}</strong>.
            </Typography>
-           <Typography variant="body2" sx={{ 
-             mb: 2, 
-             color: 'text.secondary',
-             textAlign: 'center',
-             fontSize: { xs: '0.9rem', sm: '0.95rem' }
-           }}>
+           <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.55 }}>
              Did you mean to add this to today instead?
            </Typography>
-           <Typography variant="body2" sx={{ 
-             color: 'text.secondary', 
-             fontStyle: 'italic',
-             textAlign: 'center',
-             fontSize: { xs: '0.85rem', sm: '0.9rem' }
-           }}>
-             Today is {new Date().toLocaleDateString('en-US', { 
-               weekday: 'long', 
-               year: 'numeric', 
-               month: 'long', 
-               day: 'numeric' 
-             })}
+           <Typography
+             variant="caption"
+             color="text.secondary"
+             sx={{ fontStyle: "italic", display: "block" }}
+           >
+             Today is {dayjs().format("dddd, MMMM D, YYYY")}
            </Typography>
-         </DialogContent>
-         <DialogActions sx={{ 
-           justifyContent: 'center', 
-           pb: { xs: 2, sm: 3 },
-           px: { xs: 2, sm: 3 },
-           flexDirection: { xs: 'column', sm: 'row' },
-           gap: { xs: 1.5, sm: 2 }
-         }}>
-           <Button
-             variant="outlined"
-             onClick={() => handleConfirmDateChoice(false)}
-             size="large"
-             fullWidth={isMobile}
-             sx={{
-               minHeight: { xs: 48, sm: 40 },
-               fontSize: { xs: '0.95rem', sm: '1rem' },
-               py: { xs: 1.5, sm: 1 }
-             }}
-           >
-             Keep Selected Date
-           </Button>
-           <Button
-             variant="contained"
-             onClick={() => handleConfirmDateChoice(true)}
-             size="large"
-             color="primary"
-             fullWidth={isMobile}
-             sx={{
-               minHeight: { xs: 48, sm: 40 },
-               fontSize: { xs: '0.95rem', sm: '1rem' },
-               py: { xs: 1.5, sm: 1 }
-             }}
-           >
-             Add to Today
-           </Button>
-         </DialogActions>
-       </Dialog>
+         </Stack>
+       </AppConfirmDialog>
 
        {/* Error Snackbar */}
        <Snackbar

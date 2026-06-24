@@ -1,125 +1,154 @@
 // @ts-nocheck
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import dayjs from "dayjs";
 import { foodPurchaseAPI, surveyAPI, dailyTasksAPI } from "../../api";
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { Button, Box, Typography, Dialog } from "@mui/material";
+import {
+  Button,
+  Box,
+  Typography,
+  Dialog,
+  Paper,
+  Stack,
+  Chip,
+  CircularProgress,
+  IconButton,
+} from "@mui/material";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import AddIcon from "@mui/icons-material/Add";
+import RestaurantIcon from "@mui/icons-material/Restaurant";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import { getCurrentUserId } from "../../utils/authUtils";
-import RestaurantIcon from '@mui/icons-material/Restaurant';
 import AddNewPurchase from "./AddNewPurchase";
 import DateNavigator from "../DateNavigator";
 import FoodPurchaseList from "../FoodPurchaseList";
 import PageWrapper from "../PageWrapper";
 import DailyTasksPopup from "../DailyTasksPopup";
+import { useIsTabActive } from "../../context/TabVisibilityContext";
+
+const cardSx = {
+  borderRadius: 3,
+  border: "none",
+  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06)",
+  backgroundColor: "white",
+};
 
 const FoodLog = () => {
+  const isTabActive = useIsTabActive();
+  const isTabActiveRef = useRef(isTabActive);
+  isTabActiveRef.current = isTabActive;
+  const wasTabActiveRef = useRef(isTabActive);
+
   const [foodPurchases, setFoodPurchases] = useState([]);
   const [foodItems, setFoodItems] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [loggingPurchase, setLoggingPurchase] = useState(false);
-  const [searchParams] = useSearchParams();
-  const dateParam = searchParams.get('date');
-  const [selectedDate, setSelectedDate] = useState(
-    dateParam ? dayjs(dateParam, 'YYYY-MM-DD') : dayjs()
+  const [searchParams, setSearchParams] = useSearchParams();
+  const dateParam = searchParams.get("date");
+  const [selectedDate, setSelectedDate] = useState(() =>
+    dateParam && dayjs(dateParam, "YYYY-MM-DD", true).isValid()
+      ? dayjs(dateParam, "YYYY-MM-DD")
+      : dayjs()
   );
   const [showDailyTasksPopup, setShowDailyTasksPopup] = useState(false);
   const navigate = useNavigate();
 
+  const datesWithFood = useMemo(
+    () => [
+      ...new Set(
+        foodPurchases.map((p) => dayjs(p.purchase_date).format("YYYY-MM-DD"))
+      ),
+    ],
+    [foodPurchases]
+  );
 
-  // Extract unique dates with food purchases
-  const datesWithFood = [...new Set(
-    foodPurchases.map(purchase => dayjs(purchase.purchase_date).format('YYYY-MM-DD'))
-  )];
   const fetchFoodItems = async () => {
     const userId = getCurrentUserId();
     if (!userId) return;
-    
     try {
-      const params = { user_id: userId };
-      const response = await foodPurchaseAPI.getFoodItems(params);
+      const response = await foodPurchaseAPI.getFoodItems({ user_id: userId });
       setFoodItems(response.data || []);
     } catch (error) {
       console.error("Error fetching food items:", error);
     }
   };
-   const fetchFoodPurchases = async () => {
+
+  const fetchFoodPurchases = async (showLoader = false) => {
     const userId = getCurrentUserId();
-    if (!userId) return;
-    
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
     try {
-      const params = { user_id: userId };
-      const response = await foodPurchaseAPI.getFoodPurchases(params);
+      if (showLoader) setLoading(true);
+      const response = await foodPurchaseAPI.getFoodPurchases({ user_id: userId });
       setFoodPurchases(response.data || []);
     } catch (error) {
       console.error("Error fetching food purchases:", error);
+    } finally {
+      setLoading(false);
     }
   };
-const deletePurchase = async (purchaseId) => {
-  const userId = getCurrentUserId();
-  if (!userId) return;
-  
-  try {
-    // Send DELETE request with user_id as query param
-    await foodPurchaseAPI.deletePurchase(purchaseId, { user_id: userId });
-    fetchFoodPurchases()
-  } catch (error) {
-    console.error("Error deleting purchase:", error);
-  }
-};
 
- 
- 
+  const deletePurchase = async (purchaseId) => {
+    const userId = getCurrentUserId();
+    if (!userId) return;
+    try {
+      await foodPurchaseAPI.deletePurchase(purchaseId, { user_id: userId });
+      fetchFoodPurchases();
+    } catch (error) {
+      console.error("Error deleting purchase:", error);
+    }
+  };
+
   useEffect(() => {
-    fetchFoodPurchases();
+    fetchFoodPurchases(true);
+    fetchFoodItems();
   }, []);
 
-  // Check for daily tasks popup
+  useEffect(() => {
+    const dateStr = selectedDate.format("YYYY-MM-DD");
+    if (searchParams.get("date") !== dateStr) {
+      setSearchParams({ date: dateStr }, { replace: true });
+    }
+  }, [selectedDate, setSearchParams]);
+
+  useEffect(() => {
+    if (isTabActive && !wasTabActiveRef.current) {
+      fetchFoodPurchases();
+    }
+    wasTabActiveRef.current = isTabActive;
+  }, [isTabActive]);
+
   useEffect(() => {
     const checkDailyTasksPopup = async () => {
       const today = new Date().toDateString();
       const popupShownToday = localStorage.getItem(`dailyTasksPopup_${today}`);
-      
+
       if (!popupShownToday) {
         try {
           const userId = getCurrentUserId();
           if (!userId) return;
-          
-          // Check if popup was dismissed within the last 10 minutes
+
           const dismissTime = localStorage.getItem(`dailyTasksPopupDismissed_${userId}`);
           if (dismissTime) {
             const dismissTimestamp = parseInt(dismissTime, 10);
-            const now = Date.now();
-            const tenMinutesInMs = 10 * 60 * 1000; // 10 minutes in milliseconds
-            
-            if (now - dismissTimestamp < tenMinutesInMs) {
-              // Popup was dismissed less than 10 minutes ago, don't show it
-              return;
-            }
+            if (Date.now() - dismissTimestamp < 10 * 60 * 1000) return;
           }
-          
-          // First check if weekly survey is due - if so, don't show daily tasks popup
+
           const surveyResponse = await surveyAPI.getSurveyStatus(userId);
-          if (surveyResponse.data.weeklyDue) {
-            // Weekly survey is required, don't show daily tasks popup
-            return;
-          }
-          
-          // Don't show daily tasks popup if welcome modal is showing (initial survey not completed)
-          if (!surveyResponse.data.initialCompleted) {
-            // Welcome modal is showing, don't show daily tasks popup
-            return;
-          }
-          
-          // Check if user has incomplete tasks
+          if (surveyResponse.data.weeklyDue) return;
+          if (!surveyResponse.data.initialCompleted) return;
+
           const response = await dailyTasksAPI.getTodayTasks({ user_id: userId });
           const tasks = response.data;
-          
-          const completed = (tasks.log_food_completed ? 1 : 0) + 
-                          (tasks.complete_survey_completed ? 1 : 0) + 
-                          (tasks.log_consume_waste_completed ? 1 : 0);
-          
-          if (completed < 3) {
+          const completed =
+            (tasks.log_food_completed ? 1 : 0) +
+            (tasks.complete_survey_completed ? 1 : 0) +
+            (tasks.log_consume_waste_completed ? 1 : 0);
+
+          if (completed < 3 && isTabActiveRef.current) {
             setShowDailyTasksPopup(true);
           }
         } catch (error) {
@@ -127,76 +156,203 @@ const deletePurchase = async (purchaseId) => {
         }
       }
     };
-    
+
     checkDailyTasksPopup();
   }, []);
 
-
-  // Listen for task completion events
   useEffect(() => {
-    const handleTaskCompleted = () => {
-      // Refresh data and check if popup should be shown
-      fetchFoodPurchases();
-    };
-    
-    window.addEventListener('taskCompleted', handleTaskCompleted);
-    return () => window.removeEventListener('taskCompleted', handleTaskCompleted);
+    if (!isTabActive) {
+      setShowDailyTasksPopup(false);
+      setLoggingPurchase(false);
+    }
+  }, [isTabActive]);
+
+  useEffect(() => {
+    const handleTaskCompleted = () => fetchFoodPurchases();
+    window.addEventListener("taskCompleted", handleTaskCompleted);
+    return () => window.removeEventListener("taskCompleted", handleTaskCompleted);
   }, []);
 
-  const filteredPurchases = foodPurchases.filter((purchase) => {
-    // Parse the UTC date and compare with selected date in local timezone
-    const purchaseDate = dayjs(purchase.purchase_date);
-    return purchaseDate.isSame(selectedDate, "day");
-  });
+  const filteredPurchases = useMemo(
+    () =>
+      foodPurchases.filter((purchase) =>
+        dayjs(purchase.purchase_date).isSame(selectedDate, "day")
+      ),
+    [foodPurchases, selectedDate]
+  );
 
-  // Check if selected date is within 7 days (can add/delete)
-  const isWithin7Days = dayjs().subtract(7, 'day').isSameOrBefore(selectedDate, 'day');
-  const isDateInPast = selectedDate.isBefore(dayjs(), 'day');
-  const isDateInFuture = selectedDate.isAfter(dayjs(), 'day');
-  
-  // Can only add/delete if within 7 days and not in future
+  const dayTotal = useMemo(
+    () =>
+      filteredPurchases.reduce(
+        (sum, p) => sum + (Number.parseFloat(p.price) || 0),
+        0
+      ),
+    [filteredPurchases]
+  );
+
+  const isWithin7Days = dayjs()
+    .subtract(7, "day")
+    .isSameOrBefore(selectedDate, "day");
+  const isDateInFuture = selectedDate.isAfter(dayjs(), "day");
   const canModify = isWithin7Days && !isDateInFuture;
+  const isToday = selectedDate.isSame(dayjs(), "day");
 
   return (
     <PageWrapper title="Food Log" showLogo>
       <LocalizationProvider dateAdapter={AdapterDayjs}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 2 }}>
-          <DateNavigator value={selectedDate} onChange={setSelectedDate} datesWithFood={datesWithFood} />
+        <Paper elevation={0} sx={{ ...cardSx, p: 2, mb: 2 }}>
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+            sx={{ mb: 1.5 }}
+          >
+            <Typography variant="subtitle2" fontWeight={600} color="text.secondary">
+              Select day
+            </Typography>
+            <IconButton
+              size="small"
+              aria-label="Refresh log"
+              onClick={() => fetchFoodPurchases(true)}
+              disabled={loading}
+              sx={{
+                backgroundColor: "rgba(0, 0, 0, 0.04)",
+                "&:hover": { backgroundColor: "rgba(0, 0, 0, 0.08)" },
+              }}
+            >
+              {loading ? (
+                <CircularProgress size={18} />
+              ) : (
+                <RefreshIcon fontSize="small" />
+              )}
+            </IconButton>
+          </Stack>
+
+          <DateNavigator
+            value={selectedDate}
+            onChange={setSelectedDate}
+            datesWithFood={datesWithFood}
+          />
+
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+            sx={{ mt: 2, pt: 1.5, borderTop: "1px solid rgba(0,0,0,0.06)" }}
+          >
+            <Box>
+              <Typography variant="h5" fontWeight={700} lineHeight={1.2}>
+                ${dayTotal.toFixed(2)}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {filteredPurchases.length}{" "}
+                {filteredPurchases.length === 1 ? "item" : "items"}
+                {isToday ? " today" : ""}
+              </Typography>
+            </Box>
+            {!canModify && (
+              <Chip
+                label="View only"
+                size="small"
+                sx={{
+                  fontWeight: 600,
+                  backgroundColor: "rgba(0, 0, 0, 0.06)",
+                }}
+              />
+            )}
+          </Stack>
+
           <Button
             variant="contained"
-            color="primary"
+            fullWidth
+            startIcon={<AddIcon />}
             onClick={() => setLoggingPurchase(true)}
             disabled={!canModify}
-            title={!canModify ? "Can only add food for the past 7 days" : "Add food for this date"}
+            sx={{
+              mt: 2,
+              borderRadius: 2.5,
+              textTransform: "none",
+              fontWeight: 600,
+              py: 1.25,
+            }}
           >
-            Add
+            Add food
           </Button>
-        </Box>
-        {!canModify && (
-          <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center', fontStyle: 'italic', mb: 2, display: 'block' }}>
-            View only - can only add/delete food for the past 7 days
-          </Typography>
-        )}
-      </LocalizationProvider>
 
-      <Box sx={{ mt: 2 }}>
-        {filteredPurchases.length > 0 ? (
+          {!canModify && (
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: "block", textAlign: "center", mt: 1 }}
+            >
+              You can only add or remove items from the last 7 days.
+            </Typography>
+          )}
+        </Paper>
+
+        {loading && foodPurchases.length === 0 ? (
+          <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+            <CircularProgress size={32} />
+          </Box>
+        ) : filteredPurchases.length > 0 ? (
           <FoodPurchaseList
             deletePurchase={deletePurchase}
             purchases={filteredPurchases}
             canModify={canModify}
           />
         ) : (
-          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "40dvh", color: "text.secondary", gap: 1 }}>
-            <RestaurantIcon sx={{ fontSize: 40, opacity: 0.6 }} />
-            <Typography component="span" fontStyle="italic">
-              No foods logged for {selectedDate.format('MMMM D, YYYY')} yet.
+          <Paper
+            elevation={0}
+            sx={{
+              ...cardSx,
+              py: 5,
+              px: 3,
+              textAlign: "center",
+            }}
+          >
+            <Box
+              sx={{
+                width: 56,
+                height: 56,
+                mx: "auto",
+                mb: 2,
+                borderRadius: 2.5,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: "rgba(25, 118, 210, 0.1)",
+              }}
+            >
+              <RestaurantIcon sx={{ fontSize: 28, color: "primary.main" }} />
+            </Box>
+            <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+              Nothing logged yet
             </Typography>
-          </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.5 }}>
+              {isToday
+                ? "Tap Add food to log what you bought today."
+                : `No purchases recorded for ${selectedDate.format("MMMM D")}.`}
+            </Typography>
+            {canModify && (
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => setLoggingPurchase(true)}
+                sx={{ borderRadius: 2, textTransform: "none", fontWeight: 600 }}
+              >
+                Add food
+              </Button>
+            )}
+          </Paper>
         )}
-      </Box>
+      </LocalizationProvider>
 
-      <Dialog open={loggingPurchase} onClose={() => setLoggingPurchase(false)} fullScreen sx={{ zIndex: 1500 }}>
+      <Dialog
+        open={loggingPurchase && isTabActive}
+        onClose={() => setLoggingPurchase(false)}
+        fullScreen
+        sx={{ zIndex: 1500 }}
+      >
         <AddNewPurchase
           setLoggingPurchase={setLoggingPurchase}
           foodItems={foodItems}
@@ -207,7 +363,7 @@ const deletePurchase = async (purchaseId) => {
       </Dialog>
 
       <DailyTasksPopup
-        open={showDailyTasksPopup}
+        open={showDailyTasksPopup && isTabActive}
         onClose={() => setShowDailyTasksPopup(false)}
         onViewAllTasks={() => {
           setShowDailyTasksPopup(false);

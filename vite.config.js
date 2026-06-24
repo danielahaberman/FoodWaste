@@ -47,7 +47,8 @@ export default {
           '/popular-food-items',
           '/recent-purchases',
           '/quantity',   // covers /quantity-types
-          '/survey',     // covers /survey-questions, /survey-response
+          '/survey-questions',
+          '/survey-response',
           '/consumption',// covers /consumption-log, /consumption-summary, etc.
           '/health',
           '/today',      // daily-tasks "today" endpoint in this app
@@ -70,6 +71,19 @@ export default {
             return '/index.html';
           }
           // Continue proxying for /admin/* API paths
+          return null;
+        },
+      },
+
+      // /auth/login and /auth/register are frontend pages; other /auth/* paths are API.
+      '/auth': {
+        target: 'http://localhost:5001',
+        changeOrigin: true,
+        bypass: (req) => {
+          const pathname = (req.url || '').split('?')[0];
+          if (pathname === '/auth/login' || pathname === '/auth/register') {
+            return '/index.html';
+          }
           return null;
         },
       },
