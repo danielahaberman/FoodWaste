@@ -1,6 +1,7 @@
 // @ts-nocheck
 /* eslint-disable react/prop-types */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { surveyAPI } from "../api";
 import {
   Box,
@@ -12,23 +13,70 @@ import {
   CircularProgress,
   Snackbar,
   Alert,
+  LinearProgress,
+  Chip,
 } from "@mui/material";
 import AppConfirmDialog from "./AppConfirmDialog";
 import { getCurrentUserId } from "../utils/authUtils";
 import { useIsTabActive } from "../context/TabVisibilityContext";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import CheckIcon from "@mui/icons-material/Check";
+
+const cardSx = {
+  borderRadius: 3,
+  border: "none",
+  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06)",
+  backgroundColor: "white",
+};
+
+function getStageLabel(stage) {
+  const key = String(stage || "").toLowerCase();
+  if (key === "initial") return "Initial survey";
+  if (key === "weekly") return "Weekly check-in";
+  if (key === "final") return "Final survey";
+  return "Survey";
+}
+
+function getStageDescription(stage) {
+  const key = String(stage || "").toLowerCase();
+  if (key === "initial") {
+    return "Help us learn about your household and shopping habits.";
+  }
+  if (key === "weekly") {
+    return "A quick update on your food waste patterns this week.";
+  }
+  if (key === "final") {
+    return "Share your closing thoughts at the end of the study.";
+  }
+  return "Your answers help us understand food waste patterns.";
+}
 
 const Survey = ({ questions }) => {
+  const navigate = useNavigate();
   const isTabActive = useIsTabActive();
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [responses, setResponses] = useState({}); // object keyed by questionId
+  const [responses, setResponses] = useState({});
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingProgress, setIsLoadingProgress] = useState(true);
   const [error, setError] = useState(null);
-  
-  const surveyTitle = questions[0]?.stage || 'Survey';
+  const [resumedFromSaved, setResumedFromSaved] = useState(false);
+
+  const surveyTitle = questions[0]?.stage || "Survey";
+  const stageLabel = getStageLabel(surveyTitle);
   const userId = getCurrentUserId();
+
+  const progressPercent = useMemo(() => {
+    if (!questions?.length) return 0;
+    return Math.round(((currentIndex + 1) / questions.length) * 100);
+  }, [currentIndex, questions?.length]);
+
+  const answeredCount = useMemo(
+    () => questions.filter((q) => responses[q.id] != null && responses[q.id] !== "").length,
+    [questions, responses]
+  );
 
   useEffect(() => {
     if (!isTabActive) {
@@ -36,7 +84,6 @@ const Survey = ({ questions }) => {
     }
   }, [isTabActive]);
 
-  // Load saved responses from backend on mount
   useEffect(() => {
     const loadSavedProgress = async () => {
       if (!userId || !questions || questions.length === 0) {
@@ -47,7 +94,7 @@ const Survey = ({ questions }) => {
       try {
         const response = await surveyAPI.getSurveyResponses({
           userId,
-          stage: surveyTitle
+          stage: surveyTitle,
         });
 
         const savedResponses = response.data || {};
@@ -66,8 +113,9 @@ const Survey = ({ questions }) => {
 
         setResponses(savedResponses);
         setCurrentIndex(startIndex);
-      } catch (error) {
-        console.error("Error loading saved survey progress:", error);
+        setResumedFromSaved(startIndex > 0 || Object.keys(savedResponses).length > 0);
+      } catch (err) {
+        console.error("Error loading saved survey progress:", err);
         setCurrentIndex(0);
         setResponses({});
       } finally {
@@ -77,12 +125,11 @@ const Survey = ({ questions }) => {
 
     loadSavedProgress();
   }, [userId, surveyTitle, questions]);
-  
+
   const currentQuestion = questions[currentIndex];
   const currentQuestionId = currentQuestion?.id;
   const currentResponse = responses[currentQuestionId];
 
-  // For number inputs, just check if it's non-empty (handle 0 correctly)
   const isEmptyResponse =
     currentResponse === undefined ||
     currentResponse === null ||
@@ -101,52 +148,48 @@ const Survey = ({ questions }) => {
         questionId,
         response,
       });
-    } catch (error) {
-      console.error("Failed to save response:", error);
-      
-      // Retry on network errors
-      if (retries > 0 && (error.code === 'ERR_NETWORK' || error.message === 'Network Error')) {
-        console.log(`Retrying survey submission (${retries} retries left)...`);
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+    } catch (err) {
+      console.error("Failed to save response:", err);
+
+      if (retries > 0 && (err.code === "ERR_NETWORK" || err.message === "Network Error")) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
         return submitResponse({ questionId, response }, retries - 1);
       }
-      
-      // Show user-friendly error message
-      const errorMessage = error.code === 'ERR_NETWORK' || error.message === 'Network Error'
-        ? "Network error. Please check your connection and try again."
-        : error.response?.data?.error || "Failed to save response. Please try again.";
-      
+
+      const errorMessage =
+        err.code === "ERR_NETWORK" || err.message === "Network Error"
+          ? "Network error. Please check your connection and try again."
+          : err.response?.data?.error || "Failed to save response. Please try again.";
+
       setError(errorMessage);
-      throw error; // Re-throw to allow caller to handle
+      throw err;
     }
   };
 
-  const handleNext = async () => {
-    const currentQuestionId = questions[currentIndex]?.id;
-    const response = responses[currentQuestionId];
+  const advanceOrFinish = useCallback(() => {
+    if (currentIndex < questions.length - 1) {
+      setCurrentIndex((i) => i + 1);
+    } else {
+      setShowCompletionModal(true);
+    }
+  }, [currentIndex, questions.length]);
 
-    // If there's a response, try to save it first
+  const handleNext = async () => {
+    const qId = questions[currentIndex]?.id;
+    const response = responses[qId];
+
     if (response !== undefined && response !== null) {
       setIsSaving(true);
       try {
-        await submitResponse({ questionId: currentQuestionId, response });
-        // Only advance if save was successful
-      } catch (error) {
-        // Error already handled in submitResponse (alert shown)
-        // Don't advance to next question on failure
+        await submitResponse({ questionId: qId, response });
+      } catch {
         setIsSaving(false);
         return;
       }
       setIsSaving(false);
     }
 
-    // Only advance if save succeeded (or no response needed)
-    if (currentIndex < questions.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-    } else {
-      console.log("Final Responses:", responses);
-      setShowCompletionModal(true);
-    }
+    advanceOrFinish();
   };
 
   const handleResponse = (response) => {
@@ -164,512 +207,391 @@ const Survey = ({ questions }) => {
   };
 
   const handleGoHome = () => {
-    // Dispatch task completion event to update streak and task counts
-    window.dispatchEvent(new CustomEvent('taskCompleted'));
-    window.location.href = "/log";
+    window.dispatchEvent(new CustomEvent("taskCompleted"));
+    setShowCompletionModal(false);
+    navigate("/log");
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !isEmptyResponse && !isSaving) {
+      e.preventDefault();
+      handleNext();
+    }
   };
 
   const getCompletionMessage = () => {
     const stage = surveyTitle.toLowerCase();
-    
-    if (stage === 'weekly') {
+
+    if (stage === "weekly") {
       return {
-        title: "🎉 Weekly Survey Complete!",
+        title: "Weekly survey complete",
         message: "Thank you for completing this week's survey!",
         nextSteps: [
           "Your next weekly survey will be available in 7 days",
           "Keep tracking your food purchases and consumption in the meantime",
-          "There will be a final closing survey at the end of the study period"
-        ]
+          "There will be a final closing survey at the end of the study period",
+        ],
       };
-    } else if (stage === 'initial') {
+    }
+    if (stage === "initial") {
       return {
-        title: "🎉 Initial Survey Complete!",
+        title: "Initial survey complete",
         message: "Thank you for completing the initial survey!",
         nextSteps: [
           "Check back every week for the weekly survey to track your progress",
-          "There will be a final closing survey at the end of the study period"
-        ]
+          "There will be a final closing survey at the end of the study period",
+        ],
       };
-    } else if (stage === 'final') {
+    }
+    if (stage === "final") {
       return {
-        title: "🎉 Final Survey Complete!",
+        title: "Final survey complete",
         message: "Thank you for completing the final survey!",
         nextSteps: [
           "You have completed all surveys for this study",
-          "Thank you for your participation in our food waste research"
-        ]
-      };
-    } else {
-      return {
-        title: "🎉 Survey Complete!",
-        message: `Thank you for completing the ${surveyTitle} survey!`,
-        nextSteps: [
-          "Check back every week for the weekly survey to track your progress",
-          "There will be a final closing survey at the end of the study period"
-        ]
+          "Thank you for your participation in our food waste research",
+        ],
       };
     }
+    return {
+      title: "Survey complete",
+      message: `Thank you for completing the ${stageLabel}!`,
+      nextSteps: [
+        "Check back every week for the weekly survey to track your progress",
+        "There will be a final closing survey at the end of the study period",
+      ],
+    };
+  };
+
+  const renderQuestionText = (question) => (
+    <Typography
+      variant="subtitle1"
+      component="h2"
+      sx={{
+        fontWeight: 700,
+        fontSize: { xs: "1.05rem", sm: "1.15rem" },
+        lineHeight: 1.4,
+        letterSpacing: "-0.01em",
+      }}
+    >
+      {question.question || question.question_text || "Question text not available"}
+    </Typography>
+  );
+
+  const renderChoiceOptions = (question) => {
+    const questionId = question.id;
+    const response = responses[questionId] ?? "";
+
+    return (
+      <Stack spacing={1}>
+        {renderQuestionText(question)}
+        <Stack spacing={1} sx={{ mt: 0.5 }}>
+          {question.options.map((option, idx) => {
+            const optionText = typeof option === "string" ? option : option.text;
+            const optionValue = typeof option === "string" ? option : option.text;
+            const isSelected = response === optionValue;
+
+            return (
+              <Paper
+                key={idx}
+                elevation={0}
+                onClick={() => handleResponse(optionValue)}
+                sx={{
+                  p: 1.25,
+                  cursor: "pointer",
+                  borderRadius: 2.5,
+                  border: "2px solid",
+                  borderColor: isSelected ? "primary.main" : "transparent",
+                  backgroundColor: isSelected
+                    ? "rgba(25, 118, 210, 0.08)"
+                    : "rgba(0, 0, 0, 0.03)",
+                  transition: "border-color 0.15s ease, background-color 0.15s ease",
+                  "&:hover": {
+                    backgroundColor: isSelected
+                      ? "rgba(25, 118, 210, 0.12)"
+                      : "rgba(0, 0, 0, 0.05)",
+                  },
+                }}
+              >
+                <Stack direction="row" alignItems="center" spacing={1.25}>
+                  <Box
+                    sx={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: "50%",
+                      flexShrink: 0,
+                      border: "2px solid",
+                      borderColor: isSelected ? "primary.main" : "rgba(0,0,0,0.2)",
+                      backgroundColor: isSelected ? "primary.main" : "transparent",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {isSelected && (
+                      <CheckIcon sx={{ fontSize: 14, color: "white" }} />
+                    )}
+                  </Box>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: isSelected ? 600 : 500,
+                      lineHeight: 1.4,
+                      flex: 1,
+                    }}
+                  >
+                    {optionText}
+                  </Typography>
+                </Stack>
+              </Paper>
+            );
+          })}
+        </Stack>
+      </Stack>
+    );
+  };
+
+  const renderTextInput = (question, type) => {
+    const questionId = question.id;
+    const response = responses[questionId] ?? "";
+    const isMoney = type === "money" || question.type === "money";
+    const isNumber = type === "number" || question.type === "number";
+
+    return (
+      <Stack spacing={1.5}>
+        {renderQuestionText(question)}
+        <TextField
+          type={isMoney || isNumber ? "number" : "text"}
+          fullWidth
+          variant="outlined"
+          value={response}
+          onChange={(e) => handleResponse(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={
+            question.placeholder ||
+            (isMoney
+              ? "Enter amount (e.g. 150)"
+              : isNumber
+                ? "Enter number"
+                : "Type your answer")
+          }
+          InputProps={
+            isMoney || (isNumber && question.question?.toLowerCase().includes("spend"))
+              ? { startAdornment: <Typography sx={{ mr: 0.5 }}>$</Typography> }
+              : undefined
+          }
+          inputProps={
+            isMoney || isNumber
+              ? {
+                  min: 0,
+                  step: isMoney || question.question?.toLowerCase().includes("spend") ? 0.01 : 1,
+                }
+              : undefined
+          }
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 2.5,
+              backgroundColor: "rgba(0, 0, 0, 0.03)",
+            },
+          }}
+        />
+      </Stack>
+    );
   };
 
   const renderQuestion = (question) => {
     if (!question) return null;
-    
-    const questionId = question.id;
-    const currentResponse = responses[questionId] ?? "";
 
     switch (question.type) {
       case "multiple_choice":
       case "rating":
-        return (
-          <Stack spacing={2}>
-            <Typography 
-              variant="h6" 
-              sx={{ 
-                color: 'rgba(0, 0, 0, 0.85)', 
-                fontWeight: 600, 
-                mb: 0.5,
-                fontSize: { xs: "1.15rem", sm: "1.25rem" },
-                lineHeight: 1.3,
-                letterSpacing: '-0.01em'
-              }}
-            >
-              {question.question || question.question_text || 'Question text not available'}
-            </Typography>
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: { 
-                  xs: "repeat(auto-fit, minmax(120px, 1fr))", 
-                  sm: "repeat(auto-fit, minmax(150px, 1fr))" 
-                },
-                gap: { xs: 1.5, sm: 2 },
-                width: "100%"
-              }}
-            >
-              {question.options.map((option, idx) => {
-                // Handle both string options and object options with {id, text}
-                const optionText = typeof option === 'string' ? option : option.text;
-                const optionValue = typeof option === 'string' ? option : option.text;
-                const isSelected = currentResponse === optionValue;
-                return (
-                  <Button
-                    key={idx}
-                    type="button"
-                    variant={isSelected ? "contained" : "outlined"}
-                    color={isSelected ? "primary" : "inherit"}
-                    onClick={() => handleResponse(optionValue)}
-                    sx={{
-                      minHeight: { xs: 48, sm: 48 },
-                      fontSize: { xs: "0.9rem", sm: "1rem" },
-                      padding: { xs: "10px 14px", sm: "12px 16px" },
-                      whiteSpace: "normal",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      borderRadius: 3,
-                      textTransform: 'none',
-                      fontWeight: isSelected ? 600 : 500,
-                      borderColor: isSelected ? 'primary.main' : 'rgba(0, 0, 0, 0.15)',
-                      backgroundColor: isSelected ? 'primary.main' : '#fafafa',
-                      color: isSelected ? 'white' : 'rgba(0, 0, 0, 0.85)',
-                      boxShadow: isSelected ? '0 2px 8px rgba(25, 118, 210, 0.25)' : 'none',
-                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                      position: 'relative',
-                      zIndex: 1,
-                      touchAction: 'manipulation',
-                      WebkitTapHighlightColor: 'transparent',
-                      '&:hover': {
-                        backgroundColor: isSelected ? 'primary.dark' : 'white',
-                        borderColor: isSelected ? 'primary.dark' : 'primary.main',
-                        transform: 'translateY(-2px)',
-                        boxShadow: isSelected 
-                          ? '0 6px 16px rgba(25, 118, 210, 0.35)' 
-                          : '0 2px 8px rgba(0, 0, 0, 0.1)'
-                      }
-                    }}
-                  >
-                    {optionText}
-                  </Button>
-                );
-              })}
-            </Box>
-          </Stack>
-        );
+        return renderChoiceOptions(question);
       case "number":
-      case "text":
-        return (
-          <Stack spacing={1.5}>
-            <Typography 
-              variant="h6" 
-              sx={{ 
-                color: 'rgba(0, 0, 0, 0.85)', 
-                fontWeight: 600, 
-                mb: 1,
-                fontSize: { xs: "1.15rem", sm: "1.25rem" },
-                lineHeight: 1.3,
-                letterSpacing: '-0.01em'
-              }}
-            >
-              {question.question || question.question_text || 'Question text not available'}
-            </Typography>
-            <TextField
-              type={question.type}
-              fullWidth
-              variant="outlined"
-              value={currentResponse || ""}
-              onChange={(e) => handleResponse(e.target.value)}
-              placeholder={question.placeholder || (question.type === "number" ? "Enter number" : "Enter text")}
-              InputProps={question.type === "number" && question.question?.toLowerCase().includes("spend") ? {
-                startAdornment: <Typography variant="body1" sx={{ mr: 1 }}>$</Typography>,
-              } : undefined}
-              inputProps={question.type === "number" ? {
-                min: 0,
-                step: question.question?.toLowerCase().includes("spend") ? 0.01 : 1,
-              } : undefined}
-              sx={{
-                borderRadius: 3,
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: 3,
-                  backgroundColor: '#fafafa',
-                  transition: 'all 0.2s ease',
-                  '&:hover': {
-                    backgroundColor: 'white'
-                  },
-                  '&.Mui-focused': {
-                    backgroundColor: 'white',
-                    boxShadow: '0 0 0 3px rgba(25, 118, 210, 0.1)'
-                  }
-                },
-                '& .MuiInputBase-input': {
-                  fontSize: { xs: "1rem", sm: "1.05rem" },
-                  padding: { xs: "12px 14px", sm: "14px 16px" },
-                  fontWeight: 500
-                }
-              }}
-            />
-          </Stack>
-        );
+        return renderTextInput(question, "number");
       case "money":
-        return (
-          <Stack spacing={1.5}>
-            <Typography 
-              variant="h6" 
-              sx={{ 
-                color: 'rgba(0, 0, 0, 0.85)', 
-                fontWeight: 600, 
-                mb: 1,
-                fontSize: { xs: "1.15rem", sm: "1.25rem" },
-                lineHeight: 1.3,
-                letterSpacing: '-0.01em'
-              }}
-            >
-              {question.question || question.question_text || 'Question text not available'}
-            </Typography>
-            <TextField
-              type="number"
-              fullWidth
-              variant="outlined"
-              value={currentResponse || ""}
-              onChange={(e) => handleResponse(e.target.value)}
-              placeholder={question.placeholder || "Enter amount in dollars (e.g., 150)"}
-              InputProps={{
-                startAdornment: <Typography variant="body1" sx={{ mr: 1 }}>$</Typography>,
-              }}
-              inputProps={{
-                min: 0,
-                step: 0.01,
-              }}
-              sx={{
-                borderRadius: 3,
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: 3,
-                  backgroundColor: '#fafafa',
-                  transition: 'all 0.2s ease',
-                  '&:hover': {
-                    backgroundColor: 'white'
-                  },
-                  '&.Mui-focused': {
-                    backgroundColor: 'white',
-                    boxShadow: '0 0 0 3px rgba(25, 118, 210, 0.1)'
-                  }
-                },
-                '& .MuiInputBase-input': {
-                  fontSize: { xs: "1rem", sm: "1.05rem" },
-                  padding: { xs: "12px 14px", sm: "14px 16px" },
-                  fontWeight: 500
-                }
-              }}
-            />
-          </Stack>
-        );
+        return renderTextInput(question, "money");
+      case "text":
+        return renderTextInput(question, "text");
       default:
         return null;
     }
   };
 
-  // Show loading state while fetching saved progress
   if (isLoadingProgress) {
     return (
-      <Box
-        sx={{
-          maxWidth: { xs: "100%", sm: 600 },
-          margin: "auto",
-          padding: { xs: 2, sm: 4 },
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "50vh",
-          boxSizing: "border-box"
-        }}
-      >
-        <CircularProgress />
-        <Typography sx={{ mt: 2, color: 'text.secondary' }}>
-          Loading your progress...
+      <Box sx={{ py: 6, textAlign: "center" }}>
+        <CircularProgress size={32} />
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+          Loading your progress…
         </Typography>
       </Box>
     );
   }
 
-  // Safety check for empty questions array
   if (!questions || questions.length === 0) {
     return (
-      <Box
-        sx={{
-          maxWidth: { xs: "100%", sm: 600 },
-          margin: "auto",
-          padding: { xs: 2, sm: 4 },
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          minHeight: "100vh",
-          boxSizing: "border-box"
-        }}
-      >
-        <Typography 
-          variant="h4" 
-          gutterBottom
-          sx={{ 
-            fontSize: { xs: "1.5rem", sm: "2rem" },
-            textAlign: "center"
-          }}
-        >
-          📝 Survey
+      <Paper elevation={0} sx={{ ...cardSx, p: 3, textAlign: "center" }}>
+        <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+          No questions available
         </Typography>
-        <Paper 
-          elevation={3} 
-          sx={{ 
-            padding: { xs: 2, sm: 4 }, 
-            width: "100%", 
-            color: "black",
-            boxSizing: "border-box"
-          }}
-        >
-          <Typography 
-            variant="body1"
-            sx={{ 
-              fontSize: { xs: "1rem", sm: "1.1rem" },
-              textAlign: "center"
-            }}
-          >
-            No questions available for this survey.
-          </Typography>
-        </Paper>
-      </Box>
+        <Typography variant="body2" color="text.secondary">
+          There are no survey questions to show right now.
+        </Typography>
+      </Paper>
     );
   }
 
   return (
     <>
-      <Box
-        sx={{
-          maxWidth: { xs: "100%", sm: 600 },
-          margin: "auto",
-          padding: { xs: 1.5, sm: 3 },
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          minHeight: "auto", /* Changed from 100vh to auto */
-          boxSizing: "border-box"
-        }}
-      >
-        <Typography 
-          variant="h4" 
-          gutterBottom
-          sx={{ 
-            fontSize: { xs: "1.5rem", sm: "1.9rem" },
-            textAlign: "center",
-            mb: { xs: 2, sm: 2.5 },
-            fontWeight: 600,
-            letterSpacing: '-0.02em',
-            color: 'rgba(0, 0, 0, 0.85)'
-          }}
-        >
-          📝 {surveyTitle} survey
-        </Typography>
+      <Stack spacing={2}>
+        <Paper elevation={0} sx={{ ...cardSx, p: 2 }}>
+          <Stack
+            direction="row"
+            alignItems="flex-start"
+            justifyContent="space-between"
+            spacing={1}
+            sx={{ mb: 1.5 }}
+          >
+            <Box>
+              <Typography variant="subtitle2" fontWeight={700}>
+                {stageLabel}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25 }}>
+                {getStageDescription(surveyTitle)}
+              </Typography>
+            </Box>
+            <Chip
+              label={`${currentIndex + 1} / ${questions.length}`}
+              size="small"
+              sx={{ fontWeight: 700, flexShrink: 0 }}
+            />
+          </Stack>
 
-        <Paper 
-          elevation={0}
-          sx={{ 
-            padding: { xs: 3, sm: 3.5 }, 
-            width: "100%", 
-            color: "black",
-            boxSizing: "border-box",
-            borderRadius: 4,
-            border: 'none',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06)',
-            backgroundColor: 'white',
-            position: 'relative',
-            zIndex: 1,
-          }}
-        >
+          <LinearProgress
+            variant="determinate"
+            value={progressPercent}
+            sx={{
+              height: 6,
+              borderRadius: 3,
+              mb: 1,
+              backgroundColor: "rgba(0, 0, 0, 0.08)",
+            }}
+          />
+
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Typography variant="caption" color="text.secondary">
+              {progressPercent}% complete
+            </Typography>
+            {resumedFromSaved && (
+              <Typography variant="caption" color="primary.main" fontWeight={600}>
+                Resumed · {answeredCount} saved
+              </Typography>
+            )}
+          </Stack>
+        </Paper>
+
+        <Paper elevation={0} sx={{ ...cardSx, p: 2.5 }}>
           {currentQuestion && renderQuestion(currentQuestion)}
 
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 2,
-              mt: { xs: 2.5, sm: 3 }
-            }}
+          <Stack
+            direction="row"
+            alignItems="center"
+            spacing={1.5}
+            sx={{ mt: 3, pt: 2, borderTop: "1px solid rgba(0,0,0,0.06)" }}
           >
             <Button
               variant="outlined"
               onClick={handleBack}
               disabled={currentIndex === 0 || isSaving}
-              sx={{ 
-                flex: 1,
-                maxWidth: "120px",
-                borderRadius: 3,
-                textTransform: 'none',
-                fontWeight: 500,
-                borderColor: 'rgba(0, 0, 0, 0.15)',
-                color: 'rgba(0, 0, 0, 0.85)',
-                backgroundColor: '#fafafa',
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                '&:hover': {
-                  borderColor: 'primary.main',
-                  backgroundColor: 'white',
-                  transform: 'translateY(-1px)',
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
-                },
-                '&:disabled': {
-                  borderColor: 'rgba(0, 0, 0, 0.08)',
-                  color: 'rgba(0, 0, 0, 0.25)',
-                  backgroundColor: '#fafafa'
-                }
+              startIcon={<ArrowBackIcon />}
+              sx={{
+                borderRadius: 2,
+                textTransform: "none",
+                fontWeight: 600,
+                minWidth: 0,
+                px: 2,
               }}
             >
-              ⬅
+              Back
             </Button>
-            <Typography 
-              variant="body2"
-              sx={{ 
-                textAlign: "center",
-                flex: 1,
-                fontSize: { xs: "0.95rem", sm: "1rem" },
-                fontWeight: 500,
-                color: 'rgba(0, 0, 0, 0.6)',
-                letterSpacing: '-0.01em',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {currentIndex + 1} of {questions.length}
-            </Typography>
+
+            <Box sx={{ flex: 1 }} />
+
             <Button
               variant="contained"
               onClick={handleNext}
               disabled={isEmptyResponse || isSaving}
-              sx={{ 
-                flex: 1,
-                maxWidth: "120px",
-                borderRadius: 3,
-                textTransform: 'none',
+              endIcon={
+                isSaving ? (
+                  <CircularProgress size={16} color="inherit" />
+                ) : currentIndex < questions.length - 1 ? (
+                  <ArrowForwardIcon />
+                ) : (
+                  <CheckIcon />
+                )
+              }
+              sx={{
+                borderRadius: 2,
+                textTransform: "none",
                 fontWeight: 600,
-                whiteSpace: 'nowrap',
-                backgroundColor: 'primary.main',
-                boxShadow: '0 2px 8px rgba(25, 118, 210, 0.25)',
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                '&:hover': {
-                  backgroundColor: 'primary.dark',
-                  transform: 'translateY(-2px)',
-                  boxShadow: '0 6px 16px rgba(25, 118, 210, 0.35)'
-                },
-                '&:disabled': {
-                  backgroundColor: 'rgba(0, 0, 0, 0.08)',
-                  color: 'rgba(0, 0, 0, 0.25)',
-                  boxShadow: 'none'
-                }
+                minWidth: 110,
+                px: 2.5,
               }}
             >
-              {isSaving ? (
-                <>
-                  <CircularProgress size={16} sx={{ mr: 1, color: 'rgba(255, 255, 255, 0.7)' }} />
-                  Saving...
-                </>
-              ) : (
-                currentIndex < questions.length - 1 ? "Next ➡" : "Finish ✅"
-              )}
+              {isSaving
+                ? "Saving…"
+                : currentIndex < questions.length - 1
+                  ? "Next"
+                  : "Finish"}
             </Button>
-          </Box>
+          </Stack>
         </Paper>
-      </Box>
+      </Stack>
 
-       <AppConfirmDialog
-         open={showCompletionModal && isTabActive}
-         onClose={() => setShowCompletionModal(false)}
-         tone="success"
-         icon={<CheckCircleOutlineIcon />}
-         title={getCompletionMessage().title}
-         maxWidth="sm"
-         scrollable
-         zIndex={1500}
-         primaryAction={{
-           label: "Go to home",
-           onClick: handleGoHome,
-         }}
-       >
-         <Stack spacing={1.5}>
-           <Typography variant="body2" sx={{ lineHeight: 1.55 }}>
-             {getCompletionMessage().message}
-           </Typography>
-           <Typography variant="body2" fontWeight={600}>
-             What&apos;s next?
-           </Typography>
-           {getCompletionMessage().nextSteps.map((step, index) => (
-             <Typography
-               key={index}
-               variant="body2"
-               color="text.secondary"
-               sx={{ lineHeight: 1.45 }}
-             >
-               • {step}
-             </Typography>
-           ))}
-           <Typography
-             variant="caption"
-             color="text.secondary"
-             sx={{ fontStyle: "italic", lineHeight: 1.45 }}
-           >
-             Your responses help us understand food waste patterns and improve our
-             recommendations.
-           </Typography>
-         </Stack>
-       </AppConfirmDialog>
+      <AppConfirmDialog
+        open={showCompletionModal && isTabActive}
+        onClose={() => setShowCompletionModal(false)}
+        tone="success"
+        icon={<CheckCircleOutlineIcon />}
+        title={getCompletionMessage().title}
+        maxWidth="sm"
+        scrollable
+        zIndex={1500}
+        primaryAction={{
+          label: "Go to food log",
+          onClick: handleGoHome,
+        }}
+      >
+        <Stack spacing={1.5}>
+          <Typography variant="body2" sx={{ lineHeight: 1.55 }}>
+            {getCompletionMessage().message}
+          </Typography>
+          <Typography variant="body2" fontWeight={600}>
+            What&apos;s next?
+          </Typography>
+          {getCompletionMessage().nextSteps.map((step, index) => (
+            <Typography
+              key={index}
+              variant="body2"
+              color="text.secondary"
+              sx={{ lineHeight: 1.45 }}
+            >
+              • {step}
+            </Typography>
+          ))}
+        </Stack>
+      </AppConfirmDialog>
 
-       {/* Error Snackbar */}
-       <Snackbar
-         open={!!error}
-         autoHideDuration={6000}
-         onClose={() => setError(null)}
-         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-       >
-         <Alert onClose={() => setError(null)} severity="error" sx={{ width: '100%' }}>
-           {error}
-         </Alert>
-       </Snackbar>
+      <Snackbar
+        open={!!error}
+        autoHideDuration={6000}
+        onClose={() => setError(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert onClose={() => setError(null)} severity="error" sx={{ width: "100%" }}>
+          {error}
+        </Alert>
+      </Snackbar>
     </>
   );
 };

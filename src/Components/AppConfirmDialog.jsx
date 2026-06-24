@@ -30,25 +30,31 @@ const toneStyles = {
 };
 
 /** Shared MUI Dialog sx — bottom sheet on mobile, centered card on desktop. */
-export function getAppDialogSx({ zIndex, maxWidth = "xs", scrollable = false } = {}) {
+export function getAppDialogSx({
+  zIndex,
+  maxWidth = "xs",
+  scrollable = false,
+  presentation = "sheet",
+} = {}) {
   const paperMaxWidth = maxWidth === "sm" ? 480 : 420;
+  const centered = presentation === "centered";
 
   return {
     ...(zIndex != null && { zIndex }),
     "& .MuiDialog-container": {
-      alignItems: { xs: "flex-end", sm: "center" },
+      alignItems: centered ? "center" : { xs: "flex-end", sm: "center" },
       justifyContent: "center",
     },
     "& .MuiBackdrop-root": {
       backgroundColor: "rgba(0, 0, 0, 0.45)",
     },
     "& .MuiDialog-paper": {
-      margin: { xs: 0, sm: 2 },
+      margin: centered ? 2 : { xs: 0, sm: 2 },
       width: "100%",
       maxWidth: paperMaxWidth,
-      borderRadius: { xs: "20px 20px 0 0", sm: 3 },
+      borderRadius: centered ? 3 : { xs: "20px 20px 0 0", sm: 3 },
       overflow: "hidden",
-      maxHeight: { xs: "88vh", sm: "90vh" },
+      maxHeight: centered ? "90vh" : { xs: "88vh", sm: "90vh" },
       ...(scrollable && {
         display: "flex",
         flexDirection: "column",
@@ -76,6 +82,7 @@ export default function AppConfirmDialog({
   hideCloseButton = false,
   maxWidth = "xs",
   scrollable = false,
+  presentation = "sheet",
 }) {
   const styles = toneStyles[tone] || toneStyles.default;
 
@@ -100,7 +107,7 @@ export default function AppConfirmDialog({
       fullWidth
       scroll={scrollable ? "paper" : "body"}
       disableEscapeKeyDown={disableEscapeKeyDown}
-      sx={getAppDialogSx({ zIndex, maxWidth, scrollable })}
+      sx={getAppDialogSx({ zIndex, maxWidth, scrollable, presentation })}
     >
       <Box sx={{ px: 2.5, pt: 2.5, pb: 0, flexShrink: 0 }}>
         <Stack direction="row" alignItems="flex-start" spacing={1.5}>

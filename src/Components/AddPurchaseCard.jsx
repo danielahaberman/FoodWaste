@@ -19,7 +19,7 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import MobileSelect from "./MobileSelect";
 import { useMediaQuery, useTheme } from "@mui/material";
 
-function AddPurchaseCard({ item, handleAddPurchase, setSelectedItem, quantityTypes, foodCategories }) {
+function AddPurchaseCard({ item, handleAddPurchase, setSelectedItem, quantityTypes, foodCategories, submitting = false }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [currentItem, setCurrentItem] = useState(item);
@@ -55,7 +55,7 @@ function AddPurchaseCard({ item, handleAddPurchase, setSelectedItem, quantityTyp
   }, [item, foodCategories]);
 
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     setError("");
     const quantityNum = parseFloat(quantity);
     if (!Number.isFinite(quantityNum) || quantityNum <= 0) {
@@ -73,7 +73,6 @@ function AddPurchaseCard({ item, handleAddPurchase, setSelectedItem, quantityTyp
       return;
     }
 
-    // For Open Food Facts and OpenNutrition products, ensure category_id and quantity_type_id are set
     if (currentItem.source === 'openfoodfacts' || currentItem.source === 'opennutrition') {
       if (!currentItem.category_id) {
         setError("Please select a category");
@@ -85,12 +84,10 @@ function AddPurchaseCard({ item, handleAddPurchase, setSelectedItem, quantityTyp
       }
     }
 
-    // Get quantity_type name from quantity_type_id if available
     const quantityTypeName = currentItem.quantity_type || 
       (currentItem.quantity_type_id && quantityTypes?.find(qt => qt.id === currentItem.quantity_type_id)?.name) || 
       null;
 
-    // Get category name if not set
     const categoryName = currentItem.category || 
       (currentItem.category_id && foodCategories?.find(cat => cat.id === currentItem.category_id)?.name) || 
       null;
@@ -103,8 +100,7 @@ function AddPurchaseCard({ item, handleAddPurchase, setSelectedItem, quantityTyp
       quantity_type: quantityTypeName,
       quantity_type_id: currentItem.quantity_type_id,
       category_id: currentItem.category_id,
-      barcode: currentItem.barcode, // Include barcode for Open Food Facts products
-      // Preserve metadata so the backend can store a snapshot on the purchase.
+      barcode: currentItem.barcode,
       image: currentItem.image || currentItem.image_url || null,
       image_url: currentItem.image || currentItem.image_url || null,
       emoji: currentItem.emoji || null,
@@ -114,7 +110,7 @@ function AddPurchaseCard({ item, handleAddPurchase, setSelectedItem, quantityTyp
       ingredients_text: currentItem.ingredients_text || null,
     };
 
-    handleAddPurchase(purchaseData);
+    await handleAddPurchase(purchaseData);
   };
 
   return (
@@ -329,6 +325,7 @@ function AddPurchaseCard({ item, handleAddPurchase, setSelectedItem, quantityTyp
           color="secondary"
           size={isMobile ? "medium" : "small"}
           onClick={() => setSelectedItem(null)}
+          disabled={submitting}
           fullWidth={isMobile}
           sx={{ minHeight: { xs: '44px', sm: 'auto' } }}
         >
@@ -339,6 +336,7 @@ function AddPurchaseCard({ item, handleAddPurchase, setSelectedItem, quantityTyp
           size={isMobile ? "medium" : "small"}
           onClick={handleAdd}
           disabled={
+            submitting ||
             !String(cost).trim() ||
             parseFloat(cost) <= 0 ||
             parseFloat(quantity) <= 0 ||
@@ -348,7 +346,7 @@ function AddPurchaseCard({ item, handleAddPurchase, setSelectedItem, quantityTyp
           fullWidth={isMobile}
           sx={{ minHeight: { xs: '44px', sm: 'auto' } }}
         >
-          Add to Purchase
+          {submitting ? "Adding…" : "Add to Purchase"}
         </Button>
       </CardActions>
     </Card>

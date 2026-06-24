@@ -118,6 +118,7 @@ function FoodResultRow({ item, badge, onClick }) {
 const FoodItemSearchDropdown = ({
   foodItems,
   handleAddToPurchase,
+  addingPurchase = false,
   open,
   setHideNew,
   foodCategories,
@@ -344,9 +345,12 @@ const FoodItemSearchDropdown = ({
               item={selectedItem}
               quantityTypes={quantityTypes}
               foodCategories={foodCategories}
-              handleAddPurchase={(purchase) => {
-                setSelectedItem(null);
-                handleAddToPurchase(purchase);
+              submitting={addingPurchase}
+              handleAddPurchase={async (purchase) => {
+                const result = await handleAddToPurchase(purchase);
+                if (result === true) {
+                  setSelectedItem(null);
+                }
               }}
             />
           </Box>

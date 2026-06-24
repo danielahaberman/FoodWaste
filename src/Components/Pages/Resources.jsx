@@ -13,7 +13,8 @@ import {
   Divider,
   Chip,
   Link,
-  Paper
+  Paper,
+  IconButton,
 } from '@mui/material';
 import {
   Lightbulb,
@@ -23,7 +24,8 @@ import {
   Delete,
   Park,
   School,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import PageWrapper from '../PageWrapper';
@@ -119,7 +121,22 @@ const Resources = () => {
   };
 
   return (
-    <PageWrapper title="🌱 Food Waste Resources">
+    <PageWrapper
+      title="🌱 Food Waste Resources"
+      headerAction={
+        <IconButton
+          aria-label="Close resources"
+          onClick={() => navigate('/settings')}
+          edge="end"
+          sx={{
+            backgroundColor: 'rgba(0, 0, 0, 0.04)',
+            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' },
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
+      }
+    >
         {/* Introduction */}
         <Paper
           elevation={0} 

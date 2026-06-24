@@ -26,6 +26,11 @@ import {
 import { dailyTasksAPI } from "../api";
 import { getCurrentUserId } from "../utils/authUtils";
 import { getAppDialogSx } from "./AppConfirmDialog";
+import {
+  countCompletedDailyTasks,
+  hasIncompleteDailyTasks,
+  markDailyTasksPopupSeen,
+} from "../utils/reminderUtils";
 
 const appDialogSx = {
   ...getAppDialogSx({ zIndex: 1500, maxWidth: "sm", scrollable: true }),
@@ -34,7 +39,7 @@ const appDialogSx = {
   },
 };
 
-const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
+const DailyTasksPopup = ({ open, onClose, onDismissForToday, onViewAllTasks }) => {
   const navigate = useNavigate();
   const dialogActionsSx = {
     justifyContent: "space-between",
@@ -50,7 +55,7 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
     const userId = getCurrentUserId();
     if (!userId) {
       setLoading(false);
-      return;
+      return null;
     }
 
     try {
@@ -59,11 +64,13 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
         dailyTasksAPI.getTodayTasks({ user_id: userId }),
         dailyTasksAPI.getStreak({ user_id: userId }),
       ]);
-      
+
       setDailyTasks(tasksResponse.data);
       setStreak(streakResponse.data);
+      return tasksResponse.data;
     } catch (error) {
       console.error("Error fetching daily tasks:", error);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -72,7 +79,6 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
   useEffect(() => {
     if (open) {
       const userId = getCurrentUserId();
-      // Check if this is the first time user sees the streaks popup
       if (userId) {
         const streakIntroSeenKey = `streakIntroSeen_${userId}`;
         const hasSeenIntro = localStorage.getItem(streakIntroSeenKey);
@@ -80,25 +86,29 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
           setShowIntro(true);
         }
       }
-      fetchDailyTasks();
-      // Notify that daily tasks popup is open
-      window.dispatchEvent(new CustomEvent('dailyTasksPopupOpen'));
+      fetchDailyTasks().then((tasks) => {
+        if (tasks && !hasIncompleteDailyTasks(tasks)) {
+          onDismissForToday?.();
+        }
+      });
+      window.dispatchEvent(new CustomEvent("dailyTasksPopupOpen"));
     } else {
       setShowIntro(false);
-      // Notify that daily tasks popup is closed
-      window.dispatchEvent(new CustomEvent('dailyTasksPopupClose'));
+      window.dispatchEvent(new CustomEvent("dailyTasksPopupClose"));
     }
   }, [open]);
 
-  // Listen for task completion events to refresh data
   useEffect(() => {
-    const handleTaskCompleted = () => {
-      fetchDailyTasks();
+    const handleTaskCompleted = async () => {
+      const tasks = await fetchDailyTasks();
+      if (tasks && !hasIncompleteDailyTasks(tasks)) {
+        onDismissForToday?.();
+      }
     };
-    
-    window.addEventListener('taskCompleted', handleTaskCompleted);
-    return () => window.removeEventListener('taskCompleted', handleTaskCompleted);
-  }, []);
+
+    window.addEventListener("taskCompleted", handleTaskCompleted);
+    return () => window.removeEventListener("taskCompleted", handleTaskCompleted);
+  }, [onDismissForToday]);
 
   const handleTaskNavigation = (taskType) => {
     switch (taskType) {
@@ -119,37 +129,24 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
     }
   };
 
-  const handleDismiss = async () => {
+  const dismissForToday = async () => {
     const userId = getCurrentUserId();
     if (!userId) {
       onClose();
       return;
     }
 
+    markDailyTasksPopupSeen(userId);
     try {
-      // Save dismiss datetime to localStorage (10 minutes cooldown)
-      const dismissTime = Date.now();
-      localStorage.setItem(`dailyTasksPopupDismissed_${userId}`, dismissTime.toString());
-      
       await dailyTasksAPI.markPopupShown({ user_id: userId });
-      onClose();
     } catch (error) {
       console.error("Error marking popup as shown:", error);
-      // Still save dismiss time even if API call fails
-      const dismissTime = Date.now();
-      localStorage.setItem(`dailyTasksPopupDismissed_${userId}`, dismissTime.toString());
-      onClose();
     }
+    onDismissForToday?.();
   };
 
   const handleClose = () => {
-    const userId = getCurrentUserId();
-    // Treat closing as dismiss - save dismiss time
-    if (userId) {
-      const dismissTime = Date.now();
-      localStorage.setItem(`dailyTasksPopupDismissed_${userId}`, dismissTime.toString());
-    }
-    onClose();
+    dismissForToday();
   };
 
   const handleIntroContinue = () => {
@@ -162,14 +159,7 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
     setShowIntro(false);
   };
 
-  const getTaskCompletionCount = () => {
-    if (!dailyTasks) return 0;
-    let count = 0;
-    if (dailyTasks.log_food_completed) count++;
-    if (dailyTasks.complete_survey_completed) count++;
-    if (dailyTasks.log_consume_waste_completed) count++;
-    return count;
-  };
+  const getTaskCompletionCount = () => countCompletedDailyTasks(dailyTasks);
 
   const getProgressPercentage = () => {
     const completed = getTaskCompletionCount();
@@ -431,11 +421,17 @@ const DailyTasksPopup = ({ open, onClose, onViewAllTasks }) => {
       </DialogContent>
       
       <DialogActions sx={dialogActionsSx}>
-        <Button onClick={handleDismiss} color="inherit">
-          Dismiss
+        <Button onClick={dismissForToday} color="inherit">
+          Not now
         </Button>
-        <Button onClick={onViewAllTasks} variant="contained">
-          View All Tasks
+        <Button
+          onClick={async () => {
+            await dismissForToday();
+            onViewAllTasks?.();
+          }}
+          variant="contained"
+        >
+          View all tasks
         </Button>
       </DialogActions>
     </Dialog>

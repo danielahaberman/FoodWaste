@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { foodPurchaseAPI, consumptionAPI } from "../../api";
 import moment from "moment-timezone";
 import RestartAltOutlinedIcon from "@mui/icons-material/RestartAltOutlined";
@@ -12,7 +12,6 @@ import {
   IconButton,
   CircularProgress,
   Button,
-  Slider,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -22,12 +21,11 @@ import {
   Chip,
   ToggleButtonGroup,
   ToggleButton,
-  Menu,
-  MenuItem,
   Tabs,
   Tab,
   Snackbar,
   Alert,
+  LinearProgress,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
@@ -40,12 +38,14 @@ import SwipeableViews from 'react-swipeable-views';
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import RestaurantIcon from "@mui/icons-material/Restaurant";
 import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
-import FastfoodIcon from "@mui/icons-material/Fastfood";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
 import CloseIcon from "@mui/icons-material/Close";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import AddIcon from "@mui/icons-material/Add";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 import { Pie, Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -59,6 +59,174 @@ import {
 
 ChartJS.register(ArcElement, ChartTooltip, CategoryScale, LinearScale, PointElement, LineElement);
 
+const cardSx = {
+  borderRadius: 3,
+  border: "none",
+  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06)",
+  backgroundColor: "white",
+};
+
+function computeWeekStats(week, summaryMap) {
+  let completedItems = 0;
+  let consumedQty = 0;
+  let wastedQty = 0;
+  let consumedCost = 0;
+  let wastedCost = 0;
+  let totalSpent = 0;
+  const itemCount = week.purchases.length;
+
+  week.purchases.forEach((purchase) => {
+    const s = summaryMap[purchase.id] || {};
+    const baseQty = parseFloat(purchase.quantity) || 0;
+    const price = parseFloat(purchase.price) || 0;
+    totalSpent += price;
+    const cQty = parseFloat(s.consumed_qty || 0);
+    const wQty = parseFloat(s.wasted_qty || 0);
+    consumedQty += cQty;
+    wastedQty += wQty;
+    consumedCost += parseFloat(s.consumed_cost || 0);
+    wastedCost += parseFloat(s.wasted_cost || 0);
+    if (cQty + wQty >= baseQty - 0.0001) completedItems += 1;
+  });
+
+  const progress = itemCount > 0 ? Math.round((completedItems / itemCount) * 100) : 0;
+  const isCompleted = itemCount > 0 && completedItems === itemCount;
+  const isEmpty = itemCount === 0;
+
+  return {
+    itemCount,
+    consumedQty,
+    wastedQty,
+    consumedCost,
+    wastedCost,
+    totalSpent,
+    progress,
+    isCompleted,
+    isEmpty,
+  };
+}
+
+function SummaryLegend() {
+  const items = [
+    { Icon: ShoppingCartIcon, label: "Purchased", color: "primary.main" },
+    { Icon: RestaurantIcon, label: "Consumed", color: "success.main" },
+    { Icon: DeleteForeverIcon, label: "Wasted", color: "error.main" },
+  ];
+
+  return (
+    <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+      {items.map(({ Icon, label, color }) => (
+        <Chip
+          key={label}
+          size="small"
+          icon={<Icon sx={{ fontSize: "16px !important", color: `${color} !important` }} />}
+          label={label}
+          sx={{
+            height: 28,
+            fontWeight: 600,
+            fontSize: "0.75rem",
+            backgroundColor: "rgba(0, 0, 0, 0.04)",
+            border: "none",
+          }}
+        />
+      ))}
+    </Stack>
+  );
+}
+
+const LOG_WIZARD_STEP_COUNT = 3;
+const LOG_WIZARD_STEP_LABELS = ["Choose", "Amount", "The rest"];
+
+const LOG_PERCENT_OPTIONS = [
+  { label: "¼", pct: 0.25 },
+  { label: "Half", pct: 0.5 },
+  { label: "¾", pct: 0.75 },
+  { label: "All", pct: 1 },
+];
+
+const INITIAL_LOG_WIZARD = { step: 1, type: null, amount: 0 };
+
+function amountFromPercent(remaining, pct) {
+  if (pct >= 1) return remaining;
+  return Number(Math.max(0, remaining * pct).toFixed(4));
+}
+
+function PartialLogWizardProgress({ currentStep }) {
+  const progress = (currentStep / LOG_WIZARD_STEP_COUNT) * 100;
+
+  return (
+    <Box>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.75 }}>
+        <Typography variant="caption" color="text.secondary" fontWeight={700}>
+          Step {currentStep} of {LOG_WIZARD_STEP_COUNT}
+        </Typography>
+        <Typography variant="caption" color="primary.main" fontWeight={700}>
+          {LOG_WIZARD_STEP_LABELS[currentStep - 1]}
+        </Typography>
+      </Stack>
+      <LinearProgress
+        variant="determinate"
+        value={progress}
+        sx={{
+          height: 5,
+          borderRadius: 3,
+          backgroundColor: "rgba(0, 0, 0, 0.08)",
+        }}
+      />
+    </Box>
+  );
+}
+
+function WizardStepTitle({ children }) {
+  return (
+    <Typography variant="subtitle2" fontWeight={700} sx={{ lineHeight: 1.35 }}>
+      {children}
+    </Typography>
+  );
+}
+
+function ItemProgressBar({ base, consumedSoFar, wastedSoFar }) {
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        height: 8,
+        borderRadius: 4,
+        overflow: "hidden",
+        bgcolor: "rgba(0,0,0,0.08)",
+      }}
+    >
+      <Box
+        sx={{
+          width: `${base > 0 ? (consumedSoFar / base) * 100 : 0}%`,
+          bgcolor: "success.main",
+        }}
+      />
+      <Box
+        sx={{
+          width: `${base > 0 ? (wastedSoFar / base) * 100 : 0}%`,
+          bgcolor: "error.main",
+        }}
+      />
+      <Box sx={{ flex: 1, bgcolor: "primary.light", opacity: 0.35 }} />
+    </Box>
+  );
+}
+
+function WeekStat({ Icon, label, value, color }) {
+  return (
+    <Box sx={{ flex: 1, minWidth: 0, textAlign: "center" }}>
+      <Icon sx={{ fontSize: 20, color, mb: 0.25 }} />
+      <Typography variant="caption" color="text.secondary" display="block" sx={{ lineHeight: 1.2 }}>
+        {label}
+      </Typography>
+      <Typography variant="body2" fontWeight={700} noWrap sx={{ lineHeight: 1.3 }}>
+        {value}
+      </Typography>
+    </Box>
+  );
+}
+
 function ConsumeWaste({ onGoToDate }) {
   const navigate = useNavigate();
   const isTabActive = useIsTabActive();
@@ -68,24 +236,26 @@ function ConsumeWaste({ onGoToDate }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedPurchase, setSelectedPurchase] = useState(null);
-  // Two explicit sliders is clearer than a 2-thumb "boundary" slider:
-  // users directly set how much they consumed vs wasted right now.
-  const [consumedNow, setConsumedNow] = useState(0);
-  const [wastedNow, setWastedNow] = useState(0);
+  const [logWizard, setLogWizard] = useState(INITIAL_LOG_WIZARD);
+  const [logSaving, setLogSaving] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'error' });
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [summaryMap, setSummaryMap] = useState({});
+  const [weekCharts, setWeekCharts] = useState({});
+  const [weekChartTotals, setWeekChartTotals] = useState({});
+  const [trendData, setTrendData] = useState(null);
+  const [overallChart, setOverallChart] = useState(null);
+  const [overallTotals, setOverallTotals] = useState(null);
+  const [overallOpen, setOverallOpen] = useState(false);
+  const [trendPeriod, setTrendPeriod] = useState('day');
+  const [trendOffset, setTrendOffset] = useState(0);
+  const [tabIndex, setTabIndex] = useState(0);
+  const [activeWeekOf, setActiveWeekOf] = useState(null);
+  const [byCategory, setByCategory] = useState([]);
+  const wasTabActiveRef = useRef(isTabActive);
 
-  const getStepForRemaining = (remaining) => {
-    const r = Number(remaining) || 0;
-    if (r <= 0) return 0.1;
-    if (r <= 1) return 0.01;
-    if (r <= 5) return 0.05;
-    if (r <= 20) return 0.1;
-    return 0.25;
-  };
-
-  const fetchWeeklyPurchaseSummary = async () => {
+  const refreshAll = useCallback(async (showLoader = false) => {
     const userId = getCurrentUserId();
     if (!userId) {
       setError("You must be logged in to view this data.");
@@ -93,27 +263,53 @@ function ConsumeWaste({ onGoToDate }) {
       return;
     }
 
-    setLoading(true);
+    if (showLoader) setLoading(true);
     setError(null);
     try {
-      const params = { user_id: userId };
-      const response = await foodPurchaseAPI.getWeeklySummary(params);
-      setWeeklySummary(response.data || []);
+      const response = await foodPurchaseAPI.getWeeklySummary({ user_id: userId });
+      const data = response.data || [];
+      setWeeklySummary(data);
+      const ids = data.flatMap((w) => w.purchases).map((p) => p.id);
+      if (ids.length) {
+        const res = await consumptionAPI.getBatchSummary({
+          user_id: userId,
+          purchase_ids: ids.join(","),
+        });
+        const map = {};
+        (res.data || []).forEach((r) => {
+          map[r.purchase_id] = r;
+        });
+        setSummaryMap(map);
+      } else {
+        setSummaryMap({});
+      }
     } catch (err) {
       console.error("Error fetching weekly summary:", err);
       setError("Failed to load data. Please try again.");
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  const fetchWeeklyPurchaseSummary = async () => {
+    await refreshAll(true);
   };
 
   useEffect(() => {
-    fetchWeeklyPurchaseSummary();
-  }, []);
+    refreshAll(true);
+  }, [refreshAll]);
+
+  useEffect(() => {
+    if (isTabActive && !wasTabActiveRef.current) {
+      refreshAll();
+    }
+    wasTabActiveRef.current = isTabActive;
+  }, [isTabActive, refreshAll]);
 
   useEffect(() => {
     if (!isTabActive) {
       setSelectedPurchase(null);
+      setLogWizard(INITIAL_LOG_WIZARD);
       setOverallOpen(false);
     }
   }, [isTabActive]);
@@ -129,19 +325,6 @@ function ConsumeWaste({ onGoToDate }) {
     (res.data || []).forEach(r => { map[r.purchase_id] = r; });
     return map;
   };
-
-  const [summaryMap, setSummaryMap] = useState({});
-  const [weekCharts, setWeekCharts] = useState({}); // { [weekOf]: chartData }
-  const [weekChartTotals, setWeekChartTotals] = useState({}); // { [weekOf]: { consumed, wasted, unmarked } }
-  const [trendData, setTrendData] = useState(null);
-  const [overallChart, setOverallChart] = useState(null);
-  const [overallTotals, setOverallTotals] = useState(null); // { consumed, wasted }
-  const [overallOpen, setOverallOpen] = useState(false);
-  const [trendPeriod, setTrendPeriod] = useState('day'); // 'day' | 'week' | 'month'
-  const [trendOffset, setTrendOffset] = useState(0); // Offset in periods to go back in time
-  const [tabIndex, setTabIndex] = useState(0); // 0: overall pie, 1: trend, 2: by category
-  const [activeWeekOf, setActiveWeekOf] = useState(null);
-  const [byCategory, setByCategory] = useState([]);
 
   // Show exactly 2 editable weeks (previous week + current week) plus next week (disabled), with 7-day edit limit
   const getEditableWeeks = () => {
@@ -163,12 +346,48 @@ function ConsumeWaste({ onGoToDate }) {
     return `${start.format('MMM D')} - ${end.format('MMM D, YYYY')}`;
   };
 
-  // Per-item action menu
-  const [itemMenuAnchor, setItemMenuAnchor] = useState(null);
-  const [itemMenuTarget, setItemMenuTarget] = useState(null);
-  const openItemMenu = Boolean(itemMenuAnchor);
-  const handleItemMenuOpen = (e, item) => { setItemMenuAnchor(e.currentTarget); setItemMenuTarget(item); };
-  const handleItemMenuClose = () => { setItemMenuAnchor(null); setItemMenuTarget(null); };
+  const isWeekEditable = (weekOf) => {
+    const editableWeeks = getEditableWeeks();
+    return (
+      weekOf === editableWeeks.previousWeek || weekOf === editableWeeks.currentWeek
+    );
+  };
+
+  const getItemEmoji = (item) => {
+    if (item.emoji) return item.emoji;
+    const map = {
+      Fruits: "🍎", Vegetables: "🥦", Bakery: "🍞", Dairy: "🥛", Meat: "🥩", Seafood: "🐟",
+      Grains: "🌾", "Canned Goods": "🥫", Frozen: "🧊", Beverages: "🥤", Juice: "🧃",
+      Snacks: "🍿", Condiments: "🧂", Spices: "🧂", Pantry: "📦", Deli: "🥪",
+      "Prepared Foods": "🍱", Breakfast: "🍳", Sauces: "🍝", Baking: "🧁",
+      "Oils & Vinegars": "🫒", Household: "🏠",
+    };
+    return map[item.category] || "🍽️";
+  };
+
+  const getPurchaseBreakdown = (purchase, summary = {}) => {
+    const base = parseFloat(purchase.quantity) || 0;
+    const consumed = parseFloat(summary.consumed_qty || 0) || 0;
+    const wasted = parseFloat(summary.wasted_qty || 0) || 0;
+    const used = consumed + wasted;
+    const remaining = Math.max(0, base - used);
+    const completed = remaining <= 0.0001;
+    const pctConsumed = base > 0 ? (consumed / base) * 100 : 0;
+    const pctWasted = base > 0 ? (wasted / base) * 100 : 0;
+    const pctRemaining = base > 0 ? (remaining / base) * 100 : 0;
+    return {
+      base,
+      consumed,
+      wasted,
+      remaining,
+      completed,
+      pctConsumed,
+      pctWasted,
+      pctRemaining,
+      consumedCost: parseFloat(summary.consumed_cost || 0) || 0,
+      wastedCost: parseFloat(summary.wasted_cost || 0) || 0,
+    };
+  };
 
   const formatNum = (n) => {
     const v = parseFloat(n || 0);
@@ -179,37 +398,71 @@ function ConsumeWaste({ onGoToDate }) {
 
   const formatMoney = (n) => `$${formatNum(n)}`;
 
-  const Legend = () => (
-    <Box
-      sx={{
-        position: 'sticky',
-        top: { xs: '-48px', sm: '-52px' }, // Negative top to account for header height
-        zIndex: 999,
-        backgroundColor: 'rgba(255, 255, 255, 0.6)',
-        backdropFilter: 'blur(40px) saturate(200%)',
-        WebkitBackdropFilter: 'blur(40px) saturate(200%)',
-        borderBottom: '0.5px solid rgba(0, 0, 0, 0.06)',
-        py: 0.5,
-        px: { xs: 2, sm: 2.5 },
-        mb: 1,
-      }}
-    >
-      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ color: "black" }}>
-        <Box display="inline-flex" alignItems="center" gap={0.25}>
-          <ShoppingCartIcon sx={{ color: 'primary.main', fontSize: 14 }} />
-          <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>Purchased</Typography>
-        </Box>
-        <Box display="inline-flex" alignItems="center" gap={0.25}>
-          <RestaurantIcon sx={{ color: 'success.main', fontSize: 14 }} />
-          <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>Consumed</Typography>
-        </Box>
-        <Box display="inline-flex" alignItems="center" gap={0.25}>
-          <DeleteForeverIcon sx={{ color: 'error.main', fontSize: 14 }} />
-          <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>Wasted</Typography>
-        </Box>
-      </Stack>
-    </Box>
-  );
+  const goToLogForWeek = (weekOf) => {
+    const weekStart = moment.tz(weekOf, "MM/DD/YYYY", "America/New_York");
+    navigate(`/log?date=${weekStart.format("YYYY-MM-DD")}`);
+  };
+
+  const refreshAfterLog = async () => {
+    await fetchWeeklyPurchaseSummary();
+    const m = await fetchBatchSummaries();
+    setSummaryMap(m);
+    if (activeWeekOf) {
+      await ensureWeekChart(activeWeekOf, true);
+    }
+    window.dispatchEvent(new CustomEvent("taskCompleted"));
+  };
+
+  const logItemSplit = async (purchase, consumedQty, wastedQty) => {
+    const userId = getCurrentUserId();
+    if (!userId) {
+      setSnackbar({ open: true, message: "You must be logged in to save.", severity: "error" });
+      return false;
+    }
+    try {
+      await consumptionAPI.logSplit({
+        user_id: userId,
+        purchase_id: purchase.id,
+        consumed_quantity: Number(consumedQty.toFixed(4)),
+        wasted_quantity: Number(wastedQty.toFixed(4)),
+      });
+      await refreshAfterLog();
+      return true;
+    } catch (e) {
+      setSnackbar({
+        open: true,
+        message: e?.response?.data?.error || "Failed to log",
+        severity: "error",
+      });
+      return false;
+    }
+  };
+
+  const quickMarkRemaining = async (purchase, type) => {
+    const breakdown = getPurchaseBreakdown(purchase, summaryMap[purchase.id] || {});
+    if (breakdown.remaining <= 0) return;
+    const consumedQty = type === "consumed" ? breakdown.remaining : 0;
+    const wastedQty = type === "wasted" ? breakdown.remaining : 0;
+    const ok = await logItemSplit(purchase, consumedQty, wastedQty);
+    if (ok) {
+      setSnackbar({
+        open: true,
+        message: type === "consumed" ? "Marked as eaten" : "Marked as wasted",
+        severity: "success",
+      });
+    }
+  };
+
+  const buildEditableWeekList = () => {
+    const editableWeeks = getEditableWeeks();
+    const resolveWeek = (weekOf) =>
+      weeklySummary.find((week) => week.weekOf === weekOf) || { weekOf, purchases: [] };
+
+    return {
+      editableWeeks,
+      weeks: [resolveWeek(editableWeeks.currentWeek), resolveWeek(editableWeeks.previousWeek)],
+    };
+  };
   useEffect(() => {
     (async () => {
       const m = await fetchBatchSummaries();
@@ -342,59 +595,69 @@ function ConsumeWaste({ onGoToDate }) {
 
   const openLogDialog = (purchase) => {
     setSelectedPurchase(purchase);
-    setConsumedNow(0);
-    setWastedNow(0);
+    setLogWizard(INITIAL_LOG_WIZARD);
   };
 
   const closeDialog = () => {
     setSelectedPurchase(null);
+    setLogWizard(INITIAL_LOG_WIZARD);
+    setLogSaving(false);
     setResetConfirmOpen(false);
     setResetting(false);
   };
 
-  const submitLog = async () => {
+  const submitWizardLog = async (consumedAdd, wastedAdd) => {
     if (!selectedPurchase) return;
-    const userId = getCurrentUserId();
-    if (!userId) {
-      setSnackbar({ open: true, message: "You must be logged in to save.", severity: "error" });
-      return;
+    setLogSaving(true);
+    const ok = await logItemSplit(selectedPurchase, consumedAdd, wastedAdd);
+    setLogSaving(false);
+    if (ok) {
+      closeDialog();
+      setSnackbar({ open: true, message: "Saved", severity: "success" });
     }
-    const s = summaryMap[selectedPurchase.id] || {};
-    const baseQty = parseFloat(selectedPurchase.quantity) || 0;
-    const already =
-      (parseFloat(s.consumed_qty || 0) || 0) +
-      (parseFloat(s.wasted_qty || 0) || 0);
-    const remaining = Math.max(0, baseQty - already);
-    const consumed = Math.min(Math.max(parseFloat(consumedNow || 0) || 0, 0), remaining);
-    const wasted = Math.min(
-      Math.max(parseFloat(wastedNow || 0) || 0, 0),
-      Math.max(0, remaining - consumed)
-    );
-    const consumedQty = Number(consumed.toFixed(4));
-    const wastedQty = Number(wasted.toFixed(4));
-    if (consumedQty <= 0 && wastedQty <= 0) return;
+  };
 
-    try {
-      await consumptionAPI.logSplit({
-        user_id: userId,
-        purchase_id: selectedPurchase.id,
-        consumed_quantity: consumedQty,
-        wasted_quantity: wastedQty,
-      });
-    } catch (e) {
-      setSnackbar({ open: true, message: e?.response?.data?.error || "Failed to log", severity: 'error' });
+  const handlePickLogType = (type) => {
+    setLogWizard({ step: 2, type, amount: 0 });
+  };
+
+  const handlePickPercent = (pct, remaining) => {
+    const amount = amountFromPercent(remaining, pct);
+    const { type } = logWizard;
+    if (pct >= 1 || amount >= remaining - 0.0001) {
+      if (type === "consumed") {
+        submitWizardLog(remaining, 0);
+      } else {
+        submitWizardLog(0, remaining);
+      }
       return;
     }
-    closeDialog();
-    await fetchWeeklyPurchaseSummary();
-    const m = await fetchBatchSummaries();
-    setSummaryMap(m);
-    if (activeWeekOf) {
-      await ensureWeekChart(activeWeekOf, true);
+    setLogWizard((prev) => ({ ...prev, step: 3, amount }));
+  };
+
+  const handleMarkRestOpposite = (remaining) => {
+    const rest = Math.max(0, remaining - logWizard.amount);
+    if (logWizard.type === "consumed") {
+      submitWizardLog(logWizard.amount, rest);
+    } else {
+      submitWizardLog(rest, logWizard.amount);
     }
-    
-    // Dispatch task completion event to update streak and task counts
-    window.dispatchEvent(new CustomEvent('taskCompleted'));
+  };
+
+  const handleSaveRestForLater = () => {
+    if (logWizard.type === "consumed") {
+      submitWizardLog(logWizard.amount, 0);
+    } else {
+      submitWizardLog(0, logWizard.amount);
+    }
+  };
+
+  const wizardBack = () => {
+    setLogWizard((prev) => {
+      if (prev.step === 3) return { ...prev, step: 2, amount: 0 };
+      if (prev.step === 2) return INITIAL_LOG_WIZARD;
+      return prev;
+    });
   };
 
   const resetMarksForSelected = async () => {
@@ -414,10 +677,10 @@ function ConsumeWaste({ onGoToDate }) {
       if (activeWeekOf) {
         await ensureWeekChart(activeWeekOf, true);
       }
-      setConsumedNow(0);
-      setWastedNow(0);
       setResetConfirmOpen(false);
       setSnackbar({ open: true, message: "Reset to unmarked.", severity: "success" });
+      setLogWizard(INITIAL_LOG_WIZARD);
+      window.dispatchEvent(new CustomEvent("taskCompleted"));
     } catch (e) {
       setSnackbar({ open: true, message: e?.response?.data?.error || "Failed to reset.", severity: "error" });
     } finally {
@@ -477,7 +740,7 @@ function ConsumeWaste({ onGoToDate }) {
     }
   };
 
-  const pageTitle = activeWeekOf ? formatWeekRange(activeWeekOf) : 'Weekly Summary';
+  const pageTitle = 'Weekly Summary';
 
   if (loading)
     return (
@@ -502,831 +765,775 @@ function ConsumeWaste({ onGoToDate }) {
       </PageWrapper>
     );
 
-  const trendsButton = !activeWeekOf ? (
-    <Button 
-      variant="outlined" 
+  const headerActions = !activeWeekOf ? (
+    <IconButton
       size="small"
-      startIcon={<TrendingUpIcon />}
-      onClick={() => setOverallOpen(true)}
+      aria-label="Refresh summary"
+      onClick={() => refreshAll(true)}
+      disabled={loading}
       sx={{
-        borderRadius: 2,
-        textTransform: 'none',
-        fontWeight: 500,
-        fontSize: { xs: '0.75rem', sm: '0.875rem' },
-        py: 0.5,
-        px: 1.5
+        backgroundColor: "rgba(0, 0, 0, 0.04)",
+        "&:hover": { backgroundColor: "rgba(0, 0, 0, 0.08)" },
       }}
     >
-      View Trends
-    </Button>
+      {loading ? <CircularProgress size={18} /> : <RefreshIcon fontSize="small" />}
+    </IconButton>
   ) : null;
 
-  return (
-    <PageWrapper title={pageTitle} headerAction={trendsButton}>
+  const { editableWeeks, weeks: editableWeekList } = buildEditableWeekList();
 
-        {!activeWeekOf && <Legend />}
+  return (
+    <PageWrapper title={pageTitle} headerAction={headerActions} showHeader={!activeWeekOf}>
 
         {!activeWeekOf && (
-          <Box>
-          {/* Editable Weeks Section */}
-          <Box sx={{ backgroundColor: 'grey.50', borderRadius: 2, p: 1, mb: 2 }}>
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
-              Recent Weeks (Editable)
-            </Typography>
-            {(() => {
-              const editableWeeks = getEditableWeeks();
-              
-              // Show both previous week and current week (editable)
-              const allWeeks = [];
-              
-              // Add previous week (with data if available, or placeholder)
-              const previousWeekData = weeklySummary.find(week => week.weekOf === editableWeeks.previousWeek);
-              if (previousWeekData) {
-                allWeeks.push(previousWeekData);
-              } else {
-                allWeeks.push({
-                  weekOf: editableWeeks.previousWeek,
-                  purchases: []
-                });
-              }
-              
-              // Add current week (with data if available, or placeholder)
-              const currentWeekData = weeklySummary.find(week => week.weekOf === editableWeeks.currentWeek);
-              if (currentWeekData) {
-                allWeeks.push(currentWeekData);
-              } else {
-                allWeeks.push({
-                  weekOf: editableWeeks.currentWeek,
-                  purchases: []
-                });
-              }
-              
-              return allWeeks;
-            })().map((week) => {
-            // Calculate completion status for this week
-            const ids = week.purchases.map(p => p.id);
-            let totalItems = 0;
-            let completedItems = 0;
-            let totalQuantity = 0;
-            let completedQuantity = 0;
-            
-            ids.forEach(id => {
-              const s = summaryMap[id] || {};
-              const purchase = week.purchases.find(p => p.id === id);
-              if (purchase) {
-                const baseQty = parseFloat(purchase.quantity) || 0;
-                const consumedQty = parseFloat(s.consumed_qty || 0);
-                const wastedQty = parseFloat(s.wasted_qty || 0);
-                const totalLogged = consumedQty + wastedQty;
-                
-                totalItems++;
-                totalQuantity += baseQty;
-                completedQuantity += totalLogged;
-                
-                if (totalLogged >= baseQty - 0.0001) { // Account for floating point precision
-                  completedItems++;
-                }
-              }
-            });
-            
-            const isCompleted = totalItems > 0 && completedItems === totalItems;
-            const isPastWeek = moment.tz(week.weekOf, 'MM/DD/YYYY', 'America/New_York').isBefore(moment.tz('America/New_York').startOf('week'));
-            const showCompletion = isCompleted && isPastWeek;
-            
-            // Handle empty weeks
-            const isEmpty = week.purchases.length === 0;
-            
-            return (
-        <Paper
-          key={week.weekOf}
-          elevation={0}
-          sx={{
-            mb: 2,
-            p: { xs: 1.75, sm: 2.25 },
-            borderRadius: 2.5,
-            width: "100%", // Use percentage instead of viewport units
-            maxWidth: "100%", // Ensure it doesn't overflow
-            cursor: 'pointer',
-            border: 1,
-            borderColor: showCompletion ? "success.main" : "divider",
-            position: 'relative',
-            boxSizing:"border-box",
-            backgroundColor: 'background.paper',
-            boxShadow: '0px 2px 10px rgba(0,0,0,0.06)',
-            transition: 'transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease',
-            '&:hover': {
-              transform: 'translateY(-2px)',
-              boxShadow: '0px 8px 20px rgba(0,0,0,0.10)',
-            },
-            '&::before': {
-              content: '""',
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              right: 0,
-              height: 4,
-              borderTopLeftRadius: 10,
-              borderTopRightRadius: 10,
-              backgroundColor: showCompletion
-                ? 'success.main'
-                : (isEmpty ? 'grey.400' : 'primary.main'),
-              opacity: 0.9,
-            },
-          }}
-          onClick={() => {
-            if (isEmpty) {
-              // If week is empty, navigate to log page to add food
-              const weekStart = moment.tz(week.weekOf, 'MM/DD/YYYY', 'America/New_York');
-              // Format date as YYYY-MM-DD for URL parameter
-              const dateParam = weekStart.format('YYYY-MM-DD');
-              navigate(`/log?date=${dateParam}`);
-            } else {
-              // If week has purchases, open week details to manage waste/consumption
-              openWeekDetails(week.weekOf);
-            }
-          }}
-        >
-          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.25, pt: 0.5 }}>
-            <Typography
-              variant="subtitle1"
-              sx={{
-                fontWeight: 800,
-                lineHeight: 1.15,
-                letterSpacing: '-0.2px',
-                color: 'text.primary',
-              }}
-            >
-              {formatWeekRange(week.weekOf)}
-            </Typography>
-            {showCompletion && (
-              <Chip
-                label="Complete"
-                size="small"
-                color="success"
-                sx={{ fontWeight: 700 }}
-              />
-            )}
-          </Stack>
-          
-          {/* Clear tap instruction */}
-          <Box sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: 1, 
-            mb: 1,
-            p: 1,
-            backgroundColor: isEmpty ? 'grey.50' : 'primary.50',
-            borderRadius: 1.5,
-            border: '1px solid',
-            borderColor: isEmpty ? 'grey.200' : 'primary.200'
-          }}>
-            <Typography variant="body2" sx={{ color: isEmpty ? 'text.secondary' : 'primary.main', fontWeight: 650 }}>
-              {isEmpty ? 'Tap to add food' : 'Tap to manage consume / waste'}
-            </Typography>
-          </Box>
-          {/* Stats */}
-          <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 0.25 }}>
-            <Chip
-              size="small"
-              icon={<ShoppingCartIcon sx={{ fontSize: 18 }} />}
-              label={`${week.purchases.length} ${week.purchases.length === 1 ? 'item' : 'items'}`}
-              variant="outlined"
-              sx={{ fontWeight: 650 }}
-            />
-
-            {isEmpty ? (
-              <Chip
-                size="small"
-                icon={<FastfoodIcon sx={{ fontSize: 18 }} />}
-                label="No food yet"
-                variant="outlined"
-                sx={{ color: 'text.secondary' }}
-              />
-            ) : (() => {
-              const ids = week.purchases.map(p => p.id);
-              let c = 0, w = 0, cc = 0, wc = 0, unloggedCost = 0;
-              
-              ids.forEach(id => {
-                const s = summaryMap[id] || {};
-                const purchase = week.purchases.find(p => p.id === id);
-                if (purchase) {
-                  c += parseFloat(s.consumed_qty || 0);
-                  w += parseFloat(s.wasted_qty || 0);
-                  cc += parseFloat(s.consumed_cost || 0);
-                  wc += parseFloat(s.wasted_cost || 0);
-                  
-                  // Calculate unlogged cost for this item
-                  const baseQty = parseFloat(purchase.quantity || 0);
-                  const price = parseFloat(purchase.price || 0);
-                  const unitCost = baseQty > 0 && price ? price / baseQty : 0;
-                  const consumedQty = parseFloat(s.consumed_qty || 0);
-                  const wastedQty = parseFloat(s.wasted_qty || 0);
-                  const remainingQty = Math.max(0, baseQty - consumedQty - wastedQty);
-                  unloggedCost += unitCost * remainingQty;
-                }
-              });
-              
-              const hasConsumptionData = c > 0 || w > 0;
-              
-              if (hasConsumptionData) {
-                return (
-                  <>
-                    <Chip
-                      size="small"
-                      icon={<RestaurantIcon sx={{ fontSize: 18 }} />}
-                      label={`${formatNum(c)} (${formatMoney(cc)})`}
-                      sx={{ bgcolor: 'success.50', color: 'success.dark', fontWeight: 700 }}
-                    />
-                    <Chip
-                      size="small"
-                      icon={<DeleteForeverIcon sx={{ fontSize: 18 }} />}
-                      label={`${formatNum(w)} (${formatMoney(wc)})`}
-                      sx={{ bgcolor: 'error.50', color: 'error.dark', fontWeight: 700 }}
-                    />
-                  </>
-                );
-              }
-              
-              return (
-                <Chip
-                  size="small"
-                  icon={<FastfoodIcon sx={{ fontSize: 18 }} />}
-                  label={`Unmarked ${formatMoney(unloggedCost)}`}
-                  sx={{ bgcolor: 'warning.50', color: 'warning.dark', fontWeight: 700 }}
-                />
-              );
-            })()}
-          </Stack>
-        </Paper>
-        );
-        })}
-        
-        {/* Next Week Card */}
-        {(() => {
-          const editableWeeks = getEditableWeeks();
-          const nextWeekFormatted = editableWeeks.nextWeek;
-          
-          return (
-            <Paper
-              elevation={1}
-              sx={{
-                mb: 2,
-                p: { xs: 1.5, sm: 2 },
-                borderRadius: 2,
-                width: "100%",
-                maxWidth: "100%",
-                border: 1,
-                borderColor: "grey.300",
-                position: 'relative',
-                boxSizing: "border-box",
-                opacity: 0.6,
-                backgroundColor: 'grey.100'
-              }}
-            >
-              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography
-                    variant="h6"
-                    fontWeight={700}
-                    color="text.secondary"
-                    gutterBottom
-                    sx={{ borderBottom: 2, borderColor: "grey.400", pb: 0.5 }}
-                  >
-                    {formatWeekRange(nextWeekFormatted)}
-                  </Typography>
-                  <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: 0.5,
-                    backgroundColor: 'grey.400',
-                    color: 'white',
-                    px: 1,
-                    py: 0.25,
-                    borderRadius: 1,
-                    fontSize: '0.75rem',
-                    fontWeight: 'bold',
-                    whiteSpace: "nowrap",
-                    position: "absolute", 
-                    top: "-10px"
-                  }}>
-                    Upcoming
-                  </Box>
-                </Box>
-              </Stack>
-              
-              {/* Greyed out instruction */}
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: 1, 
-                mb: 1,
-                p: 1,
-                backgroundColor: 'grey.200',
-                borderRadius: 1,
-                border: '1px solid',
-                borderColor: 'grey.300'
-              }}>
-                <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                  📅 Next week - Add food to get started
-                </Typography>
-              </Box>
-              
-              {/* Greyed out summary */}
-              <Typography variant="body2" color="text.secondary" display="flex" alignItems="center" gap={2}>
-                <Box component="span" display="inline-flex" alignItems="center" gap={0.5}>
-                  <ShoppingCartIcon sx={{ color: 'grey.400', fontSize: 18 }} />
-                  0 items
-                </Box>
-                <Box component="span" display="inline-flex" alignItems="center" gap={0.5}>
-                  <RestaurantIcon sx={{ color: 'grey.400', fontSize: 18 }} />
-                  0 consumed
-                </Box>
-                <Box component="span" display="inline-flex" alignItems="center" gap={0.5}>
-                  <DeleteForeverIcon sx={{ color: 'grey.400', fontSize: 18 }} />
-                  0 wasted
-                </Box>
+          <Stack spacing={1.5}>
+            <Paper elevation={0} sx={{ ...cardSx, p: 2 }}>
+              <Typography variant="subtitle2" fontWeight={600} color="text.secondary" gutterBottom>
+                Your weekly food tracking
               </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, lineHeight: 1.5 }}>
+                Log purchases, then mark what you consumed or wasted for each week.
+              </Typography>
+              <SummaryLegend />
+              <Button
+                variant="outlined"
+                fullWidth
+                startIcon={<TrendingUpIcon />}
+                onClick={() => setOverallOpen(true)}
+                sx={{
+                  mt: 1.5,
+                  borderRadius: 2,
+                  textTransform: "none",
+                  fontWeight: 600,
+                  py: 1.1,
+                }}
+              >
+                View all-time trends
+              </Button>
             </Paper>
-          );
-        })()}
-        </Box>
-        
-        </Box>
-      )}
+
+            <Typography
+              variant="overline"
+              sx={{
+                display: "block",
+                px: 0.5,
+                color: "text.secondary",
+                fontWeight: 700,
+                letterSpacing: "0.06em",
+              }}
+            >
+              Recent weeks
+            </Typography>
+
+            {editableWeekList.map((week) => {
+              const stats = computeWeekStats(week, summaryMap);
+              const isPastWeek = moment
+                .tz(week.weekOf, "MM/DD/YYYY", "America/New_York")
+                .isBefore(moment.tz("America/New_York").startOf("week"));
+              const showCompletion = stats.isCompleted && isPastWeek;
+              const weekLabel =
+                week.weekOf === editableWeeks.currentWeek
+                  ? "This week"
+                  : week.weekOf === editableWeeks.previousWeek
+                    ? "Last week"
+                    : null;
+
+              return (
+                <Paper key={week.weekOf} elevation={0} sx={{ ...cardSx, p: 2 }}>
+                  <Stack
+                    direction="row"
+                    alignItems="flex-start"
+                    justifyContent="space-between"
+                    spacing={1}
+                    sx={{ mb: 1.5 }}
+                  >
+                    <Box sx={{ minWidth: 0 }}>
+                      {weekLabel && (
+                        <Chip
+                          label={weekLabel}
+                          size="small"
+                          color={weekLabel === "This week" ? "primary" : "default"}
+                          sx={{ mb: 0.75, fontWeight: 600, height: 24 }}
+                        />
+                      )}
+                      <Typography variant="subtitle1" fontWeight={700} lineHeight={1.25}>
+                        {formatWeekRange(week.weekOf)}
+                      </Typography>
+                      {!stats.isEmpty && (
+                        <Typography variant="caption" color="text.secondary">
+                          {formatMoney(stats.totalSpent)} purchased
+                        </Typography>
+                      )}
+                    </Box>
+                    {showCompletion && (
+                      <Chip label="Complete" size="small" color="success" sx={{ fontWeight: 600 }} />
+                    )}
+                  </Stack>
+
+                  {!stats.isEmpty && (
+                    <Box sx={{ mb: 1.5 }}>
+                      <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          Items logged
+                        </Typography>
+                        <Typography variant="caption" fontWeight={600}>
+                          {stats.progress}%
+                        </Typography>
+                      </Stack>
+                      <LinearProgress
+                        variant="determinate"
+                        value={stats.progress}
+                        sx={{
+                          height: 6,
+                          borderRadius: 3,
+                          backgroundColor: "rgba(0, 0, 0, 0.08)",
+                        }}
+                      />
+                    </Box>
+                  )}
+
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    sx={{
+                      py: 1.25,
+                      px: 0.5,
+                      mb: 1.5,
+                      borderRadius: 2,
+                      backgroundColor: "rgba(0, 0, 0, 0.03)",
+                    }}
+                  >
+                    <WeekStat
+                      Icon={ShoppingCartIcon}
+                      label="Purchased"
+                      value={stats.isEmpty ? "0" : String(stats.itemCount)}
+                      color="primary.main"
+                    />
+                    <WeekStat
+                      Icon={RestaurantIcon}
+                      label="Consumed"
+                      value={
+                        stats.consumedQty > 0 ? formatMoney(stats.consumedCost) : "—"
+                      }
+                      color="success.main"
+                    />
+                    <WeekStat
+                      Icon={DeleteForeverIcon}
+                      label="Wasted"
+                      value={stats.wastedQty > 0 ? formatMoney(stats.wastedCost) : "—"}
+                      color="error.main"
+                    />
+                  </Stack>
+
+                  {stats.isEmpty ? (
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      startIcon={<AddIcon />}
+                      onClick={() => goToLogForWeek(week.weekOf)}
+                      sx={{
+                        borderRadius: 2,
+                        textTransform: "none",
+                        fontWeight: 600,
+                        py: 1.1,
+                      }}
+                    >
+                      {weekLabel === "Last week"
+                        ? "Add food for last week"
+                        : "Add food for this week"}
+                    </Button>
+                  ) : (
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      endIcon={<ChevronRightIcon />}
+                      onClick={() => openWeekDetails(week.weekOf)}
+                      sx={{
+                        borderRadius: 2,
+                        textTransform: "none",
+                        fontWeight: 600,
+                        py: 1.1,
+                      }}
+                    >
+                      Manage consume / waste
+                    </Button>
+                  )}
+                </Paper>
+              );
+            })}
+
+            <Paper
+              elevation={0}
+              sx={{
+                ...cardSx,
+                p: 2,
+                opacity: 0.72,
+                backgroundColor: "rgba(0, 0, 0, 0.02)",
+              }}
+            >
+              <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+                <Chip
+                  label="Upcoming"
+                  size="small"
+                  icon={<CalendarTodayOutlinedIcon sx={{ fontSize: "14px !important" }} />}
+                  sx={{ fontWeight: 600, height: 24 }}
+                />
+                <Typography variant="subtitle2" fontWeight={600} color="text.secondary">
+                  {formatWeekRange(editableWeeks.nextWeek)}
+                </Typography>
+              </Stack>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, lineHeight: 1.5 }}>
+                You can start logging food for next week once it begins.
+              </Typography>
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{
+                  py: 1.25,
+                  px: 0.5,
+                  borderRadius: 2,
+                  backgroundColor: "rgba(0, 0, 0, 0.03)",
+                }}
+              >
+                <WeekStat Icon={ShoppingCartIcon} label="Purchased" value="0" color="text.disabled" />
+                <WeekStat Icon={RestaurantIcon} label="Consumed" value="—" color="text.disabled" />
+                <WeekStat Icon={DeleteForeverIcon} label="Wasted" value="—" color="text.disabled" />
+              </Stack>
+            </Paper>
+          </Stack>
+        )}
 
       {activeWeekOf && (() => {
-        const week = weeklySummary.find(w => w.weekOf === activeWeekOf);
+        const week = weeklySummary.find((w) => w.weekOf === activeWeekOf);
         if (!week) return null;
+
+        const editable = isWeekEditable(activeWeekOf);
+        let totalConsumedCost = 0;
+        let totalWastedCost = 0;
+        let totalUnmarkedCost = 0;
+        let totalRemaining = 0;
+
+        week.purchases.forEach((purchase) => {
+          const summary = summaryMap[purchase.id] || {};
+          const breakdown = getPurchaseBreakdown(purchase, summary);
+          totalConsumedCost += breakdown.consumedCost;
+          totalWastedCost += breakdown.wastedCost;
+          totalRemaining += breakdown.remaining;
+          const price = parseFloat(purchase.price) || 0;
+          const unitCost = breakdown.base > 0 ? price / breakdown.base : 0;
+          totalUnmarkedCost += unitCost * breakdown.remaining;
+        });
+
+        const items = week.purchases
+          .map((item) => ({
+            item,
+            breakdown: getPurchaseBreakdown(item, summaryMap[item.id] || {}),
+          }))
+          .sort((a, b) =>
+            a.breakdown.completed === b.breakdown.completed
+              ? 0
+              : a.breakdown.completed
+                ? 1
+                : -1
+          );
+
+        const qtyLabel = (item, amount) => {
+          const unit = item.quantity_type || "";
+          return unit ? `${formatNum(amount)} ${unit}` : formatNum(amount);
+        };
+
         return (
-          <Box sx={{ 
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'white',
-            zIndex: 1500,
-            overflow: 'auto',
-            borderRadius: 0,
-            p: 2,
-            pt: 'calc(16px + env(safe-area-inset-top, 0px))',
-            pb: 'calc(16px + env(safe-area-inset-bottom, 0px))',
-          }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+          <Stack spacing={1.5}>
+            <Stack direction="row" alignItems="center" spacing={1}>
               <IconButton
                 onClick={() => setActiveWeekOf(null)}
                 aria-label="Back to weekly summary"
-                sx={{ minWidth: 44, minHeight: 44 }}
-              >
-                <ArrowBackIosIcon />
-              </IconButton>
-              <Typography variant="h6" sx={{ fontWeight: 600, flex: 1 }}>
-                {formatWeekRange(activeWeekOf)}
-              </Typography>
-            </Box>
-            <Legend />
-            {weekCharts[activeWeekOf] && (() => {
-              // Calculate pie chart data directly from summaryMap to ensure consistency
-              let consumedCost = 0, wastedCost = 0, unmarkedCost = 0;
-              
-              week.purchases.forEach(purchase => {
-                const summary = summaryMap[purchase.id] || {};
-                consumedCost += parseFloat(summary.consumed_cost || 0);
-                wastedCost += parseFloat(summary.wasted_cost || 0);
-                
-                // Calculate unmarked cost
-                const baseQty = parseFloat(purchase.quantity || 0);
-                const price = parseFloat(purchase.price || 0);
-                const unitCost = baseQty > 0 && price ? price / baseQty : 0;
-                const consumedQty = parseFloat(summary.consumed_qty || 0);
-                const wastedQty = parseFloat(summary.wasted_qty || 0);
-                const remainingQty = Math.max(0, baseQty - consumedQty - wastedQty);
-                unmarkedCost += unitCost * remainingQty;
-              });
-              
-              const total = consumedCost + wastedCost + unmarkedCost;
-              
-              // Check if there are any food items with consumption or waste data
-              const hasConsumptionData = week.purchases.some(purchase => {
-                const summary = summaryMap[purchase.id] || {};
-                const consumedQty = parseFloat(summary.consumed_qty || 0);
-                const wastedQty = parseFloat(summary.wasted_qty || 0);
-                return consumedQty > 0 || wastedQty > 0;
-              });
-              
-              if (total > 0.0001 || hasConsumptionData) {
-                return (
-                  <Box sx={{ maxWidth: 150, mx: "auto", mb: 1, color:"black", pt: 1, paddingTop: "20px" }}>
-                    <Pie data={{
-                      labels: ["Consumed $", "Wasted $", "Unmarked $"],
-                      datasets: [{
-                        data: [consumedCost, wastedCost, unmarkedCost],
-                        backgroundColor: ["#4caf50", "#ef5350", "#42a5f5"]
-                      }]
-                    }} options={{ 
-                      responsive: true, 
-                      maintainAspectRatio: true, 
-                      plugins: { legend: { display: false } },
-                      aspectRatio: 1.1
-                    }} />
-                    <Stack direction="row" spacing={1.5} sx={{ mt: 1, justifyContent: 'center' }}>
-                      <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.8rem' }}>
-                        <Box sx={{ width: 8, height: 8, bgcolor: '#4caf50', borderRadius: '50%' }} /> {formatMoney(consumedCost)}
-                      </Typography>
-                      <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.8rem' }}>
-                        <Box sx={{ width: 8, height: 8, bgcolor: '#ef5350', borderRadius: '50%' }} /> {formatMoney(wastedCost)}
-                      </Typography>
-                    </Stack>
-                  </Box>
-                );
-              }
-              return (
-                <Box sx={{ maxWidth: 220, mx: "auto", mb: 2 }}>
-                  <Typography variant="body2" sx={{ textAlign: "center", color: 'text.secondary' }}>
-                    No consumption or waste logged for this week yet.
-                  </Typography>
-                </Box>
-              );
-            })()}
-            {/* Bulk Actions for the week */}
-            {(() => {
-              const currentWeek = weeklySummary.find(w => w.weekOf === activeWeekOf);
-              const editableWeeks = getEditableWeeks();
-              const isWeekEditable = currentWeek ? 
-                (currentWeek.weekOf === editableWeeks.previousWeek || currentWeek.weekOf === editableWeeks.currentWeek) : 
-                false;
-              
-              // Calculate total remaining portions for this week
-              let totalRemaining = 0;
-              if (currentWeek) {
-                currentWeek.purchases.forEach(purchase => {
-                  const summary = summaryMap[purchase.id] || {};
-                  const baseQty = parseFloat(purchase.quantity || 0);
-                  const consumedQty = parseFloat(summary.consumed_qty || 0);
-                  const wastedQty = parseFloat(summary.wasted_qty || 0);
-                  const remaining = Math.max(0, baseQty - consumedQty - wastedQty);
-                  totalRemaining += remaining;
-                });
-              }
-              
-              const hasRemainingPortions = totalRemaining > 0.001; // Account for floating point precision
-              
-              return (
-                <Box sx={{ mb: 1, p: 1.5, backgroundColor: isWeekEditable ? 'grey.100' : 'grey.200', borderRadius: 1.5 }}>
-                  <Typography variant="body2" sx={{ mb: 0.5, fontWeight: 600, fontSize: '0.85rem' }}>
-                    Quick Actions for {activeWeekOf}
-                  </Typography>
-                  {!isWeekEditable && (
-                    <Typography variant="caption" sx={{ mb: 1, color: 'text.secondary', fontStyle: 'italic', fontSize: '0.7rem' }}>
-                      This week is read-only (not in the last 2 weeks)
-                    </Typography>
-                  )}
-                  {!hasRemainingPortions && isWeekEditable && (
-                    <Typography variant="caption" sx={{ mb: 1, color: 'text.secondary', fontStyle: 'italic', fontSize: '0.7rem' }}>
-                      All food items have been fully consumed or wasted
-                    </Typography>
-                  )}
-                  {hasRemainingPortions && (
-                    <Stack direction="row" spacing={0.5} sx={{ mb: 0.5 }}>
-                      <Button 
-                        variant="outlined" 
-                        onClick={() => markWeekAsConsumed(activeWeekOf)}
-                        disabled={!isWeekEditable}
-                        sx={{ flex: 1, fontSize: '0.8125rem', py: 1, minHeight: 44 }}
-                      >
-                        Mark remaining as consumed
-                      </Button>
-                      <Button 
-                        variant="outlined" 
-                        onClick={() => markWeekAsWasted(activeWeekOf)}
-                        disabled={!isWeekEditable}
-                        sx={{ flex: 1, fontSize: '0.8125rem', py: 1, minHeight: 44 }}
-                      >
-                        Mark remaining as wasted
-                      </Button>
-                    </Stack>
-                  )}
-                  <Button 
-                    variant="contained" 
-                    size="small" 
-                    onClick={() => { 
-                      if(onGoToDate) {
-                        // Navigate to the first day within the week that's still within 7 days
-                        const weekStart = moment.tz(activeWeekOf, 'MM/DD/YYYY', 'America/New_York');
-                        const weekEnd = weekStart.clone().add(6, 'days');
-                        const today = moment.tz('America/New_York');
-                        const sevenDaysAgo = today.clone().subtract(7, 'days');
-                        
-                        // Find the first day in the week range that's still within 7 days
-                        let targetDate = weekStart;
-                        for (let i = 0; i < 7; i++) {
-                          const dayInWeek = weekStart.clone().add(i, 'days');
-                          if (dayInWeek.isSameOrAfter(sevenDaysAgo) && dayInWeek.isSameOrBefore(today)) {
-                            targetDate = dayInWeek;
-                            break;
-                          }
-                        }
-                        
-                        // If no day in the week is within 7 days, use the last day of the week
-                        if (!targetDate.isSameOrAfter(sevenDaysAgo)) {
-                          targetDate = weekEnd;
-                        }
-                        
-                        onGoToDate(targetDate.format('MM/DD/YYYY'));
-                      }
-                    }}
-                    sx={{ width: '100%', fontSize: '0.8rem', py: 0.5 }}
-                  >
-                    Add more food
-                  </Button>
-                </Box>
-              );
-            })()}
-
-            <Box sx={{ maxHeight: '50vh', overflow: 'auto', backgroundColor: 'grey.50', borderRadius: 2, p: 1 }}>
-          <List disablePadding>
-                {(() => {
-                  const items = week.purchases
-                    .map((it) => {
-                      const s = summaryMap[it.id] || {};
-                      const base = parseFloat(it.quantity) || 0;
-                      const used = (parseFloat(s.consumed_qty || 0) + parseFloat(s.wasted_qty || 0)) || 0;
-                      const remaining = Math.max(0, base - used);
-                      const completed = remaining <= 0.0001;
-                      return { it, s, remaining, completed };
-                    })
-                    .sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
-                  return items.map(({ it: item, s, completed, remaining }) => {
-                    const rawC = parseFloat(s.consumed_qty || 0);
-                    const rawW = parseFloat(s.wasted_qty || 0);
-                    const base = parseFloat(item.quantity) || 0;
-                    const cQty = formatNum(rawC);
-                    const wQty = formatNum(rawW);
-                    const cCost = formatMoney(s.consumed_cost || 0);
-                    const wCost = formatMoney(s.wasted_cost || 0);
-                    const pctC = base > 0 ? (rawC / base) * 100 : 0;
-                    const pctW = base > 0 ? (rawW / base) * 100 : 0;
-                    return (
-              <ListItem
-                key={item.id}
                 sx={{
-                          bgcolor: completed ? 'action.hover' : 'background.default',
-                  mb: 1,
-                  borderRadius: 1,
-                  boxShadow: 1,
-                          opacity: completed ? 0.8 : 1,
-                          color: 'text.primary',
+                  backgroundColor: "rgba(0, 0, 0, 0.04)",
+                  "&:hover": { backgroundColor: "rgba(0, 0, 0, 0.08)" },
                 }}
               >
-                <ListItemText
-                  primary={
-                    <Typography fontWeight={600} display="flex" alignItems="center" gap={1} color="text.primary">
-                              <span style={{ fontSize: 18 }}>{item.emoji || (item.category ? ({
-                                Fruits: '🍎', Vegetables: '🥦', Bakery: '🍞', Dairy: '🥛', Meat: '🥩', Seafood: '🐟', Grains: '🌾',
-                                'Canned Goods': '🥫', Frozen: '🧊', Beverages: '🥤', Juice: '🧃', Snacks: '🍿', Condiments: '🧂', Spices: '🧂',
-                                Pantry: '📦', Deli: '🥪', 'Prepared Foods': '🍱', Breakfast: '🍳', Sauces: '🍝', Baking: '🧁', 'Oils & Vinegars': '🫒', Household: '🏠'
-                              }[item.category] || '🍽️') : '🍽️')}</span>
-                      {item.name}
-                    </Typography>
-                  }
-                          secondary={
-                            completed ? (
-                              <Box>
-                                <Box sx={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', bgcolor: 'grey.300' }}>
-                                  <Box sx={{ width: `${pctC}%`, bgcolor: 'success.main' }} />
-                                  <Box sx={{ width: `${pctW}%`, bgcolor: 'error.main' }} />
-                                </Box>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
-                                  <Typography variant="caption" color="text.secondary">{cQty} ({cCost})</Typography>
-                                  <Typography variant="caption" color="text.secondary">{wQty} ({wCost})</Typography>
-                                </Box>
-                              </Box>
-                            ) : (
-                              <Stack direction="row" spacing={2} alignItems="center" sx={{ color: 'text.primary' }}>
-                                <Box display="inline-flex" alignItems="center" gap={0.5}>
-                                  <ShoppingCartIcon sx={{ color: 'primary.main', fontSize: 16 }} />
-                                  <Typography variant="caption" color="text.primary">{formatNum(item.quantity)}</Typography>
-                                </Box>
-                                <Box display="inline-flex" alignItems="center" gap={0.5}>
-                                  <RestaurantIcon sx={{ color: 'success.main', fontSize: 16 }} />
-                                  <Typography variant="caption" color="text.primary">{cQty} ({cCost})</Typography>
-                                </Box>
-                                <Box display="inline-flex" alignItems="center" gap={0.5}>
-                                  <DeleteForeverIcon sx={{ color: 'error.main', fontSize: 16 }} />
-                                  <Typography variant="caption" color="text.primary">{wQty} ({wCost})</Typography>
-                                </Box>
-                              </Stack>
-                            )
-                          }
-                        />
-                        <IconButton onClick={(e)=> handleItemMenuOpen(e, item)} aria-label="Item actions">
-                          <MoreVertIcon />
-                        </IconButton>
-                      </ListItem>
-                    );
-                  });
-                })()}
-              </List>
-            </Box>
-            <Menu anchorEl={itemMenuAnchor} open={openItemMenu} onClose={handleItemMenuClose}>
-              {(() => {
-                // Check if the current week is editable
-                const currentWeek = weeklySummary.find(w => w.weekOf === activeWeekOf);
-                const editableWeeks = getEditableWeeks();
-                const isWeekEditable = currentWeek ? 
-                  (currentWeek.weekOf === editableWeeks.previousWeek || currentWeek.weekOf === editableWeeks.currentWeek) : 
-                  false;
-                
-                if (!isWeekEditable) {
-                  return (
-                    <MenuItem disabled>
-                      <Typography variant="body2" color="text.secondary">
-                        Cannot edit items not in the last 2 weeks
-                      </Typography>
-                    </MenuItem>
-                  );
-                }
-                
-                return (
+                <ArrowBackIosIcon fontSize="small" />
+              </IconButton>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography variant="subtitle1" fontWeight={700} lineHeight={1.25}>
+                  Log consume &amp; waste
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {formatWeekRange(activeWeekOf)}
+                </Typography>
+              </Box>
+            </Stack>
+
+            <Paper elevation={0} sx={{ ...cardSx, p: 2, mb: 1.5 }}>
+              <SummaryLegend />
+              <Box
+                sx={{
+                  display: "flex",
+                  height: 10,
+                  borderRadius: 5,
+                  overflow: "hidden",
+                  bgcolor: "rgba(0,0,0,0.08)",
+                  mt: 1.5,
+                  mb: 1.5,
+                }}
+              >
+                {totalConsumedCost + totalWastedCost + totalUnmarkedCost > 0 ? (
                   <>
-                    <MenuItem onClick={()=>{ handleItemMenuClose(); if(itemMenuTarget) openLogDialog(itemMenuTarget); }}>Log consumed / wasted</MenuItem>
+                    <Box
+                      sx={{
+                        width: `${(totalConsumedCost / (totalConsumedCost + totalWastedCost + totalUnmarkedCost)) * 100}%`,
+                        bgcolor: "success.main",
+                        minWidth: totalConsumedCost > 0 ? 4 : 0,
+                      }}
+                    />
+                    <Box
+                      sx={{
+                        width: `${(totalWastedCost / (totalConsumedCost + totalWastedCost + totalUnmarkedCost)) * 100}%`,
+                        bgcolor: "error.main",
+                        minWidth: totalWastedCost > 0 ? 4 : 0,
+                      }}
+                    />
+                    <Box sx={{ flex: 1, bgcolor: "primary.light", opacity: 0.55 }} />
                   </>
-                );
-              })()}
-            </Menu>
-          </Box>
+                ) : (
+                  <Box sx={{ width: "100%", bgcolor: "primary.light", opacity: 0.35 }} />
+                )}
+              </Box>
+              <Stack direction="row" spacing={1}>
+                <WeekStat
+                  Icon={RestaurantIcon}
+                  label="Eaten"
+                  value={formatMoney(totalConsumedCost)}
+                  color="success.main"
+                />
+                <WeekStat
+                  Icon={DeleteForeverIcon}
+                  label="Wasted"
+                  value={formatMoney(totalWastedCost)}
+                  color="error.main"
+                />
+                <WeekStat
+                  Icon={ShoppingCartIcon}
+                  label="Unmarked"
+                  value={formatMoney(totalUnmarkedCost)}
+                  color="primary.main"
+                />
+              </Stack>
+            </Paper>
+
+            {editable && totalRemaining > 0.001 && (
+              <Stack
+                direction="row"
+                alignItems="center"
+                justifyContent="flex-end"
+                flexWrap="wrap"
+                useFlexGap
+                spacing={0.75}
+                sx={{ mb: 1, px: 0.5, gap: 0.75 }}
+              >
+                <Typography variant="caption" color="text.secondary" sx={{ mr: "auto" }}>
+                  Mark all unmarked
+                </Typography>
+                <Button
+                  size="small"
+                  variant="text"
+                  color="success"
+                  onClick={() => markWeekAsConsumed(activeWeekOf)}
+                  sx={{ textTransform: "none", fontWeight: 600, minWidth: 0, px: 1 }}
+                >
+                  All eaten
+                </Button>
+                <Button
+                  size="small"
+                  variant="text"
+                  color="error"
+                  onClick={() => markWeekAsWasted(activeWeekOf)}
+                  sx={{ textTransform: "none", fontWeight: 600, minWidth: 0, px: 1 }}
+                >
+                  All wasted
+                </Button>
+              </Stack>
+            )}
+
+            {!editable && (
+              <Chip
+                label="View only — this week can't be edited"
+                size="small"
+                sx={{ mb: 1.5, fontWeight: 600 }}
+              />
+            )}
+
+            <Stack
+              direction="row"
+              alignItems="center"
+              justifyContent="space-between"
+              sx={{ mb: 1, px: 0.5 }}
+            >
+              <Typography
+                variant="overline"
+                sx={{
+                  color: "text.secondary",
+                  fontWeight: 700,
+                  letterSpacing: "0.06em",
+                }}
+              >
+                {week.purchases.length === 0 ? "No food logged" : "Tap an item to log it"}
+              </Typography>
+              {editable && (
+                <Button
+                  size="small"
+                  variant="text"
+                  startIcon={<AddIcon sx={{ fontSize: 18 }} />}
+                  onClick={() => goToLogForWeek(activeWeekOf)}
+                  sx={{ textTransform: "none", fontWeight: 600, flexShrink: 0 }}
+                >
+                  Add food
+                </Button>
+              )}
+            </Stack>
+
+            <Stack spacing={1.25}>
+              {items.length === 0 ? (
+                <Paper elevation={0} sx={{ ...cardSx, p: 3, textAlign: "center" }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    No purchases this week yet.
+                  </Typography>
+                  {editable && (
+                    <Button
+                      variant="contained"
+                      startIcon={<AddIcon />}
+                      onClick={() => goToLogForWeek(activeWeekOf)}
+                      sx={{ borderRadius: 2, textTransform: "none", fontWeight: 600 }}
+                    >
+                      Add food
+                    </Button>
+                  )}
+                </Paper>
+              ) : (
+                items.map(({ item, breakdown }) => {
+                  const hasPartial =
+                    breakdown.consumed > 0.0001 || breakdown.wasted > 0.0001;
+                  return (
+                  <Paper key={item.id} elevation={0} sx={{ ...cardSx, p: 1.5 }}>
+                    <Stack direction="row" spacing={1.25} alignItems="flex-start" sx={{ mb: 1 }}>
+                      <Box
+                        sx={{
+                          width: 44,
+                          height: 44,
+                          borderRadius: 2,
+                          flexShrink: 0,
+                          bgcolor: "rgba(0,0,0,0.04)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "1.4rem",
+                        }}
+                      >
+                        {getItemEmoji(item)}
+                      </Box>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Stack direction="row" alignItems="center" spacing={1}>
+                          <Typography variant="subtitle2" fontWeight={700} noWrap sx={{ flex: 1 }}>
+                            {item.name}
+                          </Typography>
+                          {breakdown.completed && (
+                            <Chip label="Done" size="small" color="success" sx={{ height: 22, fontWeight: 600 }} />
+                          )}
+                        </Stack>
+                        <Typography variant="caption" color="text.secondary">
+                          Purchased {qtyLabel(item, breakdown.base)}
+                          {breakdown.remaining > 0.0001 &&
+                            ` · ${qtyLabel(item, breakdown.remaining)} left`}
+                        </Typography>
+                      </Box>
+                    </Stack>
+
+                    <Box
+                      sx={{
+                        display: "flex",
+                        height: 8,
+                        borderRadius: 4,
+                        overflow: "hidden",
+                        bgcolor: "rgba(0,0,0,0.08)",
+                        mb: 1.25,
+                      }}
+                    >
+                      <Box sx={{ width: `${breakdown.pctConsumed}%`, bgcolor: "success.main" }} />
+                      <Box sx={{ width: `${breakdown.pctWasted}%`, bgcolor: "error.main" }} />
+                      <Box sx={{ flex: 1, bgcolor: "primary.light", opacity: 0.4 }} />
+                    </Box>
+
+                    <Stack direction="row" spacing={1} sx={{ mb: editable ? 1.25 : 0 }}>
+                      <Typography variant="caption" color="success.dark" fontWeight={600}>
+                        Eaten {formatNum(breakdown.consumed)}
+                      </Typography>
+                      <Typography variant="caption" color="error.dark" fontWeight={600}>
+                        Wasted {formatNum(breakdown.wasted)}
+                      </Typography>
+                    </Stack>
+
+                    {editable && !breakdown.completed && (
+                      <Stack direction="row" spacing={1}>
+                        <Button
+                          variant="contained"
+                          color="success"
+                          fullWidth
+                          startIcon={<RestaurantIcon />}
+                          onClick={() => quickMarkRemaining(item, "consumed")}
+                          sx={{ borderRadius: 2, textTransform: "none", fontWeight: 600, py: 1 }}
+                        >
+                          {hasPartial ? "Rest → eaten" : "All eaten"}
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          fullWidth
+                          startIcon={<DeleteForeverIcon />}
+                          onClick={() => quickMarkRemaining(item, "wasted")}
+                          sx={{ borderRadius: 2, textTransform: "none", fontWeight: 600, py: 1 }}
+                        >
+                          {hasPartial ? "Rest → wasted" : "All wasted"}
+                        </Button>
+                      </Stack>
+                    )}
+
+                    {editable && (
+                      <Button
+                        variant="text"
+                        size="small"
+                        fullWidth
+                        onClick={() => openLogDialog(item)}
+                        sx={{ mt: breakdown.completed ? 0 : 0.5, textTransform: "none", fontWeight: 600 }}
+                      >
+                        {breakdown.completed ? "Edit amounts" : "Log part of this"}
+                      </Button>
+                    )}
+                  </Paper>
+                  );
+                })
+              )}
+            </Stack>
+          </Stack>
         );
       })()}
 
-      <Dialog open={!!selectedPurchase && isTabActive} onClose={closeDialog} fullWidth maxWidth="sm" fullScreen={isMobile}>
-        <DialogTitle>Log Consumed / Wasted - {selectedPurchase?.name}</DialogTitle>
-        <DialogContent>
-          {selectedPurchase && (() => {
-            const s = summaryMap[selectedPurchase.id] || {};
-            const base = parseFloat(selectedPurchase.quantity) || 0;
-            const consumedSoFar = parseFloat(s.consumed_qty || 0) || 0;
-            const wastedSoFar = parseFloat(s.wasted_qty || 0) || 0;
-            const used = consumedSoFar + wastedSoFar;
-            const remaining = Math.max(0, base - used);
-            const stepSize = getStepForRemaining(remaining);
-            // Clamp deterministically so:
-            // consumed + wasted <= remaining
-            // and each is >= 0.
-            const rawConsumed = Math.max(0, parseFloat(consumedNow || 0) || 0);
-            const rawWasted = Math.max(0, parseFloat(wastedNow || 0) || 0);
+      <Dialog
+        open={!!selectedPurchase && isTabActive}
+        onClose={closeDialog}
+        fullWidth
+        maxWidth="sm"
+        sx={{
+          zIndex: 1600,
+          "& .MuiDialog-container": {
+            alignItems: { xs: "flex-end", sm: "center" },
+          },
+          "& .MuiDialog-paper": {
+            margin: { xs: 0, sm: 2 },
+            width: "100%",
+            maxWidth: 480,
+            borderRadius: { xs: "20px 20px 0 0", sm: 3 },
+            maxHeight: { xs: "90vh", sm: "90vh" },
+          },
+        }}
+      >
+        {selectedPurchase && (() => {
+          const s = summaryMap[selectedPurchase.id] || {};
+          const breakdown = getPurchaseBreakdown(selectedPurchase, s);
+          const { base, consumed: consumedSoFar, wasted: wastedSoFar, remaining } = breakdown;
+          const unit = selectedPurchase.quantity_type || "";
+          const unitSuffix = unit ? ` ${unit}` : "";
+          const qty = (n) => `${formatNum(n)}${unitSuffix}`;
+          const isEaten = logWizard.type === "consumed";
+          const oppositeLabel = isEaten ? "wasted" : "eaten";
+          const restAfterPick = Math.max(0, remaining - logWizard.amount);
+          const showWizard = remaining > 0;
+          const wizardBtnSx = {
+            borderRadius: 2,
+            textTransform: "none",
+            fontWeight: 600,
+            py: 1.25,
+          };
 
-            // First clamp consumed to remaining, then wasted to leftover,
-            // then re-clamp consumed to leftover after wasted (symmetry).
-            const c1 = Math.min(rawConsumed, remaining);
-            const w1 = Math.min(rawWasted, Math.max(0, remaining - c1));
-            const safeConsumedNow = Math.min(c1, Math.max(0, remaining - w1));
-            const safeWastedNow = Math.min(w1, Math.max(0, remaining - safeConsumedNow));
-            const unmarkedNow = Math.max(0, remaining - safeConsumedNow - safeWastedNow);
-            const disableSave = (safeConsumedNow <= 0 && safeWastedNow <= 0) || remaining <= 0;
-
-            return (
-              <Stack spacing={2}>
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  Remaining: {remaining.toFixed(2)} of {base.toFixed(2)}
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  Already logged: {consumedSoFar.toFixed(2)} consumed, {wastedSoFar.toFixed(2)} wasted
-                </Typography>
-
-                {remaining <= 0 ? (
-                  <Box sx={{ py: 1.5 }}>
-                    <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                      All of this item has already been marked as consumed/wasted.
+          return (
+            <>
+              <DialogTitle sx={{ pb: 1 }}>
+                <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={1}>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="subtitle1" fontWeight={700} noWrap>
+                      {selectedPurchase.name}
                     </Typography>
+                    {showWizard && (
+                      <PartialLogWizardProgress currentStep={logWizard.step} />
+                    )}
                   </Box>
-                ) : (
-                  <>
-                    {(() => {
-                      const maxConsume = Math.max(0, remaining - safeWastedNow);
-                      const value = Math.min(safeConsumedNow, maxConsume);
-                      return (
-                        <Box sx={{ px: 1 }}>
-                          <Typography variant="caption" sx={{ color: "success.dark", fontWeight: 700 }}>
-                            Consumed now
-                          </Typography>
-                          <Slider
-                            key={`consume-${selectedPurchase?.id || "x"}-${maxConsume.toFixed(4)}`}
-                            value={value}
-                            onChange={(_, v) => {
-                              const num = Array.isArray(v) ? v[0] : v;
-                              const next = Math.max(0, Math.min(Number(num) || 0, maxConsume));
-                              setConsumedNow(Number(next.toFixed(4)));
-                              // Clamp wasted if needed
-                              setWastedNow((prev) => {
-                                const maxWaste = Math.max(0, remaining - next);
-                                if (maxWaste <= 1e-9) return 0;
-                                return Math.min(Number(prev || 0), maxWaste);
-                              });
-                            }}
-                            valueLabelDisplay="auto"
-                            min={0}
-                            max={maxConsume}
-                            step={stepSize}
-                            disabled={maxConsume <= 1e-9}
-                            sx={{
-                              '& .MuiSlider-thumb': {
-                                bgcolor: 'success.main',
-                                border: '2px solid',
-                                borderColor: 'success.dark',
-                                boxShadow: '0 2px 10px rgba(46, 125, 50, 0.35)',
-                              },
-                              '& .MuiSlider-track': { bgcolor: 'success.main' },
-                              '& .MuiSlider-rail': { opacity: 0.35 },
-                            }}
-                          />
-                        </Box>
-                      );
-                    })()}
-                    <Box sx={{ px: 1 }}>
-                      <Typography variant="caption" sx={{ color: "error.dark", fontWeight: 700 }}>
-                        Wasted now
+                  <IconButton size="small" onClick={closeDialog} aria-label="Close" sx={{ mt: -0.5 }}>
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                </Stack>
+              </DialogTitle>
+              <DialogContent sx={{ pt: 0 }}>
+                <Stack spacing={1.75}>
+                  <Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 0.75 }}>
+                      <strong>{qty(remaining)}</strong> left of {qty(base)}
+                    </Typography>
+                    <ItemProgressBar
+                      base={base}
+                      consumedSoFar={consumedSoFar}
+                      wastedSoFar={wastedSoFar}
+                    />
+                    <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.75 }}>
+                      <Typography variant="caption" color="success.dark" fontWeight={600}>
+                        Eaten {qty(consumedSoFar)}
                       </Typography>
-                      {(() => {
-                        const maxWaste = Math.max(0, remaining - safeConsumedNow);
-                        const value = Math.min(safeWastedNow, maxWaste);
-                        return (
-                      <Slider
-                        key={`waste-${selectedPurchase?.id || "x"}-${maxWaste.toFixed(4)}`}
-                        value={value}
-                        onChange={(_, v) => {
-                          const num = Array.isArray(v) ? v[0] : v;
-                          const maxWaste = Math.max(0, remaining - safeConsumedNow);
-                          const next = Math.max(0, Math.min(Number(num) || 0, maxWaste));
-                          setWastedNow(Number(next.toFixed(4)));
-                          // Clamp consumed if needed
-                          setConsumedNow((prev) => {
-                            const maxConsume = Math.max(0, remaining - next);
-                            if (maxConsume <= 1e-9) return 0;
-                            return Math.min(Number(prev || 0), maxConsume);
-                          });
-                        }}
-                        valueLabelDisplay="auto"
-                        min={0}
-                        max={maxWaste}
-                        step={stepSize}
-                        disabled={maxWaste <= 1e-9}
-                        sx={{
-                          '& .MuiSlider-thumb': {
-                            bgcolor: 'error.main',
-                            border: '2px solid',
-                            borderColor: 'error.dark',
-                            boxShadow: '0 2px 10px rgba(211, 47, 47, 0.35)',
-                          },
-                          '& .MuiSlider-track': { bgcolor: 'error.main' },
-                          '& .MuiSlider-rail': { opacity: 0.35 },
-                        }}
-                      />
-                        );
-                      })()}
-                    </Box>
-                    <Stack direction="row" spacing={1} sx={{ mt: -0.5, flexWrap: 'wrap' }}>
-                      <Typography variant="caption" sx={{ color: 'success.main', fontWeight: 600 }}>
-                        Consumed now: {safeConsumedNow.toFixed(2)}
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: 'error.main', fontWeight: 600 }}>
-                        Wasted now: {safeWastedNow.toFixed(2)}
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                        Unmarked: {unmarkedNow.toFixed(2)}
+                      <Typography variant="caption" color="error.dark" fontWeight={600}>
+                        Wasted {qty(wastedSoFar)}
                       </Typography>
                     </Stack>
-                  </>
-                )}
-				<DialogActions sx={{ px: 0, justifyContent:'space-between' }}>
-          <Button
-            color="error"
-            variant="outlined"
-            onClick={() => setResetConfirmOpen(true)}
-            disabled={used <= 0 || resetting}
-            sx={{ textTransform: "none" }}
-          >
-            Reset to unmarked
-          </Button>
-					<Box sx={{ display:'flex', gap: 1 }}>
-            <Button
-              variant="contained"
-              onClick={() => submitLog()}
-              disabled={disableSave || resetting}
-            >
-              Save
-            </Button>
-          </Box>
-        </DialogActions>
-              </Stack>
-            );
-          })()}
-        </DialogContent>
+                  </Box>
+
+                  {!showWizard ? (
+                    <Typography variant="body2" color="text.secondary">
+                      Fully logged. Use Reset to change.
+                    </Typography>
+                  ) : logWizard.step === 1 ? (
+                    <Stack spacing={1.25}>
+                      <WizardStepTitle>Ate or wasted?</WizardStepTitle>
+                      <Button
+                        variant="contained"
+                        color="success"
+                        fullWidth
+                        startIcon={<RestaurantIcon />}
+                        onClick={() => handlePickLogType("consumed")}
+                        disabled={logSaving}
+                        sx={wizardBtnSx}
+                      >
+                        What I ate
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        fullWidth
+                        startIcon={<DeleteForeverIcon />}
+                        onClick={() => handlePickLogType("wasted")}
+                        disabled={logSaving}
+                        sx={wizardBtnSx}
+                      >
+                        What I wasted
+                      </Button>
+                    </Stack>
+                  ) : logWizard.step === 2 ? (
+                    <Stack spacing={1.25}>
+                      <WizardStepTitle>
+                        How much {isEaten ? "did you eat" : "did you waste"}?
+                      </WizardStepTitle>
+                      <Box
+                        sx={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(2, 1fr)",
+                          gap: 1,
+                        }}
+                      >
+                        {LOG_PERCENT_OPTIONS.map(({ label, pct }) => {
+                          const approx = amountFromPercent(remaining, pct);
+                          return (
+                            <Button
+                              key={label}
+                              variant="outlined"
+                              onClick={() => handlePickPercent(pct, remaining)}
+                              disabled={logSaving}
+                              sx={{
+                                ...wizardBtnSx,
+                                flexDirection: "column",
+                                py: 1.35,
+                                borderColor: isEaten ? "success.light" : "error.light",
+                                color: isEaten ? "success.dark" : "error.dark",
+                              }}
+                            >
+                              {label}
+                              <Typography component="span" variant="caption" sx={{ opacity: 0.8 }}>
+                                {pct >= 1 ? qty(remaining) : `≈ ${qty(approx)}`}
+                              </Typography>
+                            </Button>
+                          );
+                        })}
+                      </Box>
+                    </Stack>
+                  ) : (
+                    <Stack spacing={1.25}>
+                      <WizardStepTitle>
+                        {qty(restAfterPick)} still unmarked
+                      </WizardStepTitle>
+                      <Button
+                        variant="contained"
+                        color={isEaten ? "error" : "success"}
+                        fullWidth
+                        onClick={() => handleMarkRestOpposite(remaining)}
+                        disabled={logSaving}
+                        sx={wizardBtnSx}
+                      >
+                        Mark rest as {oppositeLabel}
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        fullWidth
+                        onClick={handleSaveRestForLater}
+                        disabled={logSaving}
+                        sx={wizardBtnSx}
+                      >
+                        Save for later
+                      </Button>
+                    </Stack>
+                  )}
+                </Stack>
+              </DialogContent>
+              <DialogActions
+                sx={{
+                  px: 2,
+                  pb: "calc(16px + env(safe-area-inset-bottom, 0px))",
+                  justifyContent: "space-between",
+                }}
+              >
+                <Button
+                  color="error"
+                  variant="text"
+                  onClick={() => setResetConfirmOpen(true)}
+                  disabled={consumedSoFar + wastedSoFar <= 0 || resetting || logSaving}
+                  sx={{ textTransform: "none", fontWeight: 600 }}
+                >
+                  Reset
+                </Button>
+                <Stack direction="row" spacing={1}>
+                  {logWizard.step > 1 && remaining > 0 && (
+                    <Button
+                      onClick={wizardBack}
+                      disabled={logSaving}
+                      startIcon={<ArrowBackIosIcon sx={{ fontSize: 14 }} />}
+                      sx={{ textTransform: "none", fontWeight: 600 }}
+                    >
+                      Back
+                    </Button>
+                  )}
+                  <Button
+                    onClick={closeDialog}
+                    disabled={logSaving}
+                    sx={{ textTransform: "none", fontWeight: 600 }}
+                  >
+                    Cancel
+                  </Button>
+                </Stack>
+              </DialogActions>
+            </>
+          );
+        })()}
       </Dialog>
 
       {/* Confirm reset */}
       <AppConfirmDialog
         open={resetConfirmOpen}
         onClose={() => !resetting && setResetConfirmOpen(false)}
+        zIndex={1700}
         tone="warning"
         icon={<RestartAltOutlinedIcon />}
         title="Reset this item?"

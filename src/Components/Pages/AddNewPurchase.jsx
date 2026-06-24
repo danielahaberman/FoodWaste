@@ -18,6 +18,7 @@ import {
   Grid,
   Tabs,
   Tab,
+  CircularProgress,
 } from "@mui/material";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
@@ -165,33 +166,29 @@ function AddNewPurchase({
   };
 
   const handleAddToPurchase = async (foodItem) => {
-    
-    // Check if selected date is in the past (not today)
     const today = dayjs();
     const isSelectedDateInPast = selectedDate.isBefore(today, 'day');
-    
+
     if (isSelectedDateInPast) {
-      // Show confirmation modal for past dates
       setPendingFoodItem(foodItem);
       setShowDateConfirmation(true);
-      return;
+      return 'pending';
     }
-    
-    // If today or future date, proceed normally
-    await addFoodToDate(foodItem, selectedDate);
+
+    return addFoodToDate(foodItem, selectedDate);
   };
 
   const addFoodToDate = async (foodItem, date) => {
     const userId = getCurrentUserId();
     if (!userId) {
       setError("You must be logged in to add purchases.");
-      return;
+      return false;
     }
 
     try {
       setLoading(true);
       const purchaseDate = date.format('YYYY-MM-DD');
-      const response = await foodPurchaseAPI.addPurchase({
+      await foodPurchaseAPI.addPurchase({
         user_id: userId,
         name: foodItem.name,
         category: foodItem.category,
@@ -201,28 +198,28 @@ function AddNewPurchase({
         quantity_type: foodItem.quantity_type,
         quantity_type_id: foodItem.quantity_type_id,
         purchase_date: purchaseDate,
-        barcode: foodItem.barcode, // Include barcode if available (from Open Food Facts)
-        image_url: foodItem.image, // Include image URL if available (from Open Food Facts)
-        brand: foodItem.brand, // Include brand if available (from Open Food Facts)
-        source: foodItem.source || 'local', // Include source to distinguish Open Food Facts products
-        categories_tags: foodItem.categories_tags, // Include category tags array (from Open Food Facts)
-        ingredients_text: foodItem.ingredients_text, // Include ingredients if available (from Open Food Facts)
+        barcode: foodItem.barcode,
+        image_url: foodItem.image,
+        brand: foodItem.brand,
+        source: foodItem.source || 'local',
+        categories_tags: foodItem.categories_tags,
+        ingredients_text: foodItem.ingredients_text,
       });
 
-      fetchFoodPurchases();
-      // Refresh food items list in case a new food_item was created
-      fetchFoodItems();
-      // Refresh recents
-      fetchRecentPurchases();
+      await Promise.all([
+        fetchFoodPurchases(),
+        fetchFoodItems(),
+        fetchRecentPurchases(),
+      ]);
       setLoggingPurchase(false);
-      
-      // Dispatch task completion event to update streak and task counts
       window.dispatchEvent(new CustomEvent('taskCompleted'));
       setError(null);
+      return true;
     } catch (error) {
       console.error("Error adding purchase:", error);
       const errorMessage = error.response?.data?.error || error.message || "Failed to add purchase. Please try again.";
       setError(errorMessage);
+      return false;
     } finally {
       setLoading(false);
     }
@@ -337,8 +334,29 @@ function AddNewPurchase({
         boxSizing: "border-box",
         backgroundColor: 'background.default',
         overflow: "hidden",
+        position: "relative",
       }}
     >
+      {loading && (
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 30,
+            bgcolor: "rgba(255, 255, 255, 0.82)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 1.5,
+          }}
+        >
+          <CircularProgress size={36} />
+          <Typography variant="body2" fontWeight={600} color="text.secondary">
+            Adding food…
+          </Typography>
+        </Box>
+      )}
       {/* Header - Sticky */}
       <Paper
         elevation={0}
@@ -363,6 +381,7 @@ function AddNewPurchase({
             aria-label="close"
             size="medium"
             onClick={() => setLoggingPurchase(false)}
+            disabled={loading}
             sx={{
               backgroundColor: 'rgba(0, 0, 0, 0.05)',
               '&:hover': {
@@ -458,10 +477,13 @@ function AddNewPurchase({
               item={selectedRecentItem}
               quantityTypes={quantityTypes}
               foodCategories={foodCategories}
-              handleAddPurchase={(purchase) => {
-                setSelectedRecentItem(null);
-                handleAddToPurchase(purchase);
+              handleAddPurchase={async (purchase) => {
+                const ok = await handleAddToPurchase(purchase);
+                if (ok === true) {
+                  setSelectedRecentItem(null);
+                }
               }}
+              submitting={loading}
             />
           </Box>
         ) : activeView === 0 ? (
@@ -594,6 +616,7 @@ function AddNewPurchase({
               foodItems={foodItems}
               open={true}
               handleAddToPurchase={handleAddToPurchase}
+              addingPurchase={loading}
               foodCategories={foodCategories}
               onScannedProduct={handleScannedProduct}
               quantityTypes={quantityTypes}

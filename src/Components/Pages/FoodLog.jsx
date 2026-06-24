@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import dayjs from "dayjs";
 import { foodPurchaseAPI, surveyAPI, dailyTasksAPI } from "../../api";
 import { LocalizationProvider } from "@mui/x-date-pickers";
@@ -26,6 +26,11 @@ import FoodPurchaseList from "../FoodPurchaseList";
 import PageWrapper from "../PageWrapper";
 import DailyTasksPopup from "../DailyTasksPopup";
 import { useIsTabActive } from "../../context/TabVisibilityContext";
+import {
+  shouldOfferDailyTasksPopup,
+  SURVEY_REMINDER_CLOSE,
+  SURVEY_REMINDER_OPEN,
+} from "../../utils/reminderUtils";
 
 const cardSx = {
   borderRadius: 3,
@@ -52,7 +57,36 @@ const FoodLog = () => {
       : dayjs()
   );
   const [showDailyTasksPopup, setShowDailyTasksPopup] = useState(false);
+  const [surveyReminderBlocking, setSurveyReminderBlocking] = useState(false);
   const navigate = useNavigate();
+
+  const tryShowDailyTasksPopup = useCallback(async () => {
+    if (!isTabActiveRef.current || surveyReminderBlocking) {
+      setShowDailyTasksPopup(false);
+      return;
+    }
+
+    try {
+      const userId = getCurrentUserId();
+      if (!userId) return;
+
+      const [surveyResponse, tasksResponse] = await Promise.all([
+        surveyAPI.getSurveyStatus(userId),
+        dailyTasksAPI.getTodayTasks({ user_id: userId }),
+      ]);
+
+      const shouldShow = shouldOfferDailyTasksPopup({
+        userId,
+        surveyStatus: surveyResponse.data,
+        tasks: tasksResponse.data,
+        surveyReminderBlocking,
+      });
+
+      setShowDailyTasksPopup(shouldShow);
+    } catch (error) {
+      console.error("Error checking daily tasks:", error);
+    }
+  }, [surveyReminderBlocking]);
 
   const datesWithFood = useMemo(
     () => [
@@ -117,48 +151,32 @@ const FoodLog = () => {
   useEffect(() => {
     if (isTabActive && !wasTabActiveRef.current) {
       fetchFoodPurchases();
+      tryShowDailyTasksPopup();
     }
     wasTabActiveRef.current = isTabActive;
-  }, [isTabActive]);
+  }, [isTabActive, tryShowDailyTasksPopup]);
 
   useEffect(() => {
-    const checkDailyTasksPopup = async () => {
-      const today = new Date().toDateString();
-      const popupShownToday = localStorage.getItem(`dailyTasksPopup_${today}`);
-
-      if (!popupShownToday) {
-        try {
-          const userId = getCurrentUserId();
-          if (!userId) return;
-
-          const dismissTime = localStorage.getItem(`dailyTasksPopupDismissed_${userId}`);
-          if (dismissTime) {
-            const dismissTimestamp = parseInt(dismissTime, 10);
-            if (Date.now() - dismissTimestamp < 10 * 60 * 1000) return;
-          }
-
-          const surveyResponse = await surveyAPI.getSurveyStatus(userId);
-          if (surveyResponse.data.weeklyDue) return;
-          if (!surveyResponse.data.initialCompleted) return;
-
-          const response = await dailyTasksAPI.getTodayTasks({ user_id: userId });
-          const tasks = response.data;
-          const completed =
-            (tasks.log_food_completed ? 1 : 0) +
-            (tasks.complete_survey_completed ? 1 : 0) +
-            (tasks.log_consume_waste_completed ? 1 : 0);
-
-          if (completed < 3 && isTabActiveRef.current) {
-            setShowDailyTasksPopup(true);
-          }
-        } catch (error) {
-          console.error("Error checking daily tasks:", error);
-        }
-      }
+    const onSurveyOpen = () => {
+      setSurveyReminderBlocking(true);
+      setShowDailyTasksPopup(false);
+    };
+    const onSurveyClose = () => {
+      setSurveyReminderBlocking(false);
+      tryShowDailyTasksPopup();
     };
 
-    checkDailyTasksPopup();
-  }, []);
+    window.addEventListener(SURVEY_REMINDER_OPEN, onSurveyOpen);
+    window.addEventListener(SURVEY_REMINDER_CLOSE, onSurveyClose);
+    return () => {
+      window.removeEventListener(SURVEY_REMINDER_OPEN, onSurveyOpen);
+      window.removeEventListener(SURVEY_REMINDER_CLOSE, onSurveyClose);
+    };
+  }, [tryShowDailyTasksPopup]);
+
+  useEffect(() => {
+    tryShowDailyTasksPopup();
+  }, [tryShowDailyTasksPopup]);
 
   useEffect(() => {
     if (!isTabActive) {
@@ -168,10 +186,13 @@ const FoodLog = () => {
   }, [isTabActive]);
 
   useEffect(() => {
-    const handleTaskCompleted = () => fetchFoodPurchases();
+    const handleTaskCompleted = () => {
+      fetchFoodPurchases();
+      tryShowDailyTasksPopup();
+    };
     window.addEventListener("taskCompleted", handleTaskCompleted);
     return () => window.removeEventListener("taskCompleted", handleTaskCompleted);
-  }, []);
+  }, [tryShowDailyTasksPopup]);
 
   const filteredPurchases = useMemo(
     () =>
@@ -363,12 +384,10 @@ const FoodLog = () => {
       </Dialog>
 
       <DailyTasksPopup
-        open={showDailyTasksPopup && isTabActive}
+        open={showDailyTasksPopup && isTabActive && !surveyReminderBlocking}
         onClose={() => setShowDailyTasksPopup(false)}
-        onViewAllTasks={() => {
-          setShowDailyTasksPopup(false);
-          navigate("/tasks");
-        }}
+        onDismissForToday={() => setShowDailyTasksPopup(false)}
+        onViewAllTasks={() => navigate("/tasks")}
       />
     </PageWrapper>
   );

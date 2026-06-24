@@ -34,11 +34,7 @@ function BottomBar() {
       if (tasks.log_consume_waste_completed) completed++;
       
       setTaskCompletionStatus({ completed, total: 3 });
-      
-      // Show indicator if popup was already shown today OR user has incomplete tasks
-      const today = new Date().toDateString();
-      const popupShownToday = localStorage.getItem(`dailyTasksPopup_${today}`);
-      setShowDailyTasksIndicator(popupShownToday || completed < 3);
+      setShowDailyTasksIndicator(completed < 3);
     } catch (error) {
       console.error("Error fetching task status:", error);
     }
@@ -157,7 +153,7 @@ function BottomBar() {
     >
       <NavItem
         icon={<CalendarIcon />}
-        label="Summary"
+        label="Mark waste"
         onClick={() => goTo("/summary")}
         color="#1976d2"
         isActive={location.pathname === "/summary"}

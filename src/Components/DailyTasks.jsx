@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Box,
@@ -22,6 +22,7 @@ import {
 } from "@mui/icons-material";
 import { dailyTasksAPI } from "../api";
 import { getCurrentUserId } from "../utils/authUtils";
+import { useIsTabActive } from "../context/TabVisibilityContext";
 import AppConfirmDialog from "./AppConfirmDialog";
 
 const TASK_ACCENTS = {
@@ -39,12 +40,14 @@ const cardSx = {
 
 const DailyTasks = ({ onClose, showCloseButton = true }) => {
   const navigate = useNavigate();
+  const isTabActive = useIsTabActive();
   const [dailyTasks, setDailyTasks] = useState(null);
   const [streak, setStreak] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showCelebration, setShowCelebration] = useState(false);
+  const prevAllCompleteRef = useRef(null);
 
-  const fetchDailyTasks = async () => {
+  const fetchDailyTasks = useCallback(async () => {
     const userId = getCurrentUserId();
     if (!userId) {
       setLoading(false);
@@ -61,19 +64,22 @@ const DailyTasks = ({ onClose, showCloseButton = true }) => {
       setDailyTasks(tasksResponse.data);
       setStreak(streakResponse.data);
 
-      if (tasksResponse.data?.all_tasks_completed && !showCelebration) {
+      const allComplete = !!tasksResponse.data?.all_tasks_completed;
+      const wasComplete = prevAllCompleteRef.current;
+      if (wasComplete === false && allComplete && isTabActive) {
         setShowCelebration(true);
       }
+      prevAllCompleteRef.current = allComplete;
     } catch (error) {
       console.error("Error fetching daily tasks:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [isTabActive]);
 
   useEffect(() => {
     fetchDailyTasks();
-  }, []);
+  }, [fetchDailyTasks]);
 
   useEffect(() => {
     const handleTaskCompleted = () => {
@@ -82,7 +88,7 @@ const DailyTasks = ({ onClose, showCloseButton = true }) => {
 
     window.addEventListener("taskCompleted", handleTaskCompleted);
     return () => window.removeEventListener("taskCompleted", handleTaskCompleted);
-  }, []);
+  }, [fetchDailyTasks]);
 
   const handleTaskNavigation = (taskType) => {
     switch (taskType) {
@@ -380,8 +386,10 @@ const DailyTasks = ({ onClose, showCloseButton = true }) => {
       )}
 
       <AppConfirmDialog
-        open={showCelebration}
+        open={showCelebration && isTabActive}
         onClose={() => setShowCelebration(false)}
+        presentation="centered"
+        zIndex={1500}
         tone="success"
         icon={<FireIcon />}
         title="All tasks complete!"
