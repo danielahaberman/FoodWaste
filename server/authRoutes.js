@@ -60,7 +60,12 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid username or password' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password_hash);
+    const storedHash = user.password_hash || user.password;
+    if (!storedHash) {
+      return res.status(401).json({ error: 'Invalid username or password' });
+    }
+
+    const isMatch = await bcrypt.compare(password, storedHash);
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid username or password' });
     }

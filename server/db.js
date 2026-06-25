@@ -94,7 +94,7 @@ const initDB = async () => {
         id SERIAL PRIMARY KEY,
         username TEXT UNIQUE,
         name TEXT,
-        password TEXT
+        password_hash TEXT
       );
     `);
     await client.query(`
@@ -337,6 +337,41 @@ const initDB = async () => {
 const runMigrations = async (client) => {
   try {
     console.log("Running database migrations...");
+
+    // Legacy schemas created a `password` column; auth code expects `password_hash`.
+    try {
+      console.log("Ensuring password_hash column exists in users table...");
+      await client.query(`
+        ALTER TABLE users
+        ADD COLUMN password_hash TEXT
+      `);
+      console.log("✓ Added password_hash column");
+    } catch (err) {
+      if (err.code === '42701') {
+        console.log("✓ password_hash column already exists");
+      } else {
+        console.error("Error adding password_hash column:", err.message);
+      }
+    }
+
+    try {
+      const { rowCount } = await client.query(`
+        UPDATE users
+        SET password_hash = password
+        WHERE password_hash IS NULL
+          AND password IS NOT NULL
+          AND password <> ''
+      `);
+      if (rowCount > 0) {
+        console.log(`✓ Migrated ${rowCount} legacy password value(s) to password_hash`);
+      }
+    } catch (err) {
+      if (err.code === '42703') {
+        console.log("✓ No legacy password column to migrate");
+      } else {
+        console.error("Error migrating legacy password column:", err.message);
+      }
+    }
     
     // Force add terms_accepted_at column to users table (will fail silently if already exists)
     try {
