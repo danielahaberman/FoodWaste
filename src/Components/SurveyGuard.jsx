@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { surveyAPI } from "../api";
-import { getCurrentUserId } from "../utils/authUtils";
+import { useSessionData } from "../hooks/useSessionData";
 import {
   Typography,
   Box,
@@ -27,15 +26,14 @@ function isPublicPage(pathname) {
 }
 
 function SurveyGuard({ children }) {
-  const [surveyStatus, setSurveyStatus] = useState(null);
+  const { data } = useSessionData();
+  const surveyStatus = data?.surveyStatus ?? null;
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showWeeklyModal, setShowWeeklyModal] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
   const applyReminderState = useCallback((status, pathname) => {
-    setSurveyStatus(status);
-
     if (!status || isPublicPage(pathname)) {
       setShowWelcomeModal(false);
       setShowWeeklyModal(false);
@@ -45,38 +43,6 @@ function SurveyGuard({ children }) {
     setShowWelcomeModal(shouldOfferInitialSurveyModal(status, pathname, isPublicPage));
     setShowWeeklyModal(shouldOfferWeeklySurveyModal(status, pathname, isPublicPage));
   }, []);
-
-  const checkSurveyStatus = useCallback(async () => {
-    try {
-      const userId = getCurrentUserId();
-      if (!userId) return;
-
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Survey check timeout")), 3000)
-      );
-
-      const response = await Promise.race([
-        surveyAPI.getSurveyStatus(userId),
-        timeoutPromise,
-      ]);
-
-      applyReminderState(response.data, location.pathname);
-    } catch (error) {
-      console.error("Error checking survey status:", error);
-    }
-  }, [applyReminderState, location.pathname]);
-
-  useEffect(() => {
-    checkSurveyStatus();
-  }, [checkSurveyStatus]);
-
-  useEffect(() => {
-    const handleTaskCompleted = () => {
-      checkSurveyStatus();
-    };
-    window.addEventListener("taskCompleted", handleTaskCompleted);
-    return () => window.removeEventListener("taskCompleted", handleTaskCompleted);
-  }, [checkSurveyStatus]);
 
   useEffect(() => {
     if (surveyStatus) {

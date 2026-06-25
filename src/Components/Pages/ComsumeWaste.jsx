@@ -253,7 +253,6 @@ function ConsumeWaste({ onGoToDate }) {
   const [tabIndex, setTabIndex] = useState(0);
   const [activeWeekOf, setActiveWeekOf] = useState(null);
   const [byCategory, setByCategory] = useState([]);
-  const wasTabActiveRef = useRef(isTabActive);
 
   const refreshAll = useCallback(async (showLoader = false) => {
     const userId = getCurrentUserId();
@@ -296,15 +295,14 @@ function ConsumeWaste({ onGoToDate }) {
   };
 
   useEffect(() => {
-    refreshAll(true);
+    refreshAll(false);
   }, [refreshAll]);
 
   useEffect(() => {
-    if (isTabActive && !wasTabActiveRef.current) {
-      refreshAll();
-    }
-    wasTabActiveRef.current = isTabActive;
-  }, [isTabActive, refreshAll]);
+    const handleDataUpdate = () => refreshAll(false);
+    window.addEventListener('taskCompleted', handleDataUpdate);
+    return () => window.removeEventListener('taskCompleted', handleDataUpdate);
+  }, [refreshAll]);
 
   useEffect(() => {
     if (!isTabActive) {
@@ -326,9 +324,10 @@ function ConsumeWaste({ onGoToDate }) {
     return map;
   };
 
-  // Show exactly 2 editable weeks (previous week + current week) plus next week (disabled), with 7-day edit limit
+  // Sunday-based weeks to match server weekly-summary grouping
   const getEditableWeeks = () => {
-    const currentWeek = moment.tz('America/New_York').startOf('week');
+    const now = moment.tz('America/New_York');
+    const currentWeek = now.clone().subtract(now.day(), 'days').startOf('day');
     const previousWeek = currentWeek.clone().subtract(1, 'week');
     const nextWeek = currentWeek.clone().add(1, 'week');
     
@@ -742,29 +741,6 @@ function ConsumeWaste({ onGoToDate }) {
 
   const pageTitle = activeWeekOf ? "Log consume & waste" : "Weekly Summary";
 
-  if (loading)
-    return (
-      <PageWrapper title={pageTitle}>
-        <Box sx={{ py: 4, textAlign: 'center' }}>
-          <CircularProgress />
-          <Typography variant="body2" mt={2} fontStyle="italic">
-            Loading weekly purchase summary...
-          </Typography>
-        </Box>
-      </PageWrapper>
-    );
-
-  if (error)
-    return (
-      <PageWrapper title={pageTitle}>
-        <Box sx={{ py: 4 }}>
-          <Typography color="error" textAlign="center">
-            {error}
-          </Typography>
-        </Box>
-      </PageWrapper>
-    );
-
   const headerActions = activeWeekOf ? (
     <IconButton
       size="small"
@@ -806,7 +782,23 @@ function ConsumeWaste({ onGoToDate }) {
       headerAction={headerActions}
       subHeader={weekDetailSubHeader}
     >
+      {error && (
+        <Paper elevation={0} sx={{ ...cardSx, p: 2, mb: 2, borderLeft: "4px solid", borderColor: "error.main" }}>
+          <Typography color="error" variant="body2">
+            {error}
+          </Typography>
+        </Paper>
+      )}
 
+      {loading && weeklySummary.length === 0 ? (
+        <Box sx={{ py: 6, textAlign: "center" }}>
+          <CircularProgress size={32} />
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            Loading weekly summary…
+          </Typography>
+        </Box>
+      ) : (
+        <>
         {!activeWeekOf && (
           <Stack spacing={1.5}>
             <Paper elevation={0} sx={{ ...cardSx, p: 2 }}>
@@ -1796,6 +1788,8 @@ function ConsumeWaste({ onGoToDate }) {
 				</Box>
 			</Box>
 		</Dialog>
+        </>
+      )}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}

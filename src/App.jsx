@@ -16,6 +16,7 @@ import AuthGuard from './Components/AuthGuard';
 import SurveyGuard from './Components/SurveyGuard';
 import ErrorBoundary from './Components/ErrorBoundary';
 import AdminGuard from './Components/AdminGuard';
+import SessionDataBootstrap from './Components/SessionDataBootstrap';
 import PWAProvider from './Components/PWAProvider';
 import UpdateProvider from './Components/UpdateProvider';
 import RouteTracker from './Components/RouteTracker';
@@ -39,7 +40,8 @@ function App() {
                 <Route path="/*" element={
                   <TermsGuard>
                     <AuthGuard>
-                      <SurveyGuard>
+                      <SessionDataBootstrap>
+                        <SurveyGuard>
                         <Routes>
                           {/* Pages that don't require SidebarLayout */}
                           <Route path="/" element={<LandingPage />} />
@@ -60,7 +62,8 @@ function App() {
                             <Route path="/tasks-leaderboard" />
                           </Route>
                         </Routes>
-                      </SurveyGuard>
+                        </SurveyGuard>
+                      </SessionDataBootstrap>
                     </AuthGuard>
                   </TermsGuard>
                 } />

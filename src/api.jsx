@@ -49,12 +49,6 @@ api.interceptors.request.use(
       }
     }
 
-    // Log all requests in development
-    if (import.meta.env.DEV) {
-      const fullURL = (config.baseURL || '') + config.url;
-      console.log(`🌐 API Request: ${config.method?.toUpperCase()} ${fullURL}`);
-      console.log(`   From origin: ${window.location.origin}`);
-    }
     return config;
   },
   (error) => {
@@ -65,12 +59,7 @@ api.interceptors.request.use(
 
 // Add response interceptor to handle errors
 api.interceptors.response.use(
-  response => {
-    if (import.meta.env.DEV) {
-      console.log(`✅ API Response: ${response.config.method?.toUpperCase()} ${response.config.url} - ${response.status}`);
-    }
-    return response;
-  },
+  response => response,
   error => {
     // Handle network errors (CORS, timeout, etc.)
     if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {

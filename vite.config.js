@@ -64,25 +64,23 @@ export default {
         target: 'http://localhost:5001',
         changeOrigin: true,
         bypass: (req) => {
-          // Don't proxy the exact /admin path (frontend route handled by React Router)
-          // Only proxy /admin/* API endpoints
           const url = req.url || '';
-          if (url === '/admin' || url === '/admin/') {
-            // Return index.html to let React Router handle the route
+          const isPageNavigation = req.method === 'GET' || req.method === 'HEAD';
+          if (isPageNavigation && (url === '/admin' || url === '/admin/')) {
             return '/index.html';
           }
-          // Continue proxying for /admin/* API paths
           return null;
         },
       },
 
-      // /auth/login and /auth/register are frontend pages; other /auth/* paths are API.
+      // /auth/login and /auth/register are frontend pages on GET; POST goes to the API.
       '/auth': {
         target: 'http://localhost:5001',
         changeOrigin: true,
         bypass: (req) => {
           const pathname = (req.url || '').split('?')[0];
-          if (pathname === '/auth/login' || pathname === '/auth/register') {
+          const isPageNavigation = req.method === 'GET' || req.method === 'HEAD';
+          if (isPageNavigation && (pathname === '/auth/login' || pathname === '/auth/register')) {
             return '/index.html';
           }
           return null;

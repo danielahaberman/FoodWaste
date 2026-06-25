@@ -18,6 +18,12 @@ import cors from "cors";
 // Set timezone to US East Coast for all date operations
 process.env.TZ = 'America/New_York';
 
+/** Sunday-based week key (MM/DD/YYYY) — matches the weekly summary UI. */
+function getSundayWeekStartKey(date) {
+  const m = moment.tz(date, 'America/New_York');
+  return m.subtract(m.day(), 'days').startOf('day').format('MM/DD/YYYY');
+}
+
 import pool from "./db.js"; // Your pg Pool instance
 import authRoutes from "./authRoutes.js"; // Import auth routes
 import { requireAuth, requireAdmin, requireSelfUserId } from "./middleware/auth.js";
@@ -1502,7 +1508,7 @@ app.post("/consumption-log/auto-consume-week", requireAuth, async (req, res) => 
 
 // GET purchases weekly summary
 app.get("/purchases/weekly-summary", requireAuth, async (req, res) => {
-  const { user_id } = req.query;
+  const user_id = req.user_id;
 
   const query = `
     SELECT 
@@ -1526,7 +1532,7 @@ app.get("/purchases/weekly-summary", requireAuth, async (req, res) => {
     const grouped = {};
 
     rows.forEach(row => {
-      const weekStart = moment.tz(row.purchase_date, 'America/New_York').startOf('week').format('MM/DD/YYYY');
+      const weekStart = getSundayWeekStartKey(row.purchase_date);
 
       if (!grouped[weekStart]) {
         grouped[weekStart] = {

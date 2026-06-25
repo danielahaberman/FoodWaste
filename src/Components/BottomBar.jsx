@@ -1,6 +1,6 @@
 // @ts-nocheck
 /* eslint-disable react/prop-types */
-import React, { useState, useEffect, startTransition } from "react";
+import React from "react";
 import { Box, IconButton, Typography, Badge, Paper } from "@mui/material";
 import {
   Restaurant as RestaurantIcon,
@@ -10,51 +10,23 @@ import {
   Settings as SettingsIcon,
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
-import { dailyTasksAPI } from "../api";
-import { getCurrentUserId } from "../utils/authUtils";
+import { useSessionData } from "../hooks/useSessionData";
 import { frostedBar } from "../themeStyles";
 
 function BottomBar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [taskCompletionStatus, setTaskCompletionStatus] = useState({ completed: 0, total: 3 });
-  const [showDailyTasksIndicator, setShowDailyTasksIndicator] = useState(false);
+  const { data } = useSessionData();
+  const tasks = data?.todayTasks;
 
-  const fetchTaskStatus = async () => {
-    const userId = getCurrentUserId();
-    if (!userId) return;
-    
-    try {
-      const response = await dailyTasksAPI.getTodayTasks({ user_id: userId });
-      const tasks = response.data;
-      
-      let completed = 0;
-      if (tasks.log_food_completed) completed++;
-      if (tasks.complete_survey_completed) completed++;
-      if (tasks.log_consume_waste_completed) completed++;
-      
-      setTaskCompletionStatus({ completed, total: 3 });
-      setShowDailyTasksIndicator(completed < 3);
-    } catch (error) {
-      console.error("Error fetching task status:", error);
-    }
-  };
-
-  useEffect(() => {
-    fetchTaskStatus();
-    
-    // Listen for task completion events
-    const handleTaskUpdate = () => {
-      fetchTaskStatus();
-    };
-    
-    window.addEventListener('taskCompleted', handleTaskUpdate);
-    return () => window.removeEventListener('taskCompleted', handleTaskUpdate);
-  }, []);
+  const completed = (tasks?.log_food_completed ? 1 : 0)
+    + (tasks?.complete_survey_completed ? 1 : 0)
+    + (tasks?.log_consume_waste_completed ? 1 : 0);
+  const showDailyTasksIndicator = tasks ? completed < 3 : false;
 
   const goTo = (path) => {
     if (location.pathname === path) return;
-    startTransition(() => navigate(path));
+    navigate(path);
   };
 
   const NavItem = ({ icon, label, onClick, color, isActive, route, isMain }) => (
@@ -183,8 +155,8 @@ function BottomBar() {
         icon={
           showDailyTasksIndicator ? (
             <Badge 
-              badgeContent={`${taskCompletionStatus.completed}/${taskCompletionStatus.total}`} 
-              color={taskCompletionStatus.completed === taskCompletionStatus.total ? "success" : "primary"}
+              badgeContent={`${completed}/3`} 
+              color={completed === 3 ? "success" : "primary"}
               sx={{
                 '& .MuiBadge-badge': {
                   fontSize: '0.65rem',

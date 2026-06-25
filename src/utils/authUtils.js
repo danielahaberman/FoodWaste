@@ -173,6 +173,9 @@ export const logout = () => {
 	localStorage.removeItem(INTENDED_DESTINATION_KEY);
 	localStorage.removeItem(LOGIN_DATE_KEY);
 	clearLastRoute();
+	if (typeof window !== 'undefined') {
+		window.dispatchEvent(new Event('sessionLogout'));
+	}
 };
 
 export const setAdminAuthenticated = (token) => {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import dayjs from "dayjs";
 import { surveyAPI } from "../../api";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -19,7 +19,6 @@ import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import EventAvailableOutlinedIcon from "@mui/icons-material/EventAvailableOutlined";
 import PageWrapper from "../PageWrapper";
 import { getCurrentUserId } from "../../utils/authUtils";
-import { useIsTabActive } from "../../context/TabVisibilityContext";
 
 dayjs.extend(weekOfYear);
 dayjs.extend(isSameOrAfter);
@@ -35,11 +34,9 @@ const cardSx = {
 function QaPage() {
   const [surveyQuestions, setSurveyQuestions] = useState(null);
   const [activeStage, setActiveStage] = useState(null);
-  const [loadingStatus, setLoadingStatus] = useState(true);
+  const [loadingStatus, setLoadingStatus] = useState(false);
   const [errorStatus, setErrorStatus] = useState(null);
   const navigate = useNavigate();
-  const isTabActive = useIsTabActive();
-  const wasTabActiveRef = useRef(isTabActive);
   const [searchParams] = useSearchParams();
   const stageParam = searchParams.get("stage");
 
@@ -87,13 +84,6 @@ function QaPage() {
   useEffect(() => {
     fetchSurveyStatus();
   }, [fetchSurveyStatus]);
-
-  useEffect(() => {
-    if (isTabActive && !wasTabActiveRef.current) {
-      fetchSurveyStatus();
-    }
-    wasTabActiveRef.current = isTabActive;
-  }, [isTabActive, fetchSurveyStatus]);
 
   const nextSurveyDate = dayjs().startOf("week").add(1, "week").format("MMM D, YYYY");
 

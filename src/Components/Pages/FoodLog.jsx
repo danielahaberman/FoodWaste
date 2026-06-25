@@ -1,7 +1,8 @@
 // @ts-nocheck
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import dayjs from "dayjs";
-import { foodPurchaseAPI, surveyAPI, dailyTasksAPI } from "../../api";
+import { foodPurchaseAPI } from "../../api";
+import { useSessionData } from "../../hooks/useSessionData";
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import {
@@ -43,11 +44,10 @@ const FoodLog = () => {
   const isTabActive = useIsTabActive();
   const isTabActiveRef = useRef(isTabActive);
   isTabActiveRef.current = isTabActive;
-  const wasTabActiveRef = useRef(isTabActive);
 
   const [foodPurchases, setFoodPurchases] = useState([]);
   const [foodItems, setFoodItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [loggingPurchase, setLoggingPurchase] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const dateParam = searchParams.get("date");
@@ -56,37 +56,29 @@ const FoodLog = () => {
       ? dayjs(dateParam, "YYYY-MM-DD")
       : dayjs()
   );
+  const { data: sessionData } = useSessionData();
   const [showDailyTasksPopup, setShowDailyTasksPopup] = useState(false);
   const [surveyReminderBlocking, setSurveyReminderBlocking] = useState(false);
   const navigate = useNavigate();
 
-  const tryShowDailyTasksPopup = useCallback(async () => {
+  const tryShowDailyTasksPopup = useCallback(() => {
     if (!isTabActiveRef.current || surveyReminderBlocking) {
       setShowDailyTasksPopup(false);
       return;
     }
 
-    try {
-      const userId = getCurrentUserId();
-      if (!userId) return;
+    const userId = getCurrentUserId();
+    if (!userId || !sessionData) return;
 
-      const [surveyResponse, tasksResponse] = await Promise.all([
-        surveyAPI.getSurveyStatus(userId),
-        dailyTasksAPI.getTodayTasks({ user_id: userId }),
-      ]);
+    const shouldShow = shouldOfferDailyTasksPopup({
+      userId,
+      surveyStatus: sessionData.surveyStatus,
+      tasks: sessionData.todayTasks,
+      surveyReminderBlocking,
+    });
 
-      const shouldShow = shouldOfferDailyTasksPopup({
-        userId,
-        surveyStatus: surveyResponse.data,
-        tasks: tasksResponse.data,
-        surveyReminderBlocking,
-      });
-
-      setShowDailyTasksPopup(shouldShow);
-    } catch (error) {
-      console.error("Error checking daily tasks:", error);
-    }
-  }, [surveyReminderBlocking]);
+    setShowDailyTasksPopup(shouldShow);
+  }, [sessionData, surveyReminderBlocking]);
 
   const datesWithFood = useMemo(
     () => [
@@ -149,12 +141,8 @@ const FoodLog = () => {
   }, [selectedDate, setSearchParams]);
 
   useEffect(() => {
-    if (isTabActive && !wasTabActiveRef.current) {
-      fetchFoodPurchases();
-      tryShowDailyTasksPopup();
-    }
-    wasTabActiveRef.current = isTabActive;
-  }, [isTabActive, tryShowDailyTasksPopup]);
+    tryShowDailyTasksPopup();
+  }, [tryShowDailyTasksPopup, sessionData]);
 
   useEffect(() => {
     const onSurveyOpen = () => {
@@ -172,10 +160,6 @@ const FoodLog = () => {
       window.removeEventListener(SURVEY_REMINDER_OPEN, onSurveyOpen);
       window.removeEventListener(SURVEY_REMINDER_CLOSE, onSurveyClose);
     };
-  }, [tryShowDailyTasksPopup]);
-
-  useEffect(() => {
-    tryShowDailyTasksPopup();
   }, [tryShowDailyTasksPopup]);
 
   useEffect(() => {

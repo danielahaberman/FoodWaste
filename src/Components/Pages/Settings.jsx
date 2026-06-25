@@ -47,7 +47,7 @@ const Settings = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/');
+    navigate('/', { replace: true });
   };
 
   const handleResources = () => {

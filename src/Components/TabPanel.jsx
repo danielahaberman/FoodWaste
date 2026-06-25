@@ -22,6 +22,6 @@ const TabPanel = memo(function TabPanel({ visible, children }) {
       </Box>
     </TabVisibilityContext.Provider>
   );
-}, (prev, next) => prev.visible === next.visible);
+}, (prev, next) => prev.visible === next.visible && prev.children === next.children);
 
 export default TabPanel;

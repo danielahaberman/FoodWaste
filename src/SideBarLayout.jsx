@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React from "react";
+import React, { useMemo } from "react";
 import { Box } from "@mui/material";
 import { Outlet, useLocation } from "react-router-dom";
 import BottomBar from "./Components/BottomBar";
@@ -22,16 +22,26 @@ const TAB_ROUTES = {
   "/resources": Resources,
 };
 
-// Pre-mount bottom-nav tabs so switching is instant (no first-visit mount delay).
-const BOTTOM_NAV_TABS = ["/summary", "/survey", "/log", "/tasks", "/settings"];
-
-const resolveTabPath = (pathname) => {
-  if (TAB_ROUTES[pathname]) return pathname;
-  return null;
-};
+// Small app — mount every tab up front for instant switching.
+const ALL_TABS = ["/summary", "/survey", "/log", "/tasks", "/settings", "/resources"];
 
 const SidebarLayout = () => {
   const location = useLocation();
+
+  const tabPanels = useMemo(
+    () =>
+      ALL_TABS.map((path) => {
+        const TabComponent = TAB_ROUTES[path];
+        if (!TabComponent) return null;
+
+        return (
+          <TabPanel key={path} path={path}>
+            <TabComponent />
+          </TabPanel>
+        );
+      }),
+    [],
+  );
 
   const isTabVisible = (path) => {
     if (location.pathname === path) return true;
@@ -39,14 +49,6 @@ const SidebarLayout = () => {
     if (path === "/tasks" && location.pathname === "/tasks-leaderboard") return true;
     return false;
   };
-
-  const extraTabs = [];
-  const currentTab = resolveTabPath(location.pathname);
-  if (currentTab && !BOTTOM_NAV_TABS.includes(currentTab)) {
-    extraTabs.push(currentTab);
-  }
-
-  const mountedTabs = [...BOTTOM_NAV_TABS, ...extraTabs];
 
   return (
     <Box
@@ -74,18 +76,9 @@ const SidebarLayout = () => {
           position: "relative",
         }}
       >
-        {mountedTabs.map((path) => {
-          const TabComponent = TAB_ROUTES[path];
-          if (!TabComponent) return null;
-          const visible = isTabVisible(path);
-
-          return (
-            <TabPanel key={path} visible={visible}>
-              <TabComponent />
-            </TabPanel>
-          );
-        })}
-        {/* Required for React Router layout routes to match child paths */}
+        {tabPanels.map((panel) =>
+          panel ? React.cloneElement(panel, { visible: isTabVisible(panel.props.path) }) : null,
+        )}
         <Outlet />
       </Box>
       <BottomBar />
