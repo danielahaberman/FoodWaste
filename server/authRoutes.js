@@ -7,9 +7,19 @@ import {
   signUserToken,
   signAdminToken,
   getAdminCredentials,
+  isJwtConfigured,
+  AUTH_NOT_CONFIGURED_MESSAGE,
 } from './middleware/auth.js';
 
 const router = express.Router();
+
+function respondAuthNotConfigured(res) {
+  return res.status(503).json({ error: AUTH_NOT_CONFIGURED_MESSAGE });
+}
+
+function isAuthConfigError(err) {
+  return err?.message === AUTH_NOT_CONFIGURED_MESSAGE;
+}
 
 // Register route
 router.post('/register', async (req, res) => {
@@ -17,6 +27,10 @@ router.post('/register', async (req, res) => {
 
   if (!username || !password) {
     return res.status(400).json({ error: 'Username and password are required' });
+  }
+
+  if (!isJwtConfigured()) {
+    return respondAuthNotConfigured(res);
   }
 
   try {
@@ -36,6 +50,9 @@ router.post('/register', async (req, res) => {
     res.status(201).json({ ...user, token });
   } catch (err) {
     console.error('Error registering user:', err);
+    if (isAuthConfigError(err)) {
+      return respondAuthNotConfigured(res);
+    }
     if (err.code === '23505') {
       return res.status(409).json({ error: 'Username is already taken' });
     }
@@ -49,6 +66,10 @@ router.post('/login', async (req, res) => {
 
   if (!username || !password) {
     return res.status(400).json({ error: 'Username and password are required' });
+  }
+
+  if (!isJwtConfigured()) {
+    return respondAuthNotConfigured(res);
   }
 
   try {
@@ -74,6 +95,9 @@ router.post('/login', async (req, res) => {
     res.json({ message: 'Login successful', user_id: user.id, username: user.username, token });
   } catch (err) {
     console.error('Error logging in:', err);
+    if (isAuthConfigError(err)) {
+      return respondAuthNotConfigured(res);
+    }
     res.status(500).json({ error: 'Error logging in' });
   }
 });
@@ -91,8 +115,20 @@ router.post('/admin/login', async (req, res) => {
     return res.status(401).json({ error: 'Invalid admin credentials' });
   }
 
-  const token = signAdminToken(username);
-  res.json({ message: 'Admin login successful', token });
+  if (!isJwtConfigured()) {
+    return respondAuthNotConfigured(res);
+  }
+
+  try {
+    const token = signAdminToken(username);
+    res.json({ message: 'Admin login successful', token });
+  } catch (err) {
+    console.error('Error during admin login:', err);
+    if (isAuthConfigError(err)) {
+      return respondAuthNotConfigured(res);
+    }
+    res.status(500).json({ error: 'Error logging in' });
+  }
 });
 
 export default router;

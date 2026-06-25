@@ -8,12 +8,19 @@ if (!JWT_SECRET) {
   console.error('JWT_SECRET environment variable is required in production');
 }
 
+export const AUTH_NOT_CONFIGURED_MESSAGE =
+  'Server authentication is not configured. Set JWT_SECRET in the server environment.';
+
+export function isJwtConfigured() {
+  return !!JWT_SECRET;
+}
+
 export const TOKEN_EXPIRY = '7d';
 export const ADMIN_TOKEN_EXPIRY = '8h';
 
 export function signUserToken(userId, username) {
   if (!JWT_SECRET) {
-    throw new Error('JWT_SECRET is not configured');
+    throw new Error(AUTH_NOT_CONFIGURED_MESSAGE);
   }
   return jwt.sign({ user_id: userId, username, role: 'user' }, JWT_SECRET, {
     expiresIn: TOKEN_EXPIRY,
@@ -22,7 +29,7 @@ export function signUserToken(userId, username) {
 
 export function signAdminToken(username) {
   if (!JWT_SECRET) {
-    throw new Error('JWT_SECRET is not configured');
+    throw new Error(AUTH_NOT_CONFIGURED_MESSAGE);
   }
   return jwt.sign({ role: 'admin', username }, JWT_SECRET, {
     expiresIn: ADMIN_TOKEN_EXPIRY,
@@ -39,7 +46,7 @@ export function extractToken(req) {
 
 export function requireAuth(req, res, next) {
   if (!JWT_SECRET) {
-    return res.status(500).json({ error: 'Server authentication is not configured' });
+    return res.status(503).json({ error: AUTH_NOT_CONFIGURED_MESSAGE });
   }
 
   const token = extractToken(req);
@@ -74,7 +81,7 @@ export function requireAuth(req, res, next) {
 
 export function requireAdmin(req, res, next) {
   if (!JWT_SECRET) {
-    return res.status(500).json({ error: 'Server authentication is not configured' });
+    return res.status(503).json({ error: AUTH_NOT_CONFIGURED_MESSAGE });
   }
 
   const token = extractToken(req);
