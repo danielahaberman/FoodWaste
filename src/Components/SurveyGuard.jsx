@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useSessionData } from "../hooks/useSessionData";
 import {
@@ -13,6 +13,7 @@ import {
   isWeeklySurveyForced,
   markInitialSurveyModalShown,
   markWeeklySurveyModalShown,
+  markWeeklySurveySnoozed,
   notifySurveyReminderClose,
   notifySurveyReminderOpen,
   shouldOfferInitialSurveyModal,
@@ -30,6 +31,8 @@ function SurveyGuard({ children }) {
   const surveyStatus = data?.surveyStatus ?? null;
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showWeeklyModal, setShowWeeklyModal] = useState(false);
+  const iconTapCountRef = useRef(0);
+  const lastIconTapRef = useRef(0);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -81,6 +84,22 @@ function SurveyGuard({ children }) {
     setShowWeeklyModal(false);
   };
 
+  const handleSecretRemindLater = () => {
+    const now = Date.now();
+    if (now - lastIconTapRef.current > 2000) {
+      iconTapCountRef.current = 1;
+    } else {
+      iconTapCountRef.current += 1;
+    }
+    lastIconTapRef.current = now;
+
+    if (iconTapCountRef.current >= 5) {
+      markWeeklySurveySnoozed();
+      setShowWeeklyModal(false);
+      iconTapCountRef.current = 0;
+    }
+  };
+
   const weeklyForced = isWeeklySurveyForced(surveyStatus);
 
   if (surveyStatus && !surveyStatus.initialCompleted && !isPublicPage(location.pathname)) {
@@ -126,6 +145,7 @@ function SurveyGuard({ children }) {
         }}
         tone={weeklyForced ? "warning" : "primary"}
         icon={<EventNoteOutlinedIcon />}
+        onIconClick={weeklyForced ? handleSecretRemindLater : undefined}
         title={weeklyForced ? "Weekly survey required" : "Weekly check-in"}
         maxWidth="sm"
         scrollable

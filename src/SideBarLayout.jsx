@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import { Box } from "@mui/material";
 import { Outlet, useLocation } from "react-router-dom";
 import BottomBar from "./Components/BottomBar";
@@ -22,26 +22,31 @@ const TAB_ROUTES = {
   "/resources": Resources,
 };
 
-// Small app — mount every tab up front for instant switching.
 const ALL_TABS = ["/summary", "/survey", "/log", "/tasks", "/settings", "/resources"];
+
+function tabPathForLocation(pathname) {
+  if (pathname === "/home") return "/log";
+  if (pathname === "/tasks-leaderboard") return "/tasks";
+  return ALL_TABS.includes(pathname) ? pathname : null;
+}
 
 const SidebarLayout = () => {
   const location = useLocation();
+  const activeTab = tabPathForLocation(location.pathname);
 
-  const tabPanels = useMemo(
-    () =>
-      ALL_TABS.map((path) => {
-        const TabComponent = TAB_ROUTES[path];
-        if (!TabComponent) return null;
-
-        return (
-          <TabPanel key={path} path={path}>
-            <TabComponent />
-          </TabPanel>
-        );
-      }),
-    [],
+  const [mountedTabs, setMountedTabs] = useState(() =>
+    activeTab ? new Set([activeTab]) : new Set(),
   );
+
+  useEffect(() => {
+    if (!activeTab) return;
+    setMountedTabs((prev) => {
+      if (prev.has(activeTab)) return prev;
+      const next = new Set(prev);
+      next.add(activeTab);
+      return next;
+    });
+  }, [activeTab]);
 
   const isTabVisible = (path) => {
     if (location.pathname === path) return true;
@@ -76,9 +81,18 @@ const SidebarLayout = () => {
           position: "relative",
         }}
       >
-        {tabPanels.map((panel) =>
-          panel ? React.cloneElement(panel, { visible: isTabVisible(panel.props.path) }) : null,
-        )}
+        {ALL_TABS.map((path) => {
+          if (!mountedTabs.has(path)) return null;
+
+          const TabComponent = TAB_ROUTES[path];
+          if (!TabComponent) return null;
+
+          return (
+            <TabPanel key={path} visible={isTabVisible(path)}>
+              <TabComponent />
+            </TabPanel>
+          );
+        })}
         <Outlet />
       </Box>
       <BottomBar />

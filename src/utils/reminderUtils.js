@@ -58,12 +58,28 @@ export function getWeeklySurveyModalKey() {
   return `weeklyModalShown_${getReminderDayKey()}`;
 }
 
+const WEEKLY_SURVEY_SNOOZE_KEY = "weeklySurveySnoozedAt";
+
 export function markWeeklySurveyModalShown() {
   localStorage.setItem(getWeeklySurveyModalKey(), "true");
 }
 
 export function wasWeeklySurveyModalShownToday() {
   return localStorage.getItem(getWeeklySurveyModalKey()) === "true";
+}
+
+/** Secret snooze — stores timestamp; hides forced weekly modal for the rest of today. */
+export function markWeeklySurveySnoozed() {
+  localStorage.setItem(WEEKLY_SURVEY_SNOOZE_KEY, String(Date.now()));
+  markWeeklySurveyModalShown();
+}
+
+export function isWeeklySurveySnoozedToday() {
+  const raw = localStorage.getItem(WEEKLY_SURVEY_SNOOZE_KEY);
+  if (!raw) return false;
+  const ts = Number.parseInt(raw, 10);
+  if (Number.isNaN(ts)) return false;
+  return moment.tz(ts, TZ).format("YYYY-MM-DD") === getReminderDayKey();
 }
 
 export function isWeeklySurveyForced(surveyStatus) {
@@ -74,6 +90,7 @@ export function isWeeklySurveyForced(surveyStatus) {
 export function shouldOfferWeeklySurveyModal(surveyStatus, pathname, isPublicPage) {
   if (!surveyStatus?.initialCompleted || !surveyStatus?.weeklyDue) return false;
   if (isPublicPage(pathname)) return false;
+  if (isWeeklySurveySnoozedToday()) return false;
   if (isWeeklySurveyForced(surveyStatus)) return true;
   return !wasWeeklySurveyModalShownToday();
 }

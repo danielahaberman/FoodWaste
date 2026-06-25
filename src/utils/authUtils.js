@@ -153,6 +153,9 @@ export const setAuthenticated = (userId, username = null, token = null) => {
 		loginDate: localStorage.getItem(LOGIN_DATE_KEY)
 	};
 	console.log("[setAuthenticated] Verified:", verify);
+	if (typeof window !== 'undefined') {
+		window.dispatchEvent(new Event('sessionLogin'));
+	}
 };
 
 export const saveUsername = (username) => {

@@ -83,6 +83,7 @@ export default function AppConfirmDialog({
   maxWidth = "xs",
   scrollable = false,
   presentation = "sheet",
+  onIconClick = null,
 }) {
   const styles = toneStyles[tone] || toneStyles.default;
 
@@ -113,6 +114,9 @@ export default function AppConfirmDialog({
         <Stack direction="row" alignItems="flex-start" spacing={1.5}>
           {icon && (
             <Box
+              component={onIconClick ? "button" : "div"}
+              type={onIconClick ? "button" : undefined}
+              onClick={onIconClick || undefined}
               sx={{
                 width: 44,
                 height: 44,
@@ -123,6 +127,9 @@ export default function AppConfirmDialog({
                 justifyContent: "center",
                 backgroundColor: styles.iconBg,
                 color: styles.iconColor,
+                border: "none",
+                padding: 0,
+                font: "inherit",
                 "& .MuiSvgIcon-root": { fontSize: 26 },
               }}
             >

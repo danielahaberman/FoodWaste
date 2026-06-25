@@ -295,8 +295,10 @@ function ConsumeWaste({ onGoToDate }) {
   };
 
   useEffect(() => {
-    refreshAll(false);
-  }, [refreshAll]);
+    if (isTabActive) {
+      refreshAll(false);
+    }
+  }, [isTabActive, refreshAll]);
 
   useEffect(() => {
     const handleDataUpdate = () => refreshAll(false);

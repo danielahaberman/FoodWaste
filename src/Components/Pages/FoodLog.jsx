@@ -44,6 +44,7 @@ const FoodLog = () => {
   const isTabActive = useIsTabActive();
   const isTabActiveRef = useRef(isTabActive);
   isTabActiveRef.current = isTabActive;
+  const hasFetchedRef = useRef(false);
 
   const [foodPurchases, setFoodPurchases] = useState([]);
   const [foodItems, setFoodItems] = useState([]);
@@ -100,7 +101,7 @@ const FoodLog = () => {
     }
   };
 
-  const fetchFoodPurchases = async (showLoader = false) => {
+  const fetchFoodPurchases = useCallback(async (showLoader = false) => {
     const userId = getCurrentUserId();
     if (!userId) {
       setLoading(false);
@@ -115,7 +116,7 @@ const FoodLog = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const deletePurchase = async (purchaseId) => {
     const userId = getCurrentUserId();
@@ -129,9 +130,26 @@ const FoodLog = () => {
   };
 
   useEffect(() => {
-    fetchFoodPurchases(true);
+    if (!isTabActive || !getCurrentUserId()) return;
+
+    const showLoader = !hasFetchedRef.current;
+    fetchFoodPurchases(showLoader);
     fetchFoodItems();
-  }, []);
+    hasFetchedRef.current = true;
+  }, [isTabActive, fetchFoodPurchases]);
+
+  useEffect(() => {
+    const onLogin = () => {
+      if (!isTabActiveRef.current) return;
+      hasFetchedRef.current = false;
+      fetchFoodPurchases(true);
+      fetchFoodItems();
+      hasFetchedRef.current = true;
+    };
+
+    window.addEventListener("sessionLogin", onLogin);
+    return () => window.removeEventListener("sessionLogin", onLogin);
+  }, [fetchFoodPurchases]);
 
   useEffect(() => {
     const dateStr = selectedDate.format("YYYY-MM-DD");
