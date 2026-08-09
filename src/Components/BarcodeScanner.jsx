@@ -300,7 +300,8 @@ const BarcodeScanner = ({ open, onClose, onScan, onError, onManualAdd }) => {
                 width: '80%',
                 maxWidth: '300px',
                 aspectRatio: '1',
-                border: '2px solid #1976d2',
+                border: '2px solid',
+                borderColor: 'primary.main',
                 borderRadius: 2,
                 pointerEvents: 'none',
                 boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
@@ -334,7 +335,7 @@ const BarcodeScanner = ({ open, onClose, onScan, onError, onManualAdd }) => {
               color: 'white',
             }}
           >
-            <CircularProgress sx={{ color: '#1976d2', mb: 2 }} />
+            <CircularProgress color="primary" sx={{ mb: 2 }} />
             <Typography>Processing barcode...</Typography>
           </Box>
         )}
@@ -381,12 +382,7 @@ const BarcodeScanner = ({ open, onClose, onScan, onError, onManualAdd }) => {
           <Button
             onClick={requestCameraPermission}
             variant="contained"
-            sx={{
-              backgroundColor: '#1976d2',
-              '&:hover': {
-                backgroundColor: '#1565c0',
-              },
-            }}
+            color="primary"
           >
             Request Permission
           </Button>
@@ -400,12 +396,7 @@ const BarcodeScanner = ({ open, onClose, onScan, onError, onManualAdd }) => {
               setNoBarcodeMessage(null);
             }}
             variant="contained"
-            sx={{
-              backgroundColor: '#1976d2',
-              '&:hover': {
-                backgroundColor: '#1565c0',
-              },
-            }}
+            color="primary"
           >
             Scan Again
           </Button>

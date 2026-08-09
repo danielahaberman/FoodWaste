@@ -1,0 +1,785 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html dir="ltr" xmlns:o="urn:schemas-microsoft-com:office:office" lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="x-apple-disable-message-reformatting">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="format-detection" content="telephone=no">
+<title>Reservation Confirmation</title>
+<!--[if mso]><xml><w:WordDocument xmlns:w="urn:schemas-microsoft-com:office:word"><w:DontUseAdvancedTypographyReadingMail/></w:WordDocument></xml><![endif]-->
+<style type="text/css">
+.backgroundcolor { background-color:<%bgColor1stG%> !important; }
+#outlook a { padding:0; }
+a { text-decoration:none; }
+a[x-apple-data-detectors], #MessageViewBody a { color:inherit !important; text-decoration:none !important; }
+.detail-label { margin:0 0 4px;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:12px;line-height:16px;letter-spacing:0.5px;color:#4A4A4A;font-weight:bold;text-transform:uppercase; }
+.detail-value { margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:16px;line-height:24px;color:#111111;font-weight:600; }
+.detail-value-sm { margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:13px;line-height:20px;color:#555555; }
+.detail-icon { width:40px;height:40px;border-radius:20px;background-color:#0B1628;text-align:center;vertical-align:middle; }
+.section-heading { margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:14px;line-height:20px;letter-spacing:1.5px;font-weight:bold;color:#0B1628;text-transform:uppercase; }
+.block-card { border:1px solid #C5A059;border-radius:10px;background-color:#FFFFFF; }
+.email-width { width:100% !important;max-width:760px !important; }
+table.bl, table.bm { width:100% !important;max-width:760px !important; }
+.block-pad { padding:16px 24px 24px; }
+.col-divider { border-left:1px solid #C5A059; }
+.row-rule td { border-bottom:1px solid #C5A059;font-size:0;line-height:0;height:1px;padding:0; }
+.detail-icon-col { width:48px;vertical-align:middle;padding:14px 10px 10px 0; }
+.detail-text-col { vertical-align:middle;padding:12px 0; }
+.policy-col { height:1px; }
+.policy-gutter { width:16px;font-size:0;line-height:0;padding:0; }
+.policy-panel { height:100%; }
+.policy-spacer { height:100%;font-size:0;line-height:0;mso-line-height-rule:exactly; }
+.hero-image-wrap { line-height:0;font-size:0;background-color:#0B1628; }
+.hero-image { display:block;width:100%;max-width:760px;height:auto;border:0;position:relative;z-index:1; }
+.hero-overlap-wrap { padding:0 0 12px;font-size:14px;line-height:normal; }
+.hero-overlap-box { margin-top:-78px;mso-margin-top-alt:-78px;position:relative;z-index:2; }
+.hero-overlap-cell { background-color:#0B1628; }
+.hero-confirm-num { font-size:40px;line-height:46px; }
+@media only screen and (max-width:760px) {
+  .es-wrapper { width:100% !important; }
+  .es-content-body { width:100% !important; }
+  .email-width, table.bl, table.bm, .v, .w { width:100% !important; max-width:760px !important; }
+  .hero-image { width:100% !important; max-width:760px !important; height:auto !important; }
+  .mobile-section-pad { padding-left:16px !important; padding-right:16px !important; }
+  .mobile-inner-pad { padding-left:16px !important; padding-right:16px !important; }
+  .stack { display:block !important; width:100% !important; max-width:100% !important; }
+  .stack-pad { padding-left:16px !important; padding-right:16px !important; }
+  .stack td { text-align:left !important; }
+  .stack table[align="right"] { margin:12px 0 0 0 !important; width:100% !important; }
+  .stack table[align="right"] td { display:block !important; width:100% !important; padding:0 0 8px 0 !important; }
+  .stack table[align="right"] td:last-child { padding-bottom:0 !important; }
+  .stack table[align="right"] a { display:block !important; text-align:center !important; }
+  .hero-overlap-wrap { padding:0 0 10px !important; }
+  .hero-overlap-box { margin-top:-52px !important; mso-margin-top-alt:-52px !important; }
+  .hero-overlap-top { padding:14px 20px 6px !important; }
+  .hero-overlap-bottom { padding:0 20px 16px !important; }
+  .hero-confirm-num { font-size:32px !important; line-height:36px !important; }
+  .detail-col { display:block !important; width:100% !important; max-width:100% !important; padding-left:0 !important; padding-right:0 !important; }
+  .col-divider { border-left:none !important; padding-left:0 !important; padding-top:18px !important; margin-top:4px !important; border-top:1px solid #C5A059 !important; }
+  .policy-col { display:block !important; width:100% !important; max-width:100% !important; padding-bottom:16px !important; height:auto !important; }
+  .policy-col-last { padding-bottom:0 !important; }
+  .policy-gutter { display:none !important; width:0 !important; max-height:0 !important; overflow:hidden !important; mso-hide:all; }
+  .policy-spacer { display:none !important; height:0 !important; max-height:0 !important; overflow:hidden !important; mso-hide:all; }
+  .policy-panel { height:auto !important; }
+  .footer-col { display:block !important; width:100% !important; max-width:100% !important; text-align:center !important; padding:0 0 20px 0 !important; border-left:none !important; border-right:none !important; }
+  .footer-col-center { border-top:1px solid #C5A059 !important; border-bottom:1px solid #C5A059 !important; padding:20px 0 !important; margin:0 0 20px 0 !important; }
+  .footer-col-last { padding-bottom:0 !important; }
+  .footer-row, .footer-row tr { display:block !important; width:100% !important; max-width:100% !important; }
+  .footer-col table { width:100% !important; max-width:100% !important; }
+  .footer-col td, .footer-right-cell { display:block !important; width:100% !important; max-width:100% !important; text-align:center !important; padding-left:0 !important; padding-right:0 !important; }
+  .footer-col a, .footer-col p { word-break:break-word !important; overflow-wrap:break-word !important; }
+  .footer-brand { font-size:18px !important; line-height:22px !important; }
+  .hide-mobile { display:none !important; mso-hide:all; }
+  .detail-value { font-size:15px !important; line-height:22px !important; }
+  .greeting-text { font-size:16px !important; line-height:26px !important; }
+  .mobile-card-head { padding:16px 16px 8px !important; }
+  .mobile-card-body { padding:14px 16px 18px !important; }
+  .mobile-footer-pad { padding:24px 16px 16px !important; }
+}
+@media only screen and (max-width:480px) {
+  .mobile-section-pad { padding-left:12px !important; padding-right:12px !important; }
+  .mobile-inner-pad { padding-left:12px !important; padding-right:12px !important; }
+  .hero-overlap-top { padding:12px 14px 6px !important; }
+  .hero-overlap-bottom { padding:0 14px 14px !important; }
+  .hero-confirm-num { font-size:28px !important; line-height:32px !important; }
+  .hero-overlap-box { margin-top:-46px !important; mso-margin-top-alt:-46px !important; }
+}
+</style>
+</head>
+<body class="body" style="margin:0;padding:0;width:100%;background-color:#FFFFFF;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+<div dir="ltr" class="es-wrapper-color" lang="en" style="background-color:#FFFFFF;">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" class="es-wrapper" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0;padding:0;margin:0;width:100%;">
+<tr><td valign="top" align="center" style="padding:0;margin:0;">
+
+<!-- ========== HERO HEADER ========== -->
+<table role="presentation" cellspacing="0" cellpadding="0" align="center" class="w" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0;width:100%;table-layout:fixed !important;background-color:transparent;">
+<tr>
+<td data-template="DefaultHeaderConfirmationHTML" align="center" style="padding:0;margin:0;">
+  <table role="presentation" align="center" cellspacing="0" cellpadding="0" class="bm email-width" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0;background-color:#FFFFFF;width:760px;">
+    <!-- Hero + confirmation overlap (single cell so box layers over image) -->
+    <tr>
+      <td class="hero-overlap-wrap" align="center" style="padding:0 0 12px;font-size:14px;line-height:normal;background-color:#FFFFFF;">
+        <!--[if mso]>
+        <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:760px;height:223px;">
+        <v:fill type="frame" src="<%HeroImageUrl%>" color="#0B1628"/>
+        <v:textbox inset="0,0,0,0" style="mso-fit-shape-to-text:true;">
+        <![endif]-->
+        <img class="hero-image" src="<%HeroImageUrl%>" alt="&lt;%CompName%&gt;" width="760" height="223" style="display:block;width:100%;max-width:760px;height:auto;border:0;position:relative;z-index:1;">
+        <!--[if mso]></v:textbox></v:rect><![endif]-->
+        <table role="presentation" class="hero-overlap-box" cellspacing="0" cellpadding="0" border="0" align="center" bgcolor="#0B1628" style="position:relative;z-index:2;margin:-78px auto 0 auto;mso-margin-top-alt:-78px;border:2px solid #C5A059;background-color:#0B1628;">
+          <tr>
+            <td class="hero-overlap-cell hero-overlap-top" align="center" bgcolor="#0B1628" style="padding:20px 48px 8px;background-color:#0B1628;">
+              <p style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:12px;line-height:16px;letter-spacing:2px;color:#C5A059;text-transform:uppercase;font-weight:bold;">Confirmation #</p>
+            </td>
+          </tr>
+          <tr>
+            <td class="hero-overlap-cell hero-overlap-bottom" align="center" bgcolor="#0B1628" style="padding:0 48px 22px;background-color:#0B1628;">
+              <p class="hero-confirm-num" style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:40px;line-height:46px;font-weight:bold;color:#ffffff;">&lt;%JobId%&gt;</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <!-- Optional overlay branding when a separate logo URL is provided -->
+    <tr class="elementShow[T<CompLogo>] hero-overlay-brand">
+      <td align="center" style="padding:0;line-height:0;font-size:0;height:0;overflow:hidden;">&nbsp;</td>
+    </tr>
+  </table>
+</td>
+</tr>
+</table>
+
+<!-- ========== CANCELLED BANNER (inside body flow, no separate template — same as itinerary) ========== -->
+<table role="presentation" cellspacing="0" cellpadding="0" align="center" class="v" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0;width:100%;table-layout:fixed !important;">
+<tr class="elementShow[M<canceledTrip>]">
+<td align="center" style="padding:0;margin:0;">
+  <table role="presentation" bgcolor="#FFFFFF" align="center" cellpadding="0" cellspacing="0" class="bl" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0;background-color:#FFFFFF;width:760px;">
+    <tr>
+      <td align="center" class="mobile-section-pad" style="padding:16px 24px 0;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#FEEFEF;border-radius:8px;">
+          <tr>
+            <td align="center" style="padding:14px 20px;">
+              <p style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:18px;line-height:24px;font-weight:bold;color:#CC0000;">Trip Cancelled &mdash; Confirmation # &lt;%JobId%&gt;</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</td>
+</tr>
+</table>
+
+<!-- ========== GREETING ========== -->
+<table role="presentation" cellspacing="0" cellpadding="0" align="center" class="v" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0;width:100%;table-layout:fixed !important;">
+<tr class="elementShow[M<!canceledTrip>]">
+<td data-template="ConfirmationGreetingHTML" align="center" style="padding:0;margin:0;">
+  <table role="presentation" bgcolor="#FFFFFF" align="center" cellpadding="0" cellspacing="0" class="bl" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0;background-color:#FFFFFF;width:760px;">
+    <tr>
+<td align="center" class="mobile-section-pad" style="padding:0 24px 4px;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#FFFFFF;">
+    <tr>
+      <td align="left" class="mobile-inner-pad" style="padding:12px 24px 8px;">
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+    <tr>
+      <td width="48" valign="middle" style="width:48px;padding:8px 14px 8px 0;vertical-align:middle;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="left"><tr>
+          <td width="40" height="40" align="center" valign="middle" style="width:40px;height:40px;border-radius:20px;border:1px solid #C5A059;background-color:#F0EDE8;">
+            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23C5A059' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E" alt="" width="20" height="20" style="display:block;border:0;margin:0 auto;">
+          </td>
+        </tr></table>
+      </td>
+      <td valign="middle" style="padding:8px 0;vertical-align:middle;">
+        <p class="greeting-text" style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:17px;line-height:28px;color:#222222;">
+          Dear <strong style="color:#111111;">&lt;%CfstNm%&gt; &lt;%ClstNm%&gt;</strong>,<br>
+          Thank you for choosing <strong style="color:#111111;">&lt;%CompName%&gt;</strong>. Your reservation has been confirmed.
+        </p>
+      </td>
+    </tr>
+  </table>
+      </td>
+    </tr>
+  </table>
+</td>
+    </tr>
+  </table>
+</td>
+</tr>
+</table>
+
+<!-- ========== PASSENGER / RESERVATION DETAILS (shared template name with itinerary) ========== -->
+<table role="presentation" cellspacing="0" cellpadding="0" align="center" class="v" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0;width:100%;table-layout:fixed !important;">
+<tr class="elementShow[M<!canceledTrip>]">
+<td data-template="PassengerInfoHTML" align="center" style="padding:0;margin:0;">
+  <table role="presentation" bgcolor="#FFFFFF" align="center" cellpadding="0" cellspacing="0" class="bl" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0;background-color:#FFFFFF;width:760px;">
+    <tr>
+<td align="center" class="mobile-section-pad" style="padding:8px 24px 4px;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" class="block-card" style="border:1px solid #C5A059;border-radius:10px;background-color:#FFFFFF;">
+    <tr>
+      <td class="mobile-card-head" style="padding:20px 24px 8px;">
+        <p class="section-heading" style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:14px;line-height:20px;letter-spacing:1.5px;font-weight:bold;color:#0B1628;text-transform:uppercase;">Reservation Details</p>
+      </td>
+    </tr>
+    <tr>
+      <td class="mobile-card-body" style="padding:18px 20px 22px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+          <tr>
+            <!-- LEFT COLUMN -->
+            <td class="detail-col" valign="top" width="50%" style="width:50%;padding-right:16px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+
+                <tr>
+                  <td colspan="2" style="padding:0;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>
+                        <td width="48" valign="middle" class="detail-icon-col" style="width:48px;padding:14px 10px 10px 0;vertical-align:middle;">
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="left" style="border-collapse:collapse;"><tr>
+                            <td class="detail-icon" width="40" height="40" align="center" valign="middle" style="width:40px;height:40px;border-radius:20px;background-color:#0B1628;">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23C5A059' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E" alt="" width="20" height="20" style="display:block;border:0;margin:0 auto;">
+                      </td>
+                          </tr></table>
+                        </td>
+                        <td valign="middle" class="detail-text-col" style="padding:12px 0;vertical-align:middle;">
+                    <p class="detail-label" style="margin:0 0 4px;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:12px;line-height:16px;letter-spacing:0.5px;color:#4A4A4A;font-weight:bold;text-transform:uppercase;">Date &amp; Time</p>
+                    <p class="detail-value" style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:16px;line-height:24px;color:#111111;font-weight:600;">&lt;%DateTime%&gt;</p>
+                  </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr class="row-rule"><td colspan="2" style="border-bottom:1px solid #C5A059;font-size:0;line-height:0;height:1px;padding:0 0 14px;">&nbsp;</td></tr>
+
+                <tr>
+                  <td colspan="2" style="padding:0;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>
+                        <td width="48" valign="middle" class="detail-icon-col" style="width:48px;padding:14px 10px 10px 0;vertical-align:middle;">
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="left" style="border-collapse:collapse;"><tr>
+                            <td class="detail-icon" width="40" height="40" align="center" valign="middle" style="width:40px;height:40px;border-radius:20px;background-color:#0B1628;">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23C5A059' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='9' cy='7' r='4'/%3E%3Cpath d='M23 21v-2a4 4 0 0 0-3-3.87'/%3E%3Cpath d='M16 3.13a4 4 0 0 1 0 7.75'/%3E%3C/svg%3E" alt="" width="20" height="20" style="display:block;border:0;margin:0 auto;">
+                      </td>
+                          </tr></table>
+                        </td>
+                        <td valign="middle" class="detail-text-col" style="padding:12px 0;vertical-align:middle;">
+                    <p class="detail-label" style="margin:0 0 4px;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:12px;line-height:16px;letter-spacing:0.5px;color:#4A4A4A;font-weight:bold;text-transform:uppercase;">Passengers</p>
+                    <p class="detail-value" style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:16px;line-height:24px;color:#111111;font-weight:600;">&lt;%Psngr%&gt; Passengers</p>
+                  </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr class="row-rule"><td colspan="2" style="border-bottom:1px solid #C5A059;font-size:0;line-height:0;height:1px;padding:0 0 14px;">&nbsp;</td></tr>
+
+                <tr class="elementShow[T<CarType>]">
+                  <td colspan="2" style="padding:0;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>
+                        <td width="48" valign="middle" class="detail-icon-col" style="width:48px;padding:14px 10px 10px 0;vertical-align:middle;">
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="left" style="border-collapse:collapse;"><tr>
+                            <td class="detail-icon" width="40" height="40" align="center" valign="middle" style="width:40px;height:40px;border-radius:20px;background-color:#0B1628;">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23C5A059' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 17h14'/%3E%3Cpath d='M5 11l1-3h12l1 3'/%3E%3Crect x='3' y='11' width='18' height='6' rx='1'/%3E%3Ccircle cx='7.5' cy='17' r='1.2'/%3E%3Ccircle cx='16.5' cy='17' r='1.2'/%3E%3C/svg%3E" alt="" width="20" height="20" style="display:block;border:0;margin:0 auto;">
+                      </td>
+                          </tr></table>
+                        </td>
+                        <td valign="middle" class="detail-text-col" style="padding:12px 0;vertical-align:middle;">
+                    <p class="detail-label" style="margin:0 0 4px;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:12px;line-height:16px;letter-spacing:0.5px;color:#4A4A4A;font-weight:bold;text-transform:uppercase;">Vehicle</p>
+                    <p class="detail-value" style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:16px;line-height:24px;color:#111111;font-weight:600;">&lt;%CarType%&gt;</p>
+                  </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr class="elementShow[T<CarType>] row-rule"><td colspan="2" style="border-bottom:1px solid #C5A059;font-size:0;line-height:0;height:1px;padding:0 0 14px;">&nbsp;</td></tr>
+
+                <tr class="elementShow[M<creditcard>]">
+                  <td colspan="2" style="padding:0;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>
+                        <td width="48" valign="middle" class="detail-icon-col" style="width:48px;padding:14px 10px 10px 0;vertical-align:middle;">
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="left" style="border-collapse:collapse;"><tr>
+                            <td class="detail-icon" width="40" height="40" align="center" valign="middle" style="width:40px;height:40px;border-radius:20px;background-color:#0B1628;">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23C5A059' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2' y='5' width='20' height='14' rx='2'/%3E%3Cline x1='2' y1='10' x2='22' y2='10'/%3E%3C/svg%3E" alt="" width="20" height="20" style="display:block;border:0;margin:0 auto;">
+                      </td>
+                          </tr></table>
+                        </td>
+                        <td valign="middle" class="detail-text-col" style="padding:12px 0;vertical-align:middle;">
+                    <p class="detail-label" style="margin:0 0 4px;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:12px;line-height:16px;letter-spacing:0.5px;color:#4A4A4A;font-weight:bold;text-transform:uppercase;">Payment Method</p>
+                    <p class="detail-value" style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:16px;line-height:24px;color:#111111;font-weight:600;">&lt;%CCfnl4%&gt;</p>
+                  </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr class="elementShow[M<cash>]">
+                  <td colspan="2" style="padding:0;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>
+                        <td width="48" valign="middle" class="detail-icon-col" style="width:48px;padding:14px 10px 10px 0;vertical-align:middle;">
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="left" style="border-collapse:collapse;"><tr>
+                            <td class="detail-icon" width="40" height="40" align="center" valign="middle" style="width:40px;height:40px;border-radius:20px;background-color:#0B1628;">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23C5A059' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2' y='5' width='20' height='14' rx='2'/%3E%3Cline x1='2' y1='10' x2='22' y2='10'/%3E%3C/svg%3E" alt="" width="20" height="20" style="display:block;border:0;margin:0 auto;">
+                      </td>
+                          </tr></table>
+                        </td>
+                        <td valign="middle" class="detail-text-col" style="padding:12px 0;vertical-align:middle;">
+                    <p class="detail-label" style="margin:0 0 4px;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:12px;line-height:16px;letter-spacing:0.5px;color:#4A4A4A;font-weight:bold;text-transform:uppercase;">Payment Method</p>
+                    <p class="detail-value" style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:16px;line-height:24px;color:#111111;font-weight:600;">Cash</p>
+                  </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr class="elementShow[M<voucher>]">
+                  <td colspan="2" style="padding:0;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>
+                        <td width="48" valign="middle" class="detail-icon-col" style="width:48px;padding:14px 10px 10px 0;vertical-align:middle;">
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="left" style="border-collapse:collapse;"><tr>
+                            <td class="detail-icon" width="40" height="40" align="center" valign="middle" style="width:40px;height:40px;border-radius:20px;background-color:#0B1628;">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23C5A059' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2' y='5' width='20' height='14' rx='2'/%3E%3Cline x1='2' y1='10' x2='22' y2='10'/%3E%3C/svg%3E" alt="" width="20" height="20" style="display:block;border:0;margin:0 auto;">
+                      </td>
+                          </tr></table>
+                        </td>
+                        <td valign="middle" class="detail-text-col" style="padding:12px 0;vertical-align:middle;">
+                    <p class="detail-label" style="margin:0 0 4px;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:12px;line-height:16px;letter-spacing:0.5px;color:#4A4A4A;font-weight:bold;text-transform:uppercase;">Payment Method</p>
+                    <p class="detail-value" style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:16px;line-height:24px;color:#111111;font-weight:600;">&lt;%AcctNme%&gt; &lt;%AcctNum%&gt;</p>
+                  </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr class="elementShow[T<FopRequirements>]">
+                  <td colspan="2" style="padding:12px 0 0;">
+                    <p class="detail-value-sm" style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:13px;line-height:20px;color:#555555;">Requirements: &lt;%FopRequirements%&gt;</p>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+
+            <!-- RIGHT COLUMN -->
+            <td class="detail-col col-divider" valign="top" width="50%" style="width:50%;padding-left:16px;border-left:1px solid #C5A059;" data-template="RouteInfoHTML">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+
+                <tr class="elementShow[T<PuPrimary>]">
+                  <td colspan="2" style="padding:0;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>
+                        <td width="48" valign="middle" class="detail-icon-col" style="width:48px;padding:14px 10px 10px 0;vertical-align:middle;">
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="left" style="border-collapse:collapse;"><tr>
+                            <td class="detail-icon" width="40" height="40" align="center" valign="middle" style="width:40px;height:40px;border-radius:20px;background-color:#0B1628;">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23C5A059' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z'/%3E%3C/svg%3E" alt="" width="20" height="20" style="display:block;border:0;margin:0 auto;">
+                      </td>
+                          </tr></table>
+                        </td>
+                        <td valign="middle" class="detail-text-col" style="padding:12px 0;vertical-align:middle;">
+                    <p class="detail-label" style="margin:0 0 4px;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:12px;line-height:16px;letter-spacing:0.5px;color:#4A4A4A;font-weight:bold;text-transform:uppercase;">Pickup Location</p>
+                    <p class="detail-value" style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:16px;line-height:24px;color:#111111;font-weight:600;">&lt;%PuPrimary%&gt;, &lt;%PuSecondary%&gt;</p>
+                  </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr class="elementShow[T<PuPrimary>] row-rule"><td colspan="2" style="border-bottom:1px solid #C5A059;font-size:0;line-height:0;height:1px;padding:0 0 14px;">&nbsp;</td></tr>
+
+                <!--LoopStopsStart-->
+                <tr>
+                  <td colspan="2" style="padding:0;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>
+                        <td width="48" valign="middle" class="detail-icon-col" style="width:48px;padding:14px 10px 10px 0;vertical-align:middle;">
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="left" style="border-collapse:collapse;"><tr>
+                            <td class="detail-icon" width="40" height="40" align="center" valign="middle" style="width:40px;height:40px;border-radius:20px;background-color:#0B1628;">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23C5A059' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z'/%3E%3Cline x1='4' y1='22' x2='4' y2='15'/%3E%3C/svg%3E" alt="" width="20" height="20" style="display:block;border:0;margin:0 auto;">
+                      </td>
+                          </tr></table>
+                        </td>
+                        <td valign="middle" class="detail-text-col" style="padding:12px 0;vertical-align:middle;">
+                    <p class="detail-label" style="margin:0 0 4px;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:12px;line-height:16px;letter-spacing:0.5px;color:#4A4A4A;font-weight:bold;text-transform:uppercase;">Stop</p>
+                    <p class="detail-value" style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:16px;line-height:24px;color:#111111;font-weight:600;">&lt;%StopsPrimary%&gt;, &lt;%StopsSecondary%&gt;</p>
+                  </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr class="row-rule"><td colspan="2" style="border-bottom:1px solid #C5A059;font-size:0;line-height:0;height:1px;padding:0 0 14px;">&nbsp;</td></tr>
+                <!--LoopStopsEnd-->
+
+                <tr class="elementShow[T<DoPrimary>]">
+                  <td colspan="2" style="padding:0;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>
+                        <td width="48" valign="middle" class="detail-icon-col" style="width:48px;padding:14px 10px 10px 0;vertical-align:middle;">
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="left" style="border-collapse:collapse;"><tr>
+                            <td class="detail-icon" width="40" height="40" align="center" valign="middle" style="width:40px;height:40px;border-radius:20px;background-color:#0B1628;">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23C5A059' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 21s7-4.5 7-11a7 7 0 1 0-14 0c0 6.5 7 11 7 11z'/%3E%3Ccircle cx='12' cy='10' r='2.5'/%3E%3C/svg%3E" alt="" width="20" height="20" style="display:block;border:0;margin:0 auto;">
+                      </td>
+                          </tr></table>
+                        </td>
+                        <td valign="middle" class="detail-text-col" style="padding:12px 0;vertical-align:middle;">
+                    <p class="detail-label" style="margin:0 0 4px;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:12px;line-height:16px;letter-spacing:0.5px;color:#4A4A4A;font-weight:bold;text-transform:uppercase;">Destination</p>
+                    <p class="detail-value" style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:16px;line-height:24px;color:#111111;font-weight:600;">&lt;%DoPrimary%&gt;, &lt;%DoSecondary%&gt;</p>
+                  </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr class="elementShow[T<DoPrimary>] row-rule"><td colspan="2" style="border-bottom:1px solid #C5A059;font-size:0;line-height:0;height:1px;padding:0 0 14px;">&nbsp;</td></tr>
+
+                <tr class="elementShow[T<Fare>]">
+                  <td colspan="2" style="padding:0;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>
+                        <td width="48" valign="middle" class="detail-icon-col" style="width:48px;padding:14px 10px 10px 0;vertical-align:middle;">
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="left" style="border-collapse:collapse;"><tr>
+                            <td class="detail-icon" width="40" height="40" align="center" valign="middle" style="width:40px;height:40px;border-radius:20px;background-color:#0B1628;">
+                        <span style="font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:18px;line-height:40px;color:#C5A059;font-weight:bold;">$</span>
+                      </td>
+                          </tr></table>
+                        </td>
+                        <td valign="middle" class="detail-text-col" style="padding:12px 0;vertical-align:middle;">
+                    <p class="detail-label" style="margin:0 0 4px;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:12px;line-height:16px;letter-spacing:0.5px;color:#4A4A4A;font-weight:bold;text-transform:uppercase;">Estimated Base Fare</p>
+                    <p class="detail-value" style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:18px;line-height:26px;color:#111111;font-weight:700;">$&lt;%Fare%&gt;</p>
+                    <p class="detail-value-sm" style="margin:8px 0 0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:12px;line-height:18px;color:#666666;">Additional charges may apply for waiting time, tolls, parking, gratuity, and applicable fees.</p>
+                  </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr class="elementShow[T<!Fare>]">
+                  <td colspan="2" style="padding:0;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>
+                        <td width="48" valign="middle" class="detail-icon-col" style="width:48px;padding:14px 10px 10px 0;vertical-align:middle;">
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="left" style="border-collapse:collapse;"><tr>
+                            <td class="detail-icon" width="40" height="40" align="center" valign="middle" style="width:40px;height:40px;border-radius:20px;background-color:#0B1628;">
+                        <span style="font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:18px;line-height:40px;color:#C5A059;font-weight:bold;">$</span>
+                      </td>
+                          </tr></table>
+                        </td>
+                        <td valign="middle" class="detail-text-col" style="padding:12px 0;vertical-align:middle;">
+                    <p class="detail-label" style="margin:0 0 4px;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:12px;line-height:16px;letter-spacing:0.5px;color:#4A4A4A;font-weight:bold;text-transform:uppercase;">Estimated Base Fare</p>
+                    <p class="detail-value" style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:18px;line-height:26px;color:#111111;font-weight:700;">To Be Quoted</p>
+                  </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</td>
+    </tr>
+    <tr class="elementShow[T<Comments>]">
+<td align="center" class="mobile-section-pad" style="padding:4px 24px 24px;" data-template="SpecialRequestsHTML">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" class="block-card" style="border:1px solid #C5A059;border-radius:10px;background-color:#FFFFFF;">
+    <tr>
+      <td class="mobile-card-head" style="padding:20px 24px 8px;">
+        <p class="section-heading" style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:14px;line-height:20px;letter-spacing:1.5px;font-weight:bold;color:#0B1628;text-transform:uppercase;">Special Requests</p>
+      </td>
+    </tr>
+    <tr>
+      <td class="mobile-inner-pad" style="padding:0 24px 22px;">
+        <p style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:15px;line-height:22px;color:#111111;font-weight:600;">&lt;%Comments%&gt;</p>
+      </td>
+    </tr>
+  </table>
+</td>
+    </tr>
+  </table>
+</td>
+</tr>
+</table>
+
+<!-- ========== AIRPORT MODE: instructions + wait time ========== -->
+<table role="presentation" cellspacing="0" cellpadding="0" align="center" class="v elementShow[M<airportPu>]" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0;width:100%;table-layout:fixed !important;">
+<tr>
+<td data-template="AirportPuHTML" align="center" style="padding:0;margin:0;">
+  <table role="presentation" bgcolor="#FFFFFF" align="center" cellpadding="0" cellspacing="0" class="bl" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0;background-color:#FFFFFF;width:760px;">
+    <tr>
+<td align="center" class="mobile-section-pad" style="padding:8px 24px 24px;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+    <tr>
+      <!-- Airport Instructions (navy) -->
+      <td class="policy-col" valign="top" width="48%" bgcolor="#0B1628" style="width:48%;height:1px;background-color:#0B1628;border:1px solid #1E2D45;border-radius:10px;" data-template="AirportPuInstructionsHTML">
+        <table role="presentation" class="policy-panel" width="100%" height="100%" cellspacing="0" cellpadding="0" border="0" style="height:100%;">
+          <tr>
+            <td style="padding:20px 20px 12px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>
+                <td width="40" valign="middle" style="width:40px;padding:0 10px 0 0;vertical-align:middle;">
+                  <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="left"><tr>
+                    <td width="36" height="36" align="center" valign="middle" style="width:36px;height:36px;border-radius:18px;border:1px solid #C5A059;">
+                      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23C5A059' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z'/%3E%3C/svg%3E" alt="" width="18" height="18" style="display:block;border:0;margin:0 auto;">
+                    </td>
+                  </tr></table>
+                </td>
+                <td valign="middle" style="vertical-align:middle;">
+                  <p style="margin:0 0 8px;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:12px;line-height:16px;letter-spacing:1px;font-weight:bold;color:#ffffff;text-transform:uppercase;">Airport Arrival Instructions</p>
+                  <p style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:13px;line-height:20px;color:#ffffff;">Your flight will be monitored and your chauffeur will be dispatched accordingly.</p>
+                </td>
+              </tr></table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 20px 8px;">
+              <p style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:13px;line-height:20px;color:#ffffff;">After collecting your luggage:</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 20px 16px;">
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr>
+                  <td valign="top" width="28" style="padding:0 0 8px;">
+                    <span style="display:inline-block;min-width:20px;height:20px;padding:0 4px;border-radius:10px;background-color:#C5A059;color:#0B1628;font-family:Arial,sans-serif;font-size:11px;line-height:20px;text-align:center;font-weight:bold;">1</span>
+                  </td>
+                  <td style="padding:0 0 8px 8px;">
+                    <p style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:13px;line-height:20px;color:#ffffff;">Exit the terminal.</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td valign="top" width="28" style="padding:0 0 8px;">
+                    <span style="display:inline-block;min-width:20px;height:20px;padding:0 4px;border-radius:10px;background-color:#C5A059;color:#0B1628;font-family:Arial,sans-serif;font-size:11px;line-height:20px;text-align:center;font-weight:bold;">2</span>
+                  </td>
+                  <td style="padding:0 0 8px 8px;">
+                    <p style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:13px;line-height:20px;color:#ffffff;">Proceed across the crosswalk.</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td valign="top" width="28" style="padding:0 0 8px;">
+                    <span style="display:inline-block;min-width:20px;height:20px;padding:0 4px;border-radius:10px;background-color:#C5A059;color:#0B1628;font-family:Arial,sans-serif;font-size:11px;line-height:20px;text-align:center;font-weight:bold;">3</span>
+                  </td>
+                  <td style="padding:0 0 8px 8px;">
+                    <p style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:13px;line-height:20px;color:#ffffff;">Walk to the farthest passenger pickup island.</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td valign="top" width="28" style="padding:0 0 8px;">
+                    <span style="display:inline-block;min-width:20px;height:20px;padding:0 4px;border-radius:10px;background-color:#C5A059;color:#0B1628;font-family:Arial,sans-serif;font-size:11px;line-height:20px;text-align:center;font-weight:bold;">4</span>
+                  </td>
+                  <td style="padding:0 0 8px 8px;">
+                    <p style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:13px;line-height:20px;color:#ffffff;">Proceed to Area B.</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td valign="top" width="28" style="padding:0 0 8px;">
+                    <span style="display:inline-block;min-width:20px;height:20px;padding:0 4px;border-radius:10px;background-color:#C5A059;color:#0B1628;font-family:Arial,sans-serif;font-size:11px;line-height:20px;text-align:center;font-weight:bold;">5</span>
+                  </td>
+                  <td style="padding:0 0 8px 8px;">
+                    <p style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:13px;line-height:20px;color:#ffffff;">Call 1-888-LEGENDS when ready.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td class="policy-spacer" height="100%" valign="top" style="height:100%;font-size:0;line-height:0;mso-line-height-rule:exactly;">&nbsp;</td>
+          </tr>
+          <tr>
+            <td valign="bottom" style="padding:16px 20px 20px;border-top:1px solid #C5A059;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>
+                <td width="40" valign="middle" style="width:40px;padding:0 10px 0 0;vertical-align:middle;">
+                  <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="left"><tr>
+                    <td width="36" height="36" align="center" valign="middle" style="width:36px;height:36px;border-radius:18px;border:1px solid #C5A059;">
+                      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z'/%3E%3C/svg%3E" alt="" width="16" height="16" style="display:block;border:0;margin:0 auto;">
+                    </td>
+                  </tr></table>
+                </td>
+                <td valign="middle" style="vertical-align:middle;"><p style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:12px;line-height:18px;color:#ffffff;">A reservations specialist will provide your chauffeur and vehicle details.</p></td>
+              </tr></table>
+            </td>
+          </tr>
+        </table>
+      </td>
+
+      <td class="policy-gutter" width="16" style="width:16px;font-size:0;line-height:0;padding:0;">&nbsp;</td>
+
+      <!-- Wait Time + Assistance (gray) -->
+      <td class="policy-col policy-col-last" valign="top" width="48%" bgcolor="#F0EDE8" style="width:48%;height:1px;background-color:#F0EDE8;border:1px solid #C5A059;border-radius:10px;" data-template="WaitTimePolicyHTML">
+        <table role="presentation" class="policy-panel" width="100%" height="100%" cellspacing="0" cellpadding="0" border="0" style="height:100%;">
+          <tr>
+            <td style="padding:20px 20px 16px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>
+                <td width="40" valign="middle" style="width:40px;padding:0 10px 0 0;vertical-align:middle;">
+                  <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="left"><tr>
+                    <td width="36" height="36" align="center" valign="middle" style="width:36px;height:36px;border-radius:18px;border:1px solid #C5A059;background-color:#F0EDE8;">
+                      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23C5A059' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v5l3 3'/%3E%3C/svg%3E" alt="" width="18" height="18" style="display:block;border:0;margin:0 auto;">
+                    </td>
+                  </tr></table>
+                </td>
+                <td valign="middle" style="vertical-align:middle;">
+                  <p style="margin:0 0 10px;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:12px;line-height:16px;letter-spacing:1px;font-weight:bold;color:#0B1628;text-transform:uppercase;">Wait Time Policy</p>
+                  <p style="margin:0 0 6px;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:13px;line-height:20px;color:#444444;">&#8226; <strong style="color:#0B1628;">Domestic Flights:</strong> 45 minutes complimentary waiting time</p>
+                  <p style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:13px;line-height:20px;color:#444444;">&#8226; <strong style="color:#0B1628;">International Flights:</strong> 60 minutes complimentary waiting time</p>
+                </td>
+              </tr></table>
+            </td>
+          </tr>
+          <tr>
+            <td class="policy-spacer" height="100%" valign="top" style="height:100%;font-size:0;line-height:0;mso-line-height-rule:exactly;background-color:#F0EDE8;">&nbsp;</td>
+          </tr>
+          <tr>
+            <td valign="bottom" style="padding:16px 20px 20px;border-top:1px solid #C5A059;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>
+                <td width="40" valign="middle" style="width:40px;padding:0 10px 0 0;vertical-align:middle;">
+                  <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="left"><tr>
+                    <td width="36" height="36" align="center" valign="middle" style="width:36px;height:36px;border-radius:18px;border:1px solid #0B1628;background-color:#F0EDE8;">
+                      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%230B1628' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z'/%3E%3C/svg%3E" alt="" width="16" height="16" style="display:block;border:0;margin:0 auto;">
+                    </td>
+                  </tr></table>
+                </td>
+                <td valign="middle" style="vertical-align:middle;">
+                  <p style="margin:0 0 4px;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:12px;line-height:16px;letter-spacing:1px;font-weight:bold;color:#0B1628;text-transform:uppercase;">Need Assistance?</p>
+                  <p style="margin:0 0 8px;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:13px;line-height:20px;color:#444444;">Our team is available 24/7.</p>
+                  <p style="margin:0 0 4px;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:14px;line-height:20px;color:#0B1628;font-weight:bold;">&lt;%CompPhone%&gt;</p>
+                  <p style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:14px;line-height:20px;color:#0B1628;font-weight:bold;" class="elementShow[T<CompLocalPhone>]">&lt;%CompLocalPhone%&gt;</p>
+                </td>
+              </tr></table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</td>
+    </tr>
+  </table>
+</td>
+</tr>
+</table>
+
+<!-- ========== NON-AIRPORT MODE: assistance only ========== -->
+<table role="presentation" cellspacing="0" cellpadding="0" align="center" class="v elementShow[M<!airportPu>]" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0;width:100%;table-layout:fixed !important;">
+<tr>
+<td data-template="NonAirportAssistanceHTML" align="center" style="padding:0;margin:0;">
+  <table role="presentation" bgcolor="#FFFFFF" align="center" cellpadding="0" cellspacing="0" class="bl" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0;background-color:#FFFFFF;width:760px;">
+    <tr>
+<td align="center" class="mobile-section-pad" style="padding:8px 24px 24px;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" class="block-card" style="border:1px solid #C5A059;border-radius:10px;background-color:#FFFFFF;">
+    <tr>
+      <td class="mobile-inner-pad" style="padding:24px;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"><tr>
+          <td valign="middle" width="48" style="padding-right:12px;">
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr>
+              <td width="40" height="40" align="center" valign="middle" style="width:40px;height:40px;border-radius:20px;border:1px solid #C5A059;background-color:#F0EDE8;">
+                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23C5A059' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z'/%3E%3C/svg%3E" alt="" width="18" height="18" style="display:block;border:0;margin:0 auto;">
+              </td>
+            </tr></table>
+          </td>
+          <td valign="middle">
+            <p style="margin:0 0 4px;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:12px;line-height:16px;letter-spacing:1px;font-weight:bold;color:#333333;text-transform:uppercase;">Need Assistance?</p>
+            <p style="margin:0 0 10px;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:14px;line-height:20px;color:#444444;">Our team is available 24/7. For any change to your reservation please call &lt;%CompPhone%&gt;.</p>
+            <p style="margin:0 0 4px;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:14px;line-height:20px;color:#0B1628;font-weight:bold;">&lt;%CompPhone%&gt;</p>
+            <p style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:14px;line-height:20px;color:#0B1628;font-weight:bold;" class="elementShow[T<CompLocalPhone>]">&lt;%CompLocalPhone%&gt;</p>
+          </td>
+        </tr></table>
+      </td>
+    </tr>
+  </table>
+</td>
+    </tr>
+  </table>
+</td>
+</tr>
+</table>
+
+<!-- ========== IMPORTANT POLICIES ========== -->
+<table role="presentation" cellspacing="0" cellpadding="0" align="center" class="v" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0;width:100%;table-layout:fixed !important;">
+<tr class="elementShow[M<!canceledTrip>]">
+<td data-template="ImportantPoliciesHTML" align="center" style="padding:0;margin:0;">
+  <table role="presentation" bgcolor="#FFFFFF" align="center" cellpadding="0" cellspacing="0" class="bl" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0;background-color:#FFFFFF;width:760px;">
+    <tr>
+<td align="center" class="mobile-section-pad" style="padding:8px 24px 24px;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" class="block-card" style="border:1px solid #C5A059;border-radius:10px;background-color:#FFFFFF;">
+    <tr>
+      <td style="padding:14px 20px 10px;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"><tr>
+          <td class="stack" valign="middle" width="58%" style="width:58%;padding-right:16px;">
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"><tr>
+              <td valign="top" width="40" style="padding:0 10px 0 0;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr>
+                  <td width="32" height="32" align="center" valign="middle" style="width:32px;height:32px;border-radius:16px;border:1px solid #C5A059;background-color:#F0EDE8;">
+                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23C5A059' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'/%3E%3Cpath d='M9 12l2 2 4-4'/%3E%3C/svg%3E" alt="" width="16" height="16" style="display:block;border:0;margin:0 auto;">
+                  </td>
+                </tr></table>
+              </td>
+              <td valign="middle">
+                <p class="section-heading" style="margin:0 0 6px;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:13px;line-height:18px;letter-spacing:1.5px;font-weight:bold;color:#0B1628;text-transform:uppercase;">Important Policies</p>
+                <p style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:13px;line-height:20px;color:#444444;">By confirming this reservation, you acknowledge and agree to our Terms &amp; Conditions and Privacy Policy.</p>
+              </td>
+            </tr></table>
+          </td>
+          <td class="stack" valign="middle" align="right" width="42%" style="width:42%;">
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="right" style="margin:0 0 0 auto;">
+              <tr>
+                <td style="padding:0 8px 0 0;">
+                  <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="<%TermsUrl%>" style="height:34px;v-text-anchor:middle;width:188px;" arcsize="0%" strokecolor="#C5A059" fillcolor="#0B1628"><w:anchorlock/><center style="color:#C5A059;font-family:Arial,sans-serif;font-size:10px;font-weight:bold;">TERMS &amp; CONDITIONS &#8594;</center></v:roundrect><![endif]-->
+                  <!--[if !mso]><!-->
+                  <a href="<%TermsUrl%>" target="_blank" style="display:inline-block;padding:9px 14px;background-color:#0B1628;border:1px solid #C5A059;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:10px;line-height:12px;letter-spacing:0.5px;font-weight:bold;color:#C5A059;text-transform:uppercase;white-space:nowrap;">Terms &amp; Conditions &#8594;</a>
+                  <!--<![endif]-->
+                </td>
+                <td style="padding:0;">
+                  <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="<%PrivacyUrl%>" style="height:34px;v-text-anchor:middle;width:168px;" arcsize="0%" strokecolor="#C5A059" fillcolor="#0B1628"><w:anchorlock/><center style="color:#C5A059;font-family:Arial,sans-serif;font-size:10px;font-weight:bold;">PRIVACY POLICY &#8594;</center></v:roundrect><![endif]-->
+                  <!--[if !mso]><!-->
+                  <a href="<%PrivacyUrl%>" target="_blank" style="display:inline-block;padding:9px 14px;background-color:#0B1628;border:1px solid #C5A059;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:10px;line-height:12px;letter-spacing:0.5px;font-weight:bold;color:#C5A059;text-transform:uppercase;white-space:nowrap;">Privacy Policy &#8594;</a>
+                  <!--<![endif]-->
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr></table>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" style="padding:0 20px 12px;border-top:1px solid #E6E6E6;">
+        <p style="margin:8px 0 0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:11px;line-height:16px;font-style:italic;color:#888888;">Please review these policies prior to your trip.</p>
+      </td>
+    </tr>
+  </table>
+</td>
+    </tr>
+  </table>
+</td>
+</tr>
+</table>
+
+<!-- ========== FOOTER (shared template name with itinerary) ========== -->
+<table role="presentation" cellspacing="0" cellpadding="0" align="center" class="v" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0;width:100%;table-layout:fixed !important;">
+<tr>
+<td data-template="FooterMessageHTML" align="center" style="padding:0;margin:0;">
+  <table role="presentation" align="center" cellpadding="0" cellspacing="0" class="bl" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-spacing:0;width:760px;background-color:#0B1628;">
+    <tr>
+      <td class="mobile-footer-pad" style="padding:32px 24px 16px;">
+        <table role="presentation" class="footer-wrap" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;table-layout:fixed;">
+          <tr class="footer-row">
+            <!-- Left: Assistance -->
+            <td class="footer-col footer-col-left" valign="top" width="33%" style="width:33%;padding-right:16px;">
+              <p style="margin:0 0 12px;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:11px;line-height:14px;letter-spacing:1.5px;font-weight:bold;color:#C5A059;text-transform:uppercase;">Need Assistance?</p>
+              <p style="margin:0 0 8px;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:12px;line-height:18px;color:#A8B4C4;">Available 24/7</p>
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr class="elementShow[T<CompEmail>]">
+                  <td style="padding:0 0 6px;">
+                    <a href="mailto:<%CompEmail%>" style="font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:13px;line-height:20px;color:#ffffff;text-decoration:none;word-break:break-word;">&lt;%CompEmail%&gt;</a>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:0 0 4px;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:13px;line-height:20px;color:#ffffff;">&lt;%CompPhone%&gt;</td>
+                </tr>
+                <tr class="elementShow[T<CompLocalPhone>]">
+                  <td style="padding:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:13px;line-height:20px;color:#ffffff;">&lt;%CompLocalPhone%&gt;</td>
+                </tr>
+              </table>
+            </td>
+            <!-- Center: Logo -->
+            <td class="footer-col footer-col-center" valign="top" width="34%" align="center" style="width:34%;padding:0 16px;border-left:1px solid #C5A059;border-right:1px solid #C5A059;">
+              <img class="elementShow[T<CompLogo>]" src="<%CompLogo%>" alt="&lt;%CompName%&gt;" width="140" style="display:block;margin:0 auto 8px;border:0;outline:none;max-width:140px;height:auto;">
+              <p class="elementShow[T<!CompLogo>] footer-brand" style="margin:0 auto 8px;font-family:Georgia,'Times New Roman',serif;font-size:22px;line-height:26px;letter-spacing:2px;color:#C5A059;text-transform:uppercase;text-align:center;font-weight:bold;">&lt;%CompName%&gt;</p>
+              <p style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:9px;line-height:14px;letter-spacing:1px;color:#C5A059;text-transform:uppercase;text-align:center;">Luxury Transportation.<br>Exceptional Service.</p>
+            </td>
+            <!-- Right: Website + Address -->
+            <td class="footer-col footer-col-right footer-col-last" valign="top" width="33%" align="right" style="width:33%;padding-left:16px;">
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr class="elementShow[T<CompWebsite>]">
+                  <td class="footer-right-cell" align="right" style="padding:0 0 12px;">
+                    <a href="<%CompWebsite%>" style="font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:13px;line-height:20px;color:#C5A059;text-decoration:none;word-break:break-word;">&lt;%CompWebsite%&gt;</a>
+                  </td>
+                </tr>
+                <tr class="elementShow[T<CompAddress>]">
+                  <td class="footer-right-cell" align="right" style="padding:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:12px;line-height:18px;color:#A8B4C4;word-break:break-word;">&lt;%CompAddress%&gt;</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" class="mobile-footer-pad" style="padding:16px 24px 28px;border-top:1px solid #C5A059;">
+        <p style="margin:0 0 6px;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:10px;line-height:16px;letter-spacing:1px;color:#6B7A8F;text-transform:uppercase;">Please do not reply to this email.</p>
+        <p style="margin:0;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;font-size:11px;line-height:16px;color:#6B7A8F;">&copy; &lt;%CopyrightYear%&gt; &lt;%CompName%&gt;. All rights reserved.</p>
+      </td>
+    </tr>
+  </table>
+</td>
+</tr>
+</table>
+
+</td></tr>
+</table>
+</div>
+</body>
+</html>

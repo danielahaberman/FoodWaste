@@ -9,10 +9,11 @@ import {
   IconButton,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import { primaryAlpha } from "../themeColors";
 
 const toneStyles = {
   default: {
-    iconBg: "rgba(25, 118, 210, 0.12)",
+    iconBg: primaryAlpha(0.12),
     iconColor: "primary.main",
   },
   warning: {
@@ -24,7 +25,7 @@ const toneStyles = {
     iconColor: "success.dark",
   },
   primary: {
-    iconBg: "rgba(25, 118, 210, 0.12)",
+    iconBg: primaryAlpha(0.12),
     iconColor: "primary.main",
   },
 };

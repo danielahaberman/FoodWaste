@@ -41,7 +41,7 @@ const TasksAndLeaderboard = () => {
             transition: "background-color 0.2s ease, color 0.2s ease",
             "&.Mui-selected": {
               color: "primary.main",
-              backgroundColor: "white",
+              backgroundColor: "var(--color-primary-light)",
               boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08)",
             },
           },

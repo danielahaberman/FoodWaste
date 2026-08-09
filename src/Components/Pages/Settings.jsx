@@ -4,6 +4,7 @@ import { Box, Button, Typography, Paper, Divider } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../../utils/authUtils';
 import PageWrapper from '../PageWrapper';
+import { primaryAlpha } from '../../themeColors';
 import {
   Logout as LogoutIcon,
   MenuBook as ResourcesIcon
@@ -84,7 +85,7 @@ const Settings = () => {
                 color: 'primary.main',
                 '&:hover': {
                   borderColor: 'primary.dark',
-                  backgroundColor: 'rgba(25, 118, 210, 0.04)'
+                  backgroundColor: primaryAlpha(0.04)
                 }
               }}
             >

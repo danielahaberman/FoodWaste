@@ -1,7 +1,7 @@
 // @ts-nocheck
-import React, { useEffect, useState } from "react";
+import React, { useState, memo, useEffect } from "react";
 import { Box } from "@mui/material";
-import { Outlet, useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import BottomBar from "./Components/BottomBar";
 import TabPanel from "./Components/TabPanel";
 import ConsumeWaste from "./Components/Pages/ComsumeWaste";
@@ -11,15 +11,16 @@ import TasksAndLeaderboard from "./Components/Pages/TasksAndLeaderboard";
 import Settings from "./Components/Pages/Settings";
 import Resources from "./Components/Pages/Resources";
 
+// memo so TabPanel can flip display without re-rendering heavy inactive trees
 const TAB_ROUTES = {
-  "/summary": ConsumeWaste,
-  "/survey": QaPage,
-  "/log": FoodLog,
-  "/home": FoodLog,
-  "/tasks": TasksAndLeaderboard,
-  "/tasks-leaderboard": TasksAndLeaderboard,
-  "/settings": Settings,
-  "/resources": Resources,
+  "/summary": memo(ConsumeWaste),
+  "/survey": memo(QaPage),
+  "/log": memo(FoodLog),
+  "/home": memo(FoodLog),
+  "/tasks": memo(TasksAndLeaderboard),
+  "/tasks-leaderboard": memo(TasksAndLeaderboard),
+  "/settings": memo(Settings),
+  "/resources": memo(Resources),
 };
 
 const ALL_TABS = ["/summary", "/survey", "/log", "/tasks", "/settings", "/resources"];
@@ -27,31 +28,41 @@ const ALL_TABS = ["/summary", "/survey", "/log", "/tasks", "/settings", "/resour
 function tabPathForLocation(pathname) {
   if (pathname === "/home") return "/log";
   if (pathname === "/tasks-leaderboard") return "/tasks";
+  if (pathname === "/survey-progress") return "/survey";
   return ALL_TABS.includes(pathname) ? pathname : null;
 }
 
 const SidebarLayout = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const activeTab = tabPathForLocation(location.pathname);
+
+  useEffect(() => {
+    if (location.pathname === "/survey-progress") {
+      navigate("/survey", { replace: true });
+    }
+  }, [location.pathname, navigate]);
 
   const [mountedTabs, setMountedTabs] = useState(() =>
     activeTab ? new Set([activeTab]) : new Set(),
   );
 
-  useEffect(() => {
-    if (!activeTab) return;
+  // Mount the active tab during render so it appears in the same commit as the
+  // URL change — useEffect would leave a blank/stale frame first.
+  if (activeTab && !mountedTabs.has(activeTab)) {
     setMountedTabs((prev) => {
       if (prev.has(activeTab)) return prev;
       const next = new Set(prev);
       next.add(activeTab);
       return next;
     });
-  }, [activeTab]);
+  }
 
   const isTabVisible = (path) => {
     if (location.pathname === path) return true;
     if (path === "/log" && location.pathname === "/home") return true;
     if (path === "/tasks" && location.pathname === "/tasks-leaderboard") return true;
+    if (path === "/survey" && location.pathname === "/survey-progress") return true;
     return false;
   };
 
@@ -65,7 +76,7 @@ const SidebarLayout = () => {
         width: "100%",
         maxWidth: "600px",
         margin: "0 auto",
-        backgroundColor: { xs: "transparent", sm: "#f5f5f5" },
+        backgroundColor: { xs: "transparent", sm: "var(--color-muted)" },
         overflow: "hidden",
       }}
     >
@@ -88,12 +99,13 @@ const SidebarLayout = () => {
           if (!TabComponent) return null;
 
           return (
-            <TabPanel key={path} visible={isTabVisible(path)}>
-              <TabComponent />
-            </TabPanel>
+            <TabPanel
+              key={path}
+              visible={isTabVisible(path)}
+              Component={TabComponent}
+            />
           );
         })}
-        <Outlet />
       </Box>
       <BottomBar />
     </Box>

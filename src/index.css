@@ -1,17 +1,23 @@
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: "Lexend Deca", system-ui, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
   /* App theme tokens */
-  --color-primary: #1976d2; /* blue */
+  --color-primary: #f97316;
+  --color-primary-dark: #ea580c;
+  --color-primary-mid: #fb923c;
+  --color-primary-light: #fff7ed;
+  --color-primary-muted: #fed7aa;
   --color-primary-contrast: #ffffff;
-  --color-success: #2e7d32;
-  --color-error: #d32f2f;
-  --color-bg: #ffffff;
-  --color-surface: #ffffff;
-  --color-muted: #f5f5f5;
-  --color-text: #213547;
+  --color-success: #2E7D32;
+  --color-error: #D32F2F;
+  --color-warning: #f97316;
+  --color-bg: #FFF9F2;
+  --color-surface: #FFFFFF;
+  --color-muted: #F5EDE4;
+  --color-text: #3D3028;
+  --color-text-secondary: #6B5D52;
   --bottom-nav-height: calc(88px + env(safe-area-inset-bottom, 0px));
 
   color: var(--color-text);
@@ -25,11 +31,11 @@
 
 a {
   font-weight: 500;
-  color: #646cff;
+  color: var(--color-primary);
   text-decoration: inherit;
 }
 a:hover {
-  color: #535bf2;
+  color: var(--color-primary-dark);
 }
 
 * {

@@ -2044,7 +2044,7 @@ function AdminDashboard({ onLogout }) {
         </Grid>
 
         {/* Trending Data for dtest User */}
-        <Card sx={{ mb: 3, bgcolor: '#e3f2fd' }}>
+        <Card sx={{ mb: 3, bgcolor: 'var(--color-primary-light)' }}>
           <CardContent>
             <Typography variant="h6" gutterBottom>
               Generate Trending Data for "dtest" User

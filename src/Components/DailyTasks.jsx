@@ -22,9 +22,10 @@ import {
 } from "@mui/icons-material";
 import { useSessionData } from "../hooks/useSessionData";
 import AppConfirmDialog from "./AppConfirmDialog";
+import { colors, primaryAlpha, primaryGradientH } from "../themeColors";
 
 const TASK_ACCENTS = {
-  food: { bg: "rgba(25, 118, 210, 0.12)", color: "#1976d2", Icon: FoodIcon },
+  food: { bg: primaryAlpha(0.12), color: colors.primary, Icon: FoodIcon },
   survey: { bg: "rgba(103, 58, 183, 0.12)", color: "#673ab7", Icon: SurveyIcon },
   consume_waste: { bg: "rgba(46, 125, 50, 0.12)", color: "#2e7d32", Icon: WasteIcon },
 };
@@ -134,8 +135,7 @@ const DailyTasks = ({ onClose, showCloseButton = true }) => {
           sx={{
             px: 2.5,
             py: 2,
-            background:
-              "linear-gradient(135deg, #1565c0 0%, #42a5f5 100%)",
+            backgroundColor: colors.primary,
             color: "white",
           }}
         >
@@ -144,7 +144,7 @@ const DailyTasks = ({ onClose, showCloseButton = true }) => {
               sx={{
                 width: 44,
                 height: 44,
-                borderRadius: 2.5,
+                borderRadius: "50%",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -196,10 +196,10 @@ const DailyTasks = ({ onClose, showCloseButton = true }) => {
             sx={{
               height: 8,
               borderRadius: 4,
-              backgroundColor: "rgba(25, 118, 210, 0.12)",
+              backgroundColor: primaryAlpha(0.12),
               "& .MuiLinearProgress-bar": {
                 borderRadius: 4,
-                background: "linear-gradient(90deg, #1976d2, #42a5f5)",
+                background: primaryGradientH,
               },
             }}
           />
@@ -296,9 +296,9 @@ const DailyTasks = ({ onClose, showCloseButton = true }) => {
                     }}
                     sx={{
                       flexShrink: 0,
-                      backgroundColor: "rgba(25, 118, 210, 0.08)",
+                      backgroundColor: primaryAlpha(0.08),
                       color: "primary.main",
-                      "&:hover": { backgroundColor: "rgba(25, 118, 210, 0.15)" },
+                      "&:hover": { backgroundColor: primaryAlpha(0.15) },
                     }}
                     aria-label={`Go to ${task.title}`}
                   >

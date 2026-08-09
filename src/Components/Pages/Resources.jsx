@@ -341,7 +341,7 @@ const Resources = () => {
                       height: '100%',
                       borderRadius: 3,
                       border: 'none',
-                      backgroundColor: '#fafafa',
+                      backgroundColor: 'var(--color-muted)',
                       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                       '&:hover': {
                         backgroundColor: 'white',
@@ -422,7 +422,7 @@ const Resources = () => {
                       p: { xs: 2.5, sm: 3 }, 
                       borderRadius: 3,
                       border: 'none',
-                      backgroundColor: '#fafafa',
+                      backgroundColor: 'var(--color-muted)',
                       cursor: 'pointer',
                       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                       '&:hover': { 

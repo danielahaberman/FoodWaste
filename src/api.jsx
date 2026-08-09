@@ -133,7 +133,7 @@ export const authAPI = {
   login: (credentials) => api.post("/auth/login", credentials),
   register: (userData) => api.post("/auth/register", userData),
   adminLogin: (credentials) => api.post("/auth/admin/login", credentials),
-  acceptTerms: (userId) => api.post("/auth/accept-terms", { user_id: userId }),
+  acceptTerms: (payload) => api.post("/auth/accept-terms", payload),
   getTermsStatus: (userId) => api.get(`/auth/terms-status/${userId}`),
 };
 

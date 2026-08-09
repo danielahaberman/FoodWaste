@@ -20,6 +20,7 @@ import {
 import { StaticDatePicker } from "@mui/x-date-pickers/StaticDatePicker";
 import { PickersDay } from "@mui/x-date-pickers/PickersDay";
 import dayjs from "dayjs";
+import { primaryAlpha } from "../themeColors";
 
 const DateNavigator = ({ value, onChange, datesWithFood = [] }) => {
   const theme = useTheme();
@@ -73,8 +74,8 @@ const DateNavigator = ({ value, onChange, datesWithFood = [] }) => {
             size="small"
             aria-label="Previous day"
             sx={{
-              backgroundColor: "rgba(25, 118, 210, 0.08)",
-              "&:hover": { backgroundColor: "rgba(25, 118, 210, 0.15)" },
+              backgroundColor: primaryAlpha(0.08),
+              "&:hover": { backgroundColor: primaryAlpha(0.15) },
             }}
           >
             <ArrowBackIos sx={{ fontSize: 14, ml: 0.5 }} />
@@ -89,15 +90,15 @@ const DateNavigator = ({ value, onChange, datesWithFood = [] }) => {
               px: 1.5,
               py: 1,
               borderRadius: 2.5,
-              backgroundColor: "rgba(25, 118, 210, 0.06)",
-              border: "1px solid rgba(25, 118, 210, 0.15)",
+              backgroundColor: primaryAlpha(0.06),
+              border: `1px solid ${primaryAlpha(0.15)}`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               gap: 0.75,
               minWidth: 0,
               transition: "background-color 0.2s ease",
-              "&:hover": { backgroundColor: "rgba(25, 118, 210, 0.1)" },
+              "&:hover": { backgroundColor: primaryAlpha(0.1) },
             }}
           >
             <CalendarIcon sx={{ fontSize: 18, color: "primary.main", flexShrink: 0 }} />
@@ -118,8 +119,8 @@ const DateNavigator = ({ value, onChange, datesWithFood = [] }) => {
             disabled={isToday}
             aria-label="Next day"
             sx={{
-              backgroundColor: "rgba(25, 118, 210, 0.08)",
-              "&:hover": { backgroundColor: "rgba(25, 118, 210, 0.15)" },
+              backgroundColor: primaryAlpha(0.08),
+              "&:hover": { backgroundColor: primaryAlpha(0.15) },
             }}
           >
             <ArrowForwardIos sx={{ fontSize: 14 }} />

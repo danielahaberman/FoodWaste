@@ -31,13 +31,9 @@ import {
   hasIncompleteDailyTasks,
   markDailyTasksPopupSeen,
 } from "../utils/reminderUtils";
+import { colors, primaryAlpha } from "../themeColors";
 
-const appDialogSx = {
-  ...getAppDialogSx({ zIndex: 1500, maxWidth: "sm", scrollable: true }),
-  "& .MuiBackdrop-root": {
-    zIndex: 1499,
-  },
-};
+const appDialogSx = getAppDialogSx({ zIndex: 1500, maxWidth: "sm", scrollable: true });
 
 const DailyTasksPopup = ({ open, onClose, onDismissForToday, onViewAllTasks }) => {
   const navigate = useNavigate();
@@ -212,7 +208,7 @@ const DailyTasksPopup = ({ open, onClose, onDismissForToday, onViewAllTasks }) =
       >
         <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <FireIcon sx={{ color: "#1976d2", fontSize: 28 }} />
+            <FireIcon sx={{ color: "primary.main", fontSize: 28 }} />
             <Typography variant="h6" sx={{ fontWeight: "bold" }}>
               Welcome to Daily Tasks!
             </Typography>
@@ -225,8 +221,8 @@ const DailyTasksPopup = ({ open, onClose, onDismissForToday, onViewAllTasks }) =
         <DialogContent>
           <Stack spacing={3} sx={{ py: 2 }}>
             <Box sx={{ textAlign: "center" }}>
-              <FireIcon sx={{ fontSize: 64, color: "#1976d2", mb: 2 }} />
-              <Typography variant="h6" sx={{ fontWeight: "bold", mb: 2, color: "#1976d2" }}>
+              <FireIcon sx={{ fontSize: 64, color: "primary.main", mb: 2 }} />
+              <Typography variant="h6" sx={{ fontWeight: "bold", mb: 2, color: "primary.main" }}>
                 Build Your Streak!
               </Typography>
             </Box>
@@ -239,7 +235,7 @@ const DailyTasksPopup = ({ open, onClose, onDismissForToday, onViewAllTasks }) =
               <Stack spacing={2} sx={{ mt: 3 }}>
                 <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
                   <Box sx={{ mt: 0.5 }}>
-                    <FireIcon sx={{ color: "#1976d2" }} />
+                    <FireIcon sx={{ color: "primary.main" }} />
                   </Box>
                   <Box>
                     <Typography variant="body2" sx={{ fontWeight: "bold", mb: 0.5 }}>
@@ -253,7 +249,7 @@ const DailyTasksPopup = ({ open, onClose, onDismissForToday, onViewAllTasks }) =
 
                 <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
                   <Box sx={{ mt: 0.5 }}>
-                    <FireIcon sx={{ color: "#1976d2" }} />
+                    <FireIcon sx={{ color: "primary.main" }} />
                   </Box>
                   <Box>
                     <Typography variant="body2" sx={{ fontWeight: "bold", mb: 0.5 }}>
@@ -328,7 +324,7 @@ const DailyTasksPopup = ({ open, onClose, onDismissForToday, onViewAllTasks }) =
     >
       <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <FireIcon sx={{ color: "#ff6b35" }} />
+          <FireIcon sx={{ color: "primary.main" }} />
           <Typography variant="h6" sx={{ fontWeight: "bold" }}>
             Daily Tasks
           </Typography>
@@ -340,9 +336,9 @@ const DailyTasksPopup = ({ open, onClose, onDismissForToday, onViewAllTasks }) =
       
       <DialogContent>
         {/* Streak Display */}
-        <Box sx={{ mb: 2, py: 1, px: 2, backgroundColor: "#fff3e0", borderRadius: 2, border: "1px solid #ffb74d" }}>
+        <Box sx={{ mb: 2, py: 1, px: 2, backgroundColor: colors.primaryLight, borderRadius: 2, border: `1px solid ${colors.primaryMuted}` }}>
           <Stack direction="row" alignItems="center" spacing={1}>
-            <FireIcon sx={{ color: "#ff6b35" }} />
+            <FireIcon sx={{ color: "primary.main" }} />
             <Typography variant="body1" sx={{ fontWeight: "bold" }}>
               Current Streak: {streak?.current_streak || 0} days
             </Typography>

@@ -23,13 +23,16 @@ import { useNavigate } from "react-router-dom";
 import { usePWA } from "../../context/PWAContext";
 import versionData from '../../../version.json';
 
+import { colors, primaryAlpha } from "../../themeColors";
+import AppLogo from "../AppLogo";
+
 const FEATURES = [
   {
     icon: FoodIcon,
     title: "Log purchases",
     description: "Track what you buy, when, and how much it cost.",
-    color: "#1976d2",
-    bg: "rgba(25, 118, 210, 0.1)",
+    color: colors.primary,
+    bg: primaryAlpha(0.1),
   },
   {
     icon: EcoIcon,
@@ -42,8 +45,8 @@ const FEATURES = [
     icon: StreakIcon,
     title: "Stay motivated",
     description: "Complete daily tasks, build streaks, and climb the leaderboard.",
-    color: "#ed6c02",
-    bg: "rgba(237, 108, 2, 0.1)",
+    color: colors.primary,
+    bg: primaryAlpha(0.1),
   },
 ];
 
@@ -67,7 +70,7 @@ function LandingPage() {
         flexDirection: 'column',
         position: 'relative',
         overflowY: 'auto',
-        background: 'linear-gradient(165deg, #e3f2fd 0%, #f1f8e9 45%, #ffffff 100%)',
+        background: colors.bg,
       }}
     >
       {/* Decorative background shapes */}
@@ -80,7 +83,7 @@ function LandingPage() {
           width: 200,
           height: 200,
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(25, 118, 210, 0.15) 0%, transparent 70%)',
+          background: `radial-gradient(circle, ${primaryAlpha(0.15)} 0%, transparent 70%)`,
           pointerEvents: 'none',
         }}
       />
@@ -131,28 +134,15 @@ function LandingPage() {
       >
         {/* Hero */}
         <Stack alignItems="center" spacing={1.5} sx={{ mb: 4, mt: { xs: 2, sm: 0 } }}>
-          <Box
-            component="img"
-            src="/appIcon2.png"
-            alt="Food Hero logo"
-            sx={{
-              width: { xs: 96, sm: 112 },
-              height: { xs: 96, sm: 112 },
-              borderRadius: 4,
-              boxShadow: '0 8px 24px rgba(25, 118, 210, 0.25)',
-            }}
-          />
+          <AppLogo size={{ xs: 96, sm: 112 }} borderRadius={4} />
           <Typography
             variant="h3"
             component="h1"
             sx={{
-              fontWeight: 800,
-              fontSize: { xs: '2rem', sm: '2.25rem' },
+              fontWeight: 700,
+              fontSize: { xs: '2.25rem', sm: '2.75rem' },
               letterSpacing: '-0.02em',
-              background: 'linear-gradient(135deg, #1565c0 0%, #2e7d32 100%)',
-              backgroundClip: 'text',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
+              color: colors.brandTitle,
               textAlign: 'center',
             }}
           >
@@ -173,7 +163,7 @@ function LandingPage() {
         </Stack>
 
         {/* Features */}
-        <Stack spacing={1.5} sx={{ width: '100%', maxWidth: 400, mb: 3 }}>
+        <Stack spacing={2} sx={{ width: '100%', maxWidth: 440, mb: 3 }}>
           {FEATURES.map(({ icon: Icon, title, description, color, bg }) => (
             <Paper
               key={title}
@@ -181,9 +171,9 @@ function LandingPage() {
               sx={{
                 display: 'flex',
                 alignItems: 'flex-start',
-                gap: 1.5,
-                p: 1.75,
-                borderRadius: 2.5,
+                gap: 2,
+                p: { xs: 2.25, sm: 2.5 },
+                borderRadius: 3,
                 backgroundColor: 'rgba(255, 255, 255, 0.85)',
                 backdropFilter: 'blur(8px)',
                 border: '1px solid rgba(255, 255, 255, 0.9)',
@@ -193,9 +183,9 @@ function LandingPage() {
               <Box
                 sx={{
                   flexShrink: 0,
-                  width: 40,
-                  height: 40,
-                  borderRadius: 2,
+                  width: { xs: 52, sm: 56 },
+                  height: { xs: 52, sm: 56 },
+                  borderRadius: 2.5,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -203,13 +193,23 @@ function LandingPage() {
                   color,
                 }}
               >
-                <Icon fontSize="small" />
+                <Icon sx={{ fontSize: { xs: 28, sm: 30 } }} />
               </Box>
-              <Box sx={{ minWidth: 0 }}>
-                <Typography variant="subtitle2" fontWeight={700} lineHeight={1.3}>
+              <Box sx={{ minWidth: 0, pt: 0.25 }}>
+                <Typography
+                  variant="subtitle1"
+                  fontWeight={700}
+                  lineHeight={1.35}
+                  sx={{ fontSize: { xs: '1.05rem', sm: '1.125rem' }, mb: 0.5 }}
+                >
                   {title}
                 </Typography>
-                <Typography variant="body2" color="text.secondary" lineHeight={1.45}>
+                <Typography
+                  variant="body1"
+                  color="text.secondary"
+                  lineHeight={1.5}
+                  sx={{ fontSize: { xs: '0.95rem', sm: '1rem' } }}
+                >
                   {description}
                 </Typography>
               </Box>
@@ -239,28 +239,17 @@ function LandingPage() {
               fullWidth
               startIcon={<LoginIcon />}
               onClick={() => navigate("/auth/login")}
-              sx={{
-                py: 1.25,
-                fontWeight: 600,
-                boxShadow: '0 4px 14px rgba(25, 118, 210, 0.35)',
-              }}
             >
               Log in
             </Button>
 
             <Button
               variant="outlined"
-              color="success"
+              color="primary"
               size="large"
               fullWidth
               startIcon={<RegisterIcon />}
               onClick={() => navigate("/auth/register")}
-              sx={{
-                py: 1.25,
-                fontWeight: 600,
-                borderWidth: 2,
-                '&:hover': { borderWidth: 2 },
-              }}
             >
               Create account
             </Button>
@@ -279,7 +268,7 @@ function LandingPage() {
                   fullWidth
                   startIcon={<InstallIcon />}
                   onClick={openInstallPrompt}
-                  sx={{ py: 1.25, fontWeight: 600 }}
+                      sx={{ py: 1.25 }}
                 >
                   Install app
                 </Button>

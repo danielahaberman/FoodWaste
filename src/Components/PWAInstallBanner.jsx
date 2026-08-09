@@ -16,7 +16,7 @@ import { isChromeOnIOS } from '../utils/pwaUtils';
 import { primaryAlertSx } from '../themeStyles';
 import { BOTTOM_NAV_HEIGHT } from './PageWrapper';
 
-const BOTTOM_NAV_ROUTES = ['/summary', '/survey', '/log', '/tasks', '/settings', '/resources', '/home', '/tasks-leaderboard'];
+const BOTTOM_NAV_ROUTES = ['/summary', '/survey', '/survey-progress', '/log', '/tasks', '/settings', '/resources', '/home', '/tasks-leaderboard'];
 
 const PWAInstallBanner = ({
   open,

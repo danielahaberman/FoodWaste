@@ -11,6 +11,8 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '.env.development.local') });
 dotenv.config({ path: path.join(__dirname, '.env.local') });
 dotenv.config({ path: path.join(__dirname, '.env') });
+// Root .env (e.g. JWT_SECRET) — server/.env wins when both define the same key
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 
 import pg from 'pg';
@@ -520,6 +522,35 @@ const runMigrations = async (client) => {
       console.error("Error updating survey completion status:", err.message);
     }
     
+    try {
+      console.log("Ensuring terms_acceptances table exists...");
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS terms_acceptances (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          first_name TEXT NOT NULL,
+          last_name TEXT NOT NULL,
+          over_18_attested BOOLEAN NOT NULL DEFAULT FALSE,
+          signature_paths JSONB NOT NULL,
+          canvas_width INTEGER,
+          canvas_height INTEGER,
+          document_version VARCHAR(10) NOT NULL,
+          document_title TEXT NOT NULL,
+          document_last_updated DATE,
+          signed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          client_signed_at TIMESTAMP,
+          user_agent TEXT
+        )
+      `);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_terms_acceptances_user_id
+        ON terms_acceptances(user_id)
+      `);
+      console.log("✓ terms_acceptances table ready");
+    } catch (err) {
+      console.error("Error creating terms_acceptances table:", err.message);
+    }
+
     // Force add emoji column to food_items table (will fail silently if already exists)
     try {
       console.log("Ensuring emoji column exists in food_items table...");

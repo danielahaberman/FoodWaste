@@ -6,6 +6,7 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
+import AppLogo from './AppLogo';
 
 /**
  * Centered auth/marketing layout for landing, login, and register pages.
@@ -28,15 +29,11 @@ const AuthLayout = ({ title, children, topAction, footer }) => {
     >
       {topAction}
 
-      <Box
-        component="img"
-        src="/appIcon2.png"
-        alt="Food Hero Logo"
+      <AppLogo
+        size={{ xs: 100, sm: 120 }}
+        borderRadius={3}
         sx={{
-          width: { xs: 100, sm: 120 },
-          height: { xs: 100, sm: 120 },
           mb: 3,
-          borderRadius: 3,
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
         }}
       />

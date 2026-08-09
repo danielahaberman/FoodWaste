@@ -181,7 +181,7 @@ function AddPurchaseCard({ item, handleAddPurchase, setSelectedItem, quantityTyp
                   height: '28px',
                   width: '28px',
                   minWidth: '28px',
-                  backgroundColor: '#1976d2',
+                  backgroundColor: 'primary.main',
                   color: 'white',
                   '& .MuiChip-icon': { 
                     fontSize: '18px',

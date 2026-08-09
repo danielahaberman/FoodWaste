@@ -1,37 +1,38 @@
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET =
-  process.env.JWT_SECRET ||
-  (process.env.NODE_ENV !== 'production' ? 'dev-jwt-secret-change-in-production' : null);
-
-if (!JWT_SECRET) {
-  console.error('JWT_SECRET environment variable is required in production');
-}
-
 export const AUTH_NOT_CONFIGURED_MESSAGE =
   'Server authentication is not configured. Set JWT_SECRET in the server environment.';
 
+function getJwtSecret() {
+  return (
+    process.env.JWT_SECRET ||
+    (process.env.NODE_ENV !== 'production' ? 'dev-jwt-secret-change-in-production' : null)
+  );
+}
+
 export function isJwtConfigured() {
-  return !!JWT_SECRET;
+  return !!getJwtSecret();
 }
 
 export const TOKEN_EXPIRY = '7d';
 export const ADMIN_TOKEN_EXPIRY = '8h';
 
 export function signUserToken(userId, username) {
-  if (!JWT_SECRET) {
+  const secret = getJwtSecret();
+  if (!secret) {
     throw new Error(AUTH_NOT_CONFIGURED_MESSAGE);
   }
-  return jwt.sign({ user_id: userId, username, role: 'user' }, JWT_SECRET, {
+  return jwt.sign({ user_id: userId, username, role: 'user' }, secret, {
     expiresIn: TOKEN_EXPIRY,
   });
 }
 
 export function signAdminToken(username) {
-  if (!JWT_SECRET) {
+  const secret = getJwtSecret();
+  if (!secret) {
     throw new Error(AUTH_NOT_CONFIGURED_MESSAGE);
   }
-  return jwt.sign({ role: 'admin', username }, JWT_SECRET, {
+  return jwt.sign({ role: 'admin', username }, secret, {
     expiresIn: ADMIN_TOKEN_EXPIRY,
   });
 }
@@ -45,7 +46,8 @@ export function extractToken(req) {
 }
 
 export function requireAuth(req, res, next) {
-  if (!JWT_SECRET) {
+  const secret = getJwtSecret();
+  if (!secret) {
     return res.status(503).json({ error: AUTH_NOT_CONFIGURED_MESSAGE });
   }
 
@@ -55,7 +57,7 @@ export function requireAuth(req, res, next) {
   }
 
   try {
-    const payload = jwt.verify(token, JWT_SECRET);
+    const payload = jwt.verify(token, secret);
     if (payload.role === 'admin') {
       return res.status(403).json({ error: 'Invalid token for this endpoint' });
     }
@@ -80,7 +82,8 @@ export function requireAuth(req, res, next) {
 }
 
 export function requireAdmin(req, res, next) {
-  if (!JWT_SECRET) {
+  const secret = getJwtSecret();
+  if (!secret) {
     return res.status(503).json({ error: AUTH_NOT_CONFIGURED_MESSAGE });
   }
 
@@ -90,7 +93,7 @@ export function requireAdmin(req, res, next) {
   }
 
   try {
-    const payload = jwt.verify(token, JWT_SECRET);
+    const payload = jwt.verify(token, secret);
     if (payload.role !== 'admin') {
       return res.status(403).json({ error: 'Admin access required' });
     }

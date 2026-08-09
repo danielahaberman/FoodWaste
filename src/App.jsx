@@ -22,6 +22,11 @@ import UpdateProvider from './Components/UpdateProvider';
 import RouteTracker from './Components/RouteTracker';
 import ErrorPage from './Components/Pages/ErrorPage';
 
+/** Placeholder so React Router leaf matches have an element; SidebarLayout renders the real page. */
+function KeepAliveSlot() {
+  return null;
+}
+
 function App() {
 
   return (
@@ -50,16 +55,18 @@ function App() {
                           <Route path="/terms" element={<TermsAndConditions />} />
                           <Route path="/error" element={<ErrorPage />} />
 
-                          {/* Bottom-nav shell — pages kept mounted for fast tab switching */}
+                          {/* Bottom-nav shell — pages kept mounted for fast tab switching.
+                              Leaf slots are empty; SidebarLayout owns the real UI. */}
                           <Route element={<SidebarLayout />}>
-                            <Route path="/summary" />
-                            <Route path="/survey" />
-                            <Route path="/log" />
-                            <Route path="/tasks" />
-                            <Route path="/settings" />
-                            <Route path="/resources" />
-                            <Route path="/home" />
-                            <Route path="/tasks-leaderboard" />
+                            <Route path="/summary" element={<KeepAliveSlot />} />
+                            <Route path="/survey" element={<KeepAliveSlot />} />
+                            <Route path="/survey-progress" element={<KeepAliveSlot />} />
+                            <Route path="/log" element={<KeepAliveSlot />} />
+                            <Route path="/tasks" element={<KeepAliveSlot />} />
+                            <Route path="/settings" element={<KeepAliveSlot />} />
+                            <Route path="/resources" element={<KeepAliveSlot />} />
+                            <Route path="/home" element={<KeepAliveSlot />} />
+                            <Route path="/tasks-leaderboard" element={<KeepAliveSlot />} />
                           </Route>
                         </Routes>
                         </SurveyGuard>

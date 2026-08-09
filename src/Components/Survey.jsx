@@ -1,8 +1,9 @@
 // @ts-nocheck
 /* eslint-disable react/prop-types */
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { surveyAPI } from "../api";
+import { primaryAlpha } from "../themeColors";
 import {
   Box,
   Button,
@@ -53,7 +54,7 @@ function getStageDescription(stage) {
   return "Your answers help us understand food waste patterns.";
 }
 
-const Survey = ({ questions }) => {
+const Survey = ({ questions, onComplete }) => {
   const navigate = useNavigate();
   const isTabActive = useIsTabActive();
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -83,10 +84,10 @@ const Survey = ({ questions }) => {
   }, [answeredCount, questions?.length]);
 
   useEffect(() => {
-    if (!isTabActive) {
+    if (!isTabActive && !onComplete) {
       setShowCompletionModal(false);
     }
-  }, [isTabActive]);
+  }, [isTabActive, onComplete]);
 
   useEffect(() => {
     const loadSavedProgress = async () => {
@@ -150,7 +151,7 @@ const Survey = ({ questions }) => {
       await surveyAPI.submitSurveyResponse({
         userId: currentUserId,
         questionId,
-        response,
+        response: String(response),
       });
     } catch (err) {
       console.error("Failed to save response:", err);
@@ -170,30 +171,34 @@ const Survey = ({ questions }) => {
     }
   };
 
-  const advanceOrFinish = useCallback(() => {
-    if (currentIndex < questions.length - 1) {
-      setCurrentIndex((i) => i + 1);
-    } else {
-      setShowCompletionModal(true);
-    }
-  }, [currentIndex, questions.length]);
-
   const handleNext = async () => {
     const qId = questions[currentIndex]?.id;
     const response = responses[qId];
+    const isLast = currentIndex >= questions.length - 1;
 
-    if (response !== undefined && response !== null) {
+    if (response !== undefined && response !== null && !(typeof response === "string" && response.trim() === "")) {
       setIsSaving(true);
       try {
         await submitResponse({ questionId: qId, response });
       } catch {
         setIsSaving(false);
         return;
+      } finally {
+        setIsSaving(false);
       }
-      setIsSaving(false);
     }
 
-    advanceOrFinish();
+    if (isLast) {
+      window.dispatchEvent(new CustomEvent("taskCompleted"));
+      if (typeof onComplete === "function") {
+        onComplete(surveyTitle);
+      } else {
+        setShowCompletionModal(true);
+      }
+      return;
+    }
+
+    setCurrentIndex((i) => i + 1);
   };
 
   const handleResponse = (response) => {
@@ -307,12 +312,12 @@ const Survey = ({ questions }) => {
                   border: "2px solid",
                   borderColor: isSelected ? "primary.main" : "transparent",
                   backgroundColor: isSelected
-                    ? "rgba(25, 118, 210, 0.08)"
+                    ? primaryAlpha(0.08)
                     : "rgba(0, 0, 0, 0.03)",
                   transition: "border-color 0.15s ease, background-color 0.15s ease",
                   "&:hover": {
                     backgroundColor: isSelected
-                      ? "rgba(25, 118, 210, 0.12)"
+                      ? primaryAlpha(0.12)
                       : "rgba(0, 0, 0, 0.05)",
                   },
                 }}
@@ -553,13 +558,14 @@ const Survey = ({ questions }) => {
       </Stack>
 
       <AppConfirmDialog
-        open={showCompletionModal && isTabActive}
+        open={showCompletionModal}
         onClose={() => setShowCompletionModal(false)}
         tone="success"
         icon={<CheckCircleOutlineIcon />}
         title={getCompletionMessage().title}
         maxWidth="sm"
         scrollable
+        presentation="centered"
         zIndex={1500}
         primaryAction={{
           label: "Go to food log",

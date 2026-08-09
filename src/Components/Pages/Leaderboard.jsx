@@ -20,6 +20,8 @@ import {
 } from "@mui/icons-material";
 import { leaderboardAPI } from "../../api";
 import { getCurrentUserId } from "../../utils/authUtils";
+import { colors, primaryAlpha } from "../../themeColors";
+import { useIsTabActive } from "../../context/TabVisibilityContext";
 
 const cardSx = {
   borderRadius: 3,
@@ -35,12 +37,13 @@ const RANK_STYLES = {
 };
 
 const TAB_ACCENTS = {
-  0: { bg: "rgba(239, 108, 0, 0.12)", color: "#ef6c00", Icon: FireIcon },
+  0: { bg: primaryAlpha(0.12), color: colors.primary, Icon: FireIcon },
   1: { bg: "rgba(255, 193, 7, 0.15)", color: "#f9a825", Icon: TrophyIcon },
   2: { bg: "rgba(46, 125, 50, 0.12)", color: "#2e7d32", Icon: CheckIcon },
 };
 
 const Leaderboard = () => {
+  const isTabActive = useIsTabActive();
   const [tabValue, setTabValue] = useState(0);
   const [currentStreaks, setCurrentStreaks] = useState([]);
   const [longestStreaks, setLongestStreaks] = useState([]);
@@ -112,6 +115,8 @@ const Leaderboard = () => {
   };
 
   useEffect(() => {
+    if (!isTabActive) return;
+
     fetchLeaderboardData();
 
     const pollInterval = setInterval(() => {
@@ -119,7 +124,7 @@ const Leaderboard = () => {
     }, 30000);
 
     return () => clearInterval(pollInterval);
-  }, []);
+  }, [isTabActive]);
 
   const tabPanels = [
     {
@@ -257,9 +262,9 @@ const Leaderboard = () => {
                 ...cardSx,
                 p: 1.5,
                 border: isCurrentUser
-                  ? "1.5px solid rgba(25, 118, 210, 0.4)"
+                  ? `1.5px solid ${primaryAlpha(0.4)}`
                   : "1.5px solid transparent",
-                backgroundColor: isCurrentUser ? "#f3f8fd" : "white",
+                backgroundColor: isCurrentUser ? colors.primaryLight : "white",
               }}
             >
               <Stack direction="row" alignItems="center" spacing={1.5}>
@@ -275,7 +280,7 @@ const Leaderboard = () => {
                     alignItems: "center",
                     justifyContent: "center",
                     backgroundColor: isCurrentUser
-                      ? "rgba(25, 118, 210, 0.12)"
+                      ? primaryAlpha(0.12)
                       : "rgba(0, 0, 0, 0.05)",
                     color: isCurrentUser ? "primary.main" : "text.secondary",
                   }}
@@ -301,7 +306,7 @@ const Leaderboard = () => {
                         sx={{
                           fontWeight: 600,
                           color: "primary.main",
-                          backgroundColor: "rgba(25, 118, 210, 0.1)",
+                          backgroundColor: primaryAlpha(0.1),
                           px: 1,
                           py: 0.15,
                           borderRadius: 1,
@@ -372,7 +377,7 @@ const Leaderboard = () => {
               transition: "background-color 0.2s ease, color 0.2s ease",
               "&.Mui-selected": {
                 color: "primary.main",
-                backgroundColor: "white",
+                backgroundColor: "var(--color-primary-light)",
                 boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08)",
               },
             },
@@ -399,7 +404,7 @@ const Leaderboard = () => {
           sx={{
             px: 2.5,
             py: 2,
-            background: "linear-gradient(135deg, #1565c0 0%, #42a5f5 100%)",
+            backgroundColor: colors.primary,
             color: "white",
           }}
         >
@@ -476,7 +481,7 @@ const Leaderboard = () => {
               height: `${pullDistance}px`,
               mb: 1,
               borderRadius: 2,
-              backgroundColor: "rgba(25, 118, 210, 0.06)",
+              backgroundColor: primaryAlpha(0.06),
             }}
           >
             <Typography

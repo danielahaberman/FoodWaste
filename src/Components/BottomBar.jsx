@@ -12,6 +12,7 @@ import {
 import { useNavigate, useLocation } from "react-router-dom";
 import { useSessionData } from "../hooks/useSessionData";
 import { frostedBar } from "../themeStyles";
+import { colors, primaryAlpha } from "../themeColors";
 
 function BottomBar() {
   const navigate = useNavigate();
@@ -29,7 +30,7 @@ function BottomBar() {
     navigate(path);
   };
 
-  const NavItem = ({ icon, label, onClick, color, isActive, route, isMain }) => (
+  const NavItem = ({ icon, label, onClick, isActive, route, isMain }) => (
     <Box
       sx={{
         display: 'flex',
@@ -46,7 +47,7 @@ function BottomBar() {
         sx={{
           fontSize: '0.65rem',
           fontWeight: 500,
-          color: isActive ? color : 'rgba(0, 0, 0, 0.5)',
+          color: isActive ? colors.primary : 'rgba(0, 0, 0, 0.5)',
           mb: 0.75,
           pb: 0.5,
           opacity: 0.8,
@@ -72,7 +73,7 @@ function BottomBar() {
           onClick={onClick} 
           size="large" 
           sx={{ 
-            color: isActive ? color : 'rgba(0, 0, 0, 0.6)',
+            color: isActive ? colors.primary : 'rgba(0, 0, 0, 0.6)',
             width: { xs: 48, sm: 52 },
             height: { xs: 48, sm: 52 },
             minWidth: { xs: 48, sm: 52 },
@@ -80,14 +81,14 @@ function BottomBar() {
             padding: 0,
             margin: 0,
             borderRadius: 2.5,
-            backgroundColor: isActive ? 'rgba(25, 118, 210, 0.08)' : 'rgba(0, 0, 0, 0.02)',
+            backgroundColor: isActive ? primaryAlpha(0.08) : 'rgba(0, 0, 0, 0.02)',
             transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
             '&:active': {
               transform: 'scale(0.92)',
-              backgroundColor: isActive ? 'rgba(25, 118, 210, 0.15)' : 'rgba(0, 0, 0, 0.08)',
+              backgroundColor: isActive ? primaryAlpha(0.15) : 'rgba(0, 0, 0, 0.08)',
             },
             '& .MuiSvgIcon-root': {
               fontSize: { xs: '1.75rem', sm: '1.85rem' },
@@ -128,7 +129,6 @@ function BottomBar() {
         icon={<CalendarIcon />}
         label="Mark waste"
         onClick={() => goTo("/summary")}
-        color="#1976d2"
         isActive={location.pathname === "/summary"}
         route="/summary"
       />
@@ -137,8 +137,7 @@ function BottomBar() {
         icon={<AssignmentIcon />}
         label="Survey"
         onClick={() => goTo("/survey")}
-        color="#1976d2"
-        isActive={location.pathname === "/survey"}
+        isActive={location.pathname === "/survey" || location.pathname === "/survey-progress"}
         route="/survey"
       />
 
@@ -146,7 +145,6 @@ function BottomBar() {
         icon={<RestaurantIcon />}
         label="Log"
         onClick={() => goTo("/log")}
-        color="#1976d2"
         isActive={location.pathname === "/log"}
         route="/log"
       />
@@ -177,7 +175,6 @@ function BottomBar() {
         }
         label="Tasks"
         onClick={() => goTo("/tasks")}
-        color="#1976d2"
         isActive={location.pathname === "/tasks"}
         route="/tasks"
       />
@@ -186,7 +183,6 @@ function BottomBar() {
         icon={<SettingsIcon />}
         label="Settings"
         onClick={() => goTo("/settings")}
-        color="#1976d2"
         isActive={location.pathname === "/settings"}
         route="/settings"
       />

@@ -594,11 +594,13 @@ function AddNewPurchase({
                           label={`${food.purchase_count}×`}
                           size="small"
                           sx={{
-                            height: 24,
-                            fontWeight: 600,
-                            fontSize: '0.7rem',
-                            backgroundColor: 'rgba(25, 118, 210, 0.1)',
-                            color: 'primary.main',
+                            height: 28,
+                            minWidth: 28,
+                            fontWeight: 700,
+                            fontSize: '0.75rem',
+                            backgroundColor: 'primary.main',
+                            color: '#fff',
+                            '& .MuiChip-label': { px: 1 },
                           }}
                         />
                       ) : null}
@@ -752,13 +754,8 @@ function AddNewPurchase({
             disabled={loading}
             sx={{
               mt: 1,
-              bgcolor: "#1976d2",
-              color: "#fff",
               fontWeight: "bold",
               minHeight: 44,
-              '&:hover': {
-                bgcolor: "#1565c0",
-              },
             }}
           >
             {loading ? "Adding..." : "Add+"}

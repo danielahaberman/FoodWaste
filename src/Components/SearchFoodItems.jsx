@@ -23,6 +23,7 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import HistoryIcon from "@mui/icons-material/History";
 import BookmarkIcon from "@mui/icons-material/Bookmark";
 import AddPurchaseCard from "./AddPurchaseCard";
+import { colors, primaryAlpha } from "../themeColors";
 import BarcodeScanner from "./BarcodeScanner";
 import { lookupProductByBarcode } from "../utils/openFoodFacts";
 import { getCurrentUserId } from "../utils/authUtils";
@@ -492,9 +493,9 @@ const FoodItemSearchDropdown = ({
                                   height: 24,
                                   fontSize: "0.7rem",
                                   fontWeight: 600,
-                                  backgroundColor: "rgba(255, 193, 7, 0.15)",
-                                  color: "#f57c00",
-                                  "& .MuiChip-icon": { color: "#f57c00" },
+                                  backgroundColor: primaryAlpha(0.15),
+                                  color: colors.primary,
+                                  "& .MuiChip-icon": { color: colors.primary },
                                 }}
                               />
                             }
@@ -578,7 +579,7 @@ const FoodItemSearchDropdown = ({
                                   alignItems: "center",
                                   justifyContent: "center",
                                   flexShrink: 0,
-                                  backgroundColor: "rgba(25, 118, 210, 0.12)",
+                                  backgroundColor: primaryAlpha(0.12),
                                   color: "primary.main",
                                 }}
                               >

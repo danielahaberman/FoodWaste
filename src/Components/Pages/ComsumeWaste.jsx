@@ -57,6 +57,8 @@ import {
   LineElement,
 } from "chart.js";
 
+import { colors } from "../../themeColors";
+
 ChartJS.register(ArcElement, ChartTooltip, CategoryScale, LinearScale, PointElement, LineElement);
 
 const cardSx = {
@@ -578,7 +580,7 @@ function ConsumeWaste({ onGoToDate }) {
         [weekOf]: {
           labels: ["Consumed $", "Wasted $", "Unmarked $"],
           datasets: [
-            { data: [consumed, wasted, unmarked], backgroundColor: ["#4caf50", "#ef5350", "#42a5f5"] },
+            { data: [consumed, wasted, unmarked], backgroundColor: ["#4caf50", "#ef5350", colors.primary] },
           ],
         },
       }));
@@ -813,16 +815,11 @@ function ConsumeWaste({ onGoToDate }) {
               <SummaryLegend />
               <Button
                 variant="outlined"
+                color="primary"
                 fullWidth
                 startIcon={<TrendingUpIcon />}
                 onClick={() => setOverallOpen(true)}
-                sx={{
-                  mt: 1.5,
-                  borderRadius: 2,
-                  textTransform: "none",
-                  fontWeight: 600,
-                  py: 1.1,
-                }}
+                sx={{ mt: 1.5, py: 1.1 }}
               >
                 View all-time trends
               </Button>
@@ -868,8 +865,17 @@ function ConsumeWaste({ onGoToDate }) {
                         <Chip
                           label={weekLabel}
                           size="small"
-                          color={weekLabel === "This week" ? "primary" : "default"}
-                          sx={{ mb: 0.75, fontWeight: 600, height: 24 }}
+                          color={weekLabel === "This week" ? "primary" : undefined}
+                          sx={{
+                            mb: 0.75,
+                            fontWeight: 600,
+                            height: 24,
+                            borderRadius: 999,
+                            ...(weekLabel === "Last week" && {
+                              backgroundColor: colors.primaryMuted,
+                              color: colors.primary,
+                            }),
+                          }}
                         />
                       )}
                       <Typography variant="subtitle1" fontWeight={700} lineHeight={1.25}>
@@ -945,14 +951,10 @@ function ConsumeWaste({ onGoToDate }) {
                     <Button
                       fullWidth
                       variant="contained"
+                      color="primary"
                       startIcon={<AddIcon />}
                       onClick={() => goToLogForWeek(week.weekOf)}
-                      sx={{
-                        borderRadius: 2,
-                        textTransform: "none",
-                        fontWeight: 600,
-                        py: 1.1,
-                      }}
+                      sx={{ py: 1.1 }}
                     >
                       {weekLabel === "Last week"
                         ? "Add food for last week"
@@ -962,14 +964,10 @@ function ConsumeWaste({ onGoToDate }) {
                     <Button
                       fullWidth
                       variant="contained"
+                      color="primary"
                       endIcon={<ChevronRightIcon />}
                       onClick={() => openWeekDetails(week.weekOf)}
-                      sx={{
-                        borderRadius: 2,
-                        textTransform: "none",
-                        fontWeight: 600,
-                        py: 1.1,
-                      }}
+                      sx={{ py: 1.1 }}
                     >
                       Manage consume / waste
                     </Button>

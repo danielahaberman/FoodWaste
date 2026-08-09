@@ -73,7 +73,7 @@ const PromptContent = ({
   return (
     <>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-        <Typography variant="h6" sx={{ color: '#1976d2', fontWeight: 'bold' }}>
+        <Typography variant="h6" sx={{ color: 'primary.main', fontWeight: 'bold' }}>
           Install App
         </Typography>
         <IconButton onClick={onClose} size="small" aria-label="Close">
@@ -111,7 +111,7 @@ const PromptContent = ({
             variant="contained"
             startIcon={<InstallIcon />}
             fullWidth
-            sx={{ backgroundColor: '#1976d2', '&:hover': { backgroundColor: '#1565c0' } }}
+            sx={{ '&:hover': { backgroundColor: 'primary.dark' } }}
           >
             Install App
           </Button>

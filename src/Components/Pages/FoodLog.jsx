@@ -25,6 +25,7 @@ import AddNewPurchase from "./AddNewPurchase";
 import DateNavigator from "../DateNavigator";
 import FoodPurchaseList from "../FoodPurchaseList";
 import PageWrapper from "../PageWrapper";
+import { primaryAlpha } from "../../themeColors";
 import DailyTasksPopup from "../DailyTasksPopup";
 import { useIsTabActive } from "../../context/TabVisibilityContext";
 import {
@@ -151,12 +152,25 @@ const FoodLog = () => {
     return () => window.removeEventListener("sessionLogin", onLogin);
   }, [fetchFoodPurchases]);
 
+  // Only touch the URL while this tab is visible — otherwise a kept-alive FoodLog
+  // will re-apply ?date= onto /survey (and other routes) whenever setSearchParams changes.
   useEffect(() => {
+    if (!isTabActive) return;
+
+    const param = searchParams.get("date");
+    if (param && dayjs(param, "YYYY-MM-DD", true).isValid()) {
+      const fromUrl = dayjs(param, "YYYY-MM-DD");
+      if (!fromUrl.isSame(selectedDate, "day")) {
+        setSelectedDate(fromUrl);
+        return;
+      }
+    }
+
     const dateStr = selectedDate.format("YYYY-MM-DD");
-    if (searchParams.get("date") !== dateStr) {
+    if (param !== dateStr) {
       setSearchParams({ date: dateStr }, { replace: true });
     }
-  }, [selectedDate, setSearchParams]);
+  }, [isTabActive, selectedDate, searchParams, setSearchParams]);
 
   useEffect(() => {
     tryShowDailyTasksPopup();
@@ -343,7 +357,7 @@ const FoodLog = () => {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                backgroundColor: "rgba(25, 118, 210, 0.1)",
+                backgroundColor: primaryAlpha(0.1),
               }}
             >
               <RestaurantIcon sx={{ fontSize: 28, color: "primary.main" }} />
@@ -351,21 +365,11 @@ const FoodLog = () => {
             <Typography variant="subtitle1" fontWeight={600} gutterBottom>
               Nothing logged yet
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.5 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.5 }}>
               {isToday
-                ? "Tap Add food to log what you bought today."
+                ? "Use Add food above to log what you bought today."
                 : `No purchases recorded for ${selectedDate.format("MMMM D")}.`}
             </Typography>
-            {canModify && (
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => setLoggingPurchase(true)}
-                sx={{ borderRadius: 2, textTransform: "none", fontWeight: 600 }}
-              >
-                Add food
-              </Button>
-            )}
           </Paper>
         )}
       </LocalizationProvider>

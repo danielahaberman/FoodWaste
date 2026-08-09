@@ -11,6 +11,7 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '.env.development.local') });
 dotenv.config({ path: path.join(__dirname, '.env.local') });
 dotenv.config({ path: path.join(__dirname, '.env') });
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 import express from "express";
 import cors from "cors";
@@ -26,15 +27,15 @@ function getSundayWeekStartKey(date) {
 
 import pool from "./db.js"; // Your pg Pool instance
 import authRoutes from "./authRoutes.js"; // Import auth routes
-import { requireAuth, requireAdmin, requireSelfUserId } from "./middleware/auth.js";
+import { requireAuth, requireAdmin, requireSelfUserId, isJwtConfigured } from "./middleware/auth.js";
 import moment from "moment-timezone";
 import questions from "./SurveyQuestions.js";
 import foodItems from "./FoodItems.js";
 import query from "./TableQuery.js";
 import { searchOffCategories } from "./utils/openFoodFactsTaxonomy.js";
-import { 
-  generateFakeUsersWithData, 
-  cleanupFakeUsers, 
+import {
+  generateFakeUsersWithData,
+  cleanupFakeUsers,
   getFakeUsersCount,
   generateTrendingDataForUser
 } from "./fakeDataGenerator.js";
@@ -44,6 +45,7 @@ async function startServer() {
   try {
     // Wait for database initialization to complete
     console.log("Waiting for database initialization...");
+    console.log("JWT configured:", isJwtConfigured());
     await new Promise(resolve => setTimeout(resolve, 2000)); // Give migrations time to complete
     
     const app = express();
@@ -140,6 +142,7 @@ app.use(cors(corsOptions));
 app.get("/health", (req, res) => {
   res.json({ 
     status: "ok", 
+    jwtConfigured: isJwtConfigured(),
     timestamp: new Date().toISOString(),
     origin: req.headers.origin || 'no origin',
     host: req.headers.host || 'no host'
@@ -158,18 +161,84 @@ app.use((req, res, next) => {
 app.use("/auth", authRoutes);
 console.log("✅ Auth routes mounted at /auth");
 
+const TERMS_DOCUMENT_VERSION = "1.0";
+const TERMS_DOCUMENT_TITLE = "Terms and Conditions";
+
+function isValidSignaturePaths(paths) {
+  return (
+    Array.isArray(paths) &&
+    paths.length > 0 &&
+    paths.some((stroke) => Array.isArray(stroke) && stroke.length > 0)
+  );
+}
+
 // Terms acceptance endpoints
 app.post("/auth/accept-terms", requireAuth, async (req, res) => {
   const user_id = req.user_id;
-  const termsVersion = "1.0"; // You can make this dynamic based on your terms versioning
-  
+  const {
+    first_name,
+    last_name,
+    over_18_attested,
+    signature_paths,
+    document_version,
+    document_title,
+    document_last_updated,
+    client_signed_at,
+    canvas_width,
+    canvas_height,
+  } = req.body;
+
+  if (!first_name?.trim() || !last_name?.trim()) {
+    return res.status(400).json({ error: "First and last name are required" });
+  }
+  if (!over_18_attested) {
+    return res.status(400).json({ error: "You must attest that you are 18 or older" });
+  }
+  if (!isValidSignaturePaths(signature_paths)) {
+    return res.status(400).json({ error: "A valid signature is required" });
+  }
+  if (document_version !== TERMS_DOCUMENT_VERSION) {
+    return res.status(400).json({ error: "Terms document version mismatch. Please refresh and try again." });
+  }
+
+  const termsVersion = document_version || TERMS_DOCUMENT_VERSION;
+  const termsTitle = document_title?.trim() || TERMS_DOCUMENT_TITLE;
+  const userAgent = req.headers["user-agent"] || null;
+
   try {
+    await pool.query("BEGIN");
+
+    await pool.query(
+      `INSERT INTO terms_acceptances (
+        user_id, first_name, last_name, over_18_attested, signature_paths,
+        canvas_width, canvas_height, document_version, document_title,
+        document_last_updated, client_signed_at, user_agent
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+      [
+        user_id,
+        first_name.trim(),
+        last_name.trim(),
+        true,
+        JSON.stringify(signature_paths),
+        canvas_width || null,
+        canvas_height || null,
+        termsVersion,
+        termsTitle,
+        document_last_updated || null,
+        client_signed_at || null,
+        userAgent,
+      ]
+    );
+
     await pool.query(
       "UPDATE users SET terms_accepted_at = CURRENT_TIMESTAMP, terms_accepted_version = $1 WHERE id = $2",
       [termsVersion, user_id]
     );
+
+    await pool.query("COMMIT");
     res.json({ message: "Terms accepted successfully" });
   } catch (err) {
+    await pool.query("ROLLBACK").catch(() => {});
     console.error("Error accepting terms:", err);
     res.status(500).json({ error: err.message });
   }
@@ -1668,7 +1737,7 @@ app.post("/survey-response", requireAuth, async (req, res) => {
   const userId = req.user_id;
   const { questionId, response } = req.body;
 
-  if (!questionId || typeof response !== "string") {
+  if (!questionId || (typeof response !== "string" && typeof response !== "number")) {
     return res.status(400).json({ error: "Missing or invalid fields" });
   }
 
@@ -1679,7 +1748,7 @@ app.post("/survey-response", requireAuth, async (req, res) => {
   `;
 
   try {
-    const result = await pool.query(query, [userId, questionId, response]);
+    const result = await pool.query(query, [userId, questionId, String(response)]);
     
     // Check if this completes a survey stage and update user's completion status
     const checkCompletionQuery = `
@@ -1760,6 +1829,8 @@ app.get("/api/surveys/responses", requireAuth, async (req, res) => {
 // GET survey status
 app.get("/api/surveys/status/:userId", requireAuth, requireSelfUserId, async (req, res) => {
   const userId = req.user_id;
+  const totalStudyWeeks = Math.max(1, parseInt(process.env.STUDY_WEEKS || "8", 10) || 8);
+  res.set("Cache-Control", "no-store");
 
   try {
     const countsQuery = `
@@ -1781,7 +1852,7 @@ app.get("/api/surveys/status/:userId", requireAuth, requireSelfUserId, async (re
     const initialResult = await pool.query(initialAnsweredQuery, [userId]);
     const initialCompleted = initialResult.rows[0].answered_initial_count == initial_count;
 
-    const lastWeeklyCompletionQuery = `
+    const completedWeeksQuery = `
       SELECT 
         to_char(response_date, 'IYYY-IW') AS year_week,
         MAX(response_date) AS last_response_date,
@@ -1792,12 +1863,14 @@ app.get("/api/surveys/status/:userId", requireAuth, requireSelfUserId, async (re
       )
       GROUP BY year_week
       HAVING COUNT(DISTINCT question_id) = $2
-      ORDER BY last_response_date DESC
-      LIMIT 1
+      ORDER BY last_response_date ASC
     `;
-    const weeklyResult = await pool.query(lastWeeklyCompletionQuery, [userId, weekly_count]);
-    
-    const lastWeeklyCompletion = weeklyResult.rows.length > 0 ? weeklyResult.rows[0].last_response_date : null;
+    const completedWeeksResult = await pool.query(completedWeeksQuery, [userId, weekly_count]);
+    const weeklyCompletedCount = completedWeeksResult.rows.length;
+    const lastWeeklyCompletion =
+      weeklyCompletedCount > 0
+        ? completedWeeksResult.rows[weeklyCompletedCount - 1].last_response_date
+        : null;
     
     // Get initial survey completion date
     const initialCompletionQuery = `
@@ -1811,6 +1884,15 @@ app.get("/api/surveys/status/:userId", requireAuth, requireSelfUserId, async (re
     const initialCompletionDate = initialCompletionResult.rows.length > 0 && initialCompletionResult.rows[0].initial_completion_date 
       ? initialCompletionResult.rows[0].initial_completion_date 
       : null;
+
+    const finalStatusResult = await pool.query(
+      `SELECT final_survey_triggered, final_survey_completed_at
+       FROM users WHERE id = $1`,
+      [userId]
+    );
+    const finalRow = finalStatusResult.rows[0] || {};
+    const finalCompleted = Boolean(finalRow.final_survey_completed_at);
+    const finalTriggered = Boolean(finalRow.final_survey_triggered);
     
     // Check if weekly survey is due (7 days since last completion or 7 days since initial survey completion)
     let weeklyDue = false;
@@ -1846,9 +1928,12 @@ app.get("/api/surveys/status/:userId", requireAuth, requireSelfUserId, async (re
       initialCompleted,
       lastWeeklyCompletion,
       weeklyDue,
-      daysSinceLastWeekly
+      daysSinceLastWeekly,
+      weeklyCompletedCount,
+      totalStudyWeeks,
+      finalTriggered,
+      finalCompleted,
     });
-
   } catch (err) {
     res.status(500).json({ error: err });
   }

@@ -6,6 +6,7 @@ import {
   Typography,
 } from '@mui/material';
 import { frostedSurface } from '../themeStyles';
+import AppLogo, { APP_LOGO_SRC } from './AppLogo';
 
 /** Height of the bottom tab bar — used for snackbars/overlays, not page scroll padding. */
 export const BOTTOM_NAV_HEIGHT = 'calc(88px + env(safe-area-inset-bottom, 0px))';
@@ -19,10 +20,10 @@ const PageWrapper = ({
   headerAction,
   subHeader = null,
   showLogo = false,
-  logoSrc = '/appIcon2.png',
+  logoSrc = APP_LOGO_SRC,
   showHeader = true,
   reserveBottomNav = true,
-  backgroundColor = '#fafafa',
+  backgroundColor = 'var(--color-bg)',
   contentMaxWidth = '600px',
 }) => {
   return (
@@ -61,16 +62,12 @@ const PageWrapper = ({
             }}
           >
             {showLogo && (
-              <Box
-                component="img"
+              <AppLogo
+                size={{ xs: 28, sm: 32 }}
+                borderRadius={1}
+                shadow={false}
                 src={logoSrc}
                 alt="Food Hero Logo"
-                sx={{
-                  width: { xs: 28, sm: 32 },
-                  height: { xs: 28, sm: 32 },
-                  borderRadius: 1,
-                  flexShrink: 0,
-                }}
               />
             )}
             <Typography
@@ -80,7 +77,7 @@ const PageWrapper = ({
                 flexGrow: 1,
                 fontWeight: 600,
                 letterSpacing: '-0.01em',
-                color: 'text.primary',
+                color: 'primary.main',
                 minWidth: 0,
               }}
               noWrap
