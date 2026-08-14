@@ -58,6 +58,15 @@ export const isStandaloneMode = () => {
 };
 
 /**
+ * True when running inside the Food Hero Android/iOS native WebView shell.
+ */
+export const isNativeAppShell = () => {
+  if (typeof window === 'undefined') return false;
+  if (window.__FOOD_HERO_NATIVE_APP__ === true) return true;
+  return /FoodHeroApp\/\d/i.test(navigator.userAgent);
+};
+
+/**
  * Reset all PWA installation prompt preferences
  * This allows users to see the prompt again if they change their mind
  */

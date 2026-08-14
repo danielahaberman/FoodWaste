@@ -5,6 +5,7 @@ import {
   isIOSDevice,
   isAndroidDevice,
   isStandaloneMode,
+  isNativeAppShell,
   isChromeOnIOS,
   isMobileLikeDevice,
 } from '../utils/pwaUtils';
@@ -20,9 +21,14 @@ export const usePWAInstall = () => {
   useEffect(() => {
     const iOS = isIOSDevice();
     const standalone = isStandaloneMode();
+    const nativeApp = isNativeAppShell();
 
     setIsIOS(iOS);
-    setIsStandalone(standalone);
+    setIsStandalone(standalone || nativeApp);
+
+    if (nativeApp) {
+      return undefined;
+    }
 
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
@@ -61,7 +67,7 @@ export const usePWAInstall = () => {
   }, []);
 
   const openInstallPrompt = useCallback(() => {
-    if (isStandaloneMode() || isPWAPermanentlyDismissed() || !isMobileLikeDevice()) {
+    if (isNativeAppShell() || isStandaloneMode() || isPWAPermanentlyDismissed() || !isMobileLikeDevice()) {
       return;
     }
     setShowInstallPrompt(true);
@@ -69,7 +75,7 @@ export const usePWAInstall = () => {
   }, []);
 
   const showPostLoginBanner = useCallback(() => {
-    if (isStandaloneMode() || isPWAPermanentlyDismissed() || !isMobileLikeDevice()) {
+    if (isNativeAppShell() || isStandaloneMode() || isPWAPermanentlyDismissed() || !isMobileLikeDevice()) {
       return;
     }
     if (localStorage.getItem(PWA_STORAGE_KEYS.BANNER_DISMISSED) === 'true') {
@@ -133,6 +139,7 @@ export const usePWAInstall = () => {
     (canInstallIOS || canInstallAndroid);
 
   const showInstallCTA =
+    !isNativeAppShell() &&
     isMobileLike &&
     !isStandalone &&
     !isPWAPermanentlyDismissed() &&
