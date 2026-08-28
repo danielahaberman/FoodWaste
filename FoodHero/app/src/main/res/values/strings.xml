@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Food Hero</string>
+    <!-- Live FoodWaste web app -->
+    <string name="web_app_url">https://foodwaste-production-746a.up.railway.app</string>
+    <string name="error_load_failed">Unable to load Food Hero. Check your connection and try again.</string>
+    <string name="retry">Retry</string>
+</resources>

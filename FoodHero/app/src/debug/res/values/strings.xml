@@ -1,0 +1,5 @@
+<resources>
+    <!-- Debug builds also load production by default. For local dev on a physical device,
+         replace with http://YOUR_PC_LAN_IP:5173 (phone and PC must be on same Wi-Fi). -->
+    <string name="web_app_url">https://foodwaste-production-746a.up.railway.app</string>
+</resources>

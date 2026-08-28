@@ -1,0 +1,16 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Base.Theme.FoodHero" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+
+    <style name="Theme.FoodHero" parent="Base.Theme.FoodHero" />
+
+    <style name="Theme.FoodHero.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/food_hero_cream</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/food_hero_cream</item>
+        <item name="postSplashScreenTheme">@style/Theme.FoodHero</item>
+    </style>
+</resources>
