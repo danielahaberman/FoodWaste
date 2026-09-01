@@ -227,9 +227,7 @@ const FoodLog = () => {
     [filteredPurchases]
   );
 
-  const isWithin7Days = dayjs()
-    .subtract(7, "day")
-    .isSameOrBefore(selectedDate, "day");
+  const isWithin7Days = !selectedDate.isBefore(dayjs().subtract(7, "day"), "day");
   const isDateInFuture = selectedDate.isAfter(dayjs(), "day");
   const canModify = isWithin7Days && !isDateInFuture;
   const isToday = selectedDate.isSame(dayjs(), "day");
