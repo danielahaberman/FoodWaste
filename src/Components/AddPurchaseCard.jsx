@@ -68,8 +68,8 @@ function AddPurchaseCard({ item, handleAddPurchase, setSelectedItem, quantityTyp
       setError("Please enter a price");
       return;
     }
-    if (costNum <= 0) {
-      setError("Price must be greater than 0");
+    if (costNum < 0) {
+      setError("Price cannot be negative");
       return;
     }
 
@@ -284,7 +284,7 @@ function AddPurchaseCard({ item, handleAddPurchase, setSelectedItem, quantityTyp
               label="Price *"
               size="small"
               type="number"
-              inputProps={{ step: "0.01", min: 0.01 }}
+              inputProps={{ step: "0.01", min: 0 }}
               value={cost}
               onChange={(e) => setCost(e.target.value)}
               InputProps={{
@@ -338,7 +338,8 @@ function AddPurchaseCard({ item, handleAddPurchase, setSelectedItem, quantityTyp
           disabled={
             submitting ||
             !String(cost).trim() ||
-            parseFloat(cost) <= 0 ||
+            !Number.isFinite(parseFloat(cost)) ||
+            parseFloat(cost) < 0 ||
             parseFloat(quantity) <= 0 ||
             ((currentItem.source === 'openfoodfacts' || currentItem.source === 'opennutrition') && 
              (!currentItem.category_id || !currentItem.quantity_type_id))

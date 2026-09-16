@@ -286,6 +286,8 @@ function QaPage() {
       setMode("map");
       setSurveyQuestions(null);
       setActiveStage(null);
+      // Refresh shared session cache so SurveyGuard drops overdue/weekly modals.
+      window.dispatchEvent(new CustomEvent("taskCompleted"));
       await loadStatus();
     },
     [activeStage, loadStatus]

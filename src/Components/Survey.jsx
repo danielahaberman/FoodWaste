@@ -20,6 +20,7 @@ import {
 import AppConfirmDialog from "./AppConfirmDialog";
 import { getCurrentUserId } from "../utils/authUtils";
 import { useIsTabActive } from "../context/TabVisibilityContext";
+import { fetchSessionData } from "../utils/sessionDataCache";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
@@ -215,9 +216,15 @@ const Survey = ({ questions, onComplete }) => {
     }
   };
 
-  const handleGoHome = () => {
+  const handleGoHome = async () => {
     window.dispatchEvent(new CustomEvent("taskCompleted"));
     setShowCompletionModal(false);
+    try {
+      // Wait for session refresh so SurveyGuard does not reopen an overdue modal.
+      await fetchSessionData(true);
+    } catch (err) {
+      console.error("Error refreshing session after survey:", err);
+    }
     navigate("/log");
   };
 

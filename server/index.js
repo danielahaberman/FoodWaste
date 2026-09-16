@@ -1749,43 +1749,51 @@ app.post("/survey-response", requireAuth, async (req, res) => {
 
   try {
     const result = await pool.query(query, [userId, questionId, String(response)]);
-    
-    // Check if this completes a survey stage and update user's completion status
+
+    // initial/final: all-time distinct answers. weekly: must finish within the current ISO week
+    // so reusing prior weeks' answers cannot mark a new week complete.
     const checkCompletionQuery = `
-      SELECT 
+      SELECT
         sq.stage,
-        COUNT(DISTINCT sq.id) as total_questions,
-        COUNT(DISTINCT sr.question_id) as answered_questions
+        COUNT(DISTINCT sq.id)::int AS total_questions,
+        COUNT(DISTINCT CASE
+          WHEN sq.stage = 'weekly'
+            AND to_char(sr.response_date, 'IYYY-IW') = to_char(NOW(), 'IYYY-IW')
+            THEN sr.question_id
+          WHEN sq.stage <> 'weekly' AND sr.question_id IS NOT NULL
+            THEN sr.question_id
+          ELSE NULL
+        END)::int AS answered_questions
       FROM survey_questions sq
-      LEFT JOIN survey_responses sr ON sq.id = sr.question_id AND sr.user_id = $1
+      LEFT JOIN survey_responses sr
+        ON sq.id = sr.question_id AND sr.user_id = $1
       WHERE sq.stage IN ('initial', 'weekly', 'final')
       GROUP BY sq.stage
     `;
-    
+
     const completionResult = await pool.query(checkCompletionQuery, [userId]);
-    
+
     for (const row of completionResult.rows) {
       if (row.total_questions === row.answered_questions) {
-        // User completed this survey stage
         if (row.stage === 'initial') {
           await pool.query(
-            "UPDATE users SET initial_survey_completed_at = CURRENT_TIMESTAMP WHERE id = $1",
+            "UPDATE users SET initial_survey_completed_at = CURRENT_TIMESTAMP WHERE id = $1 AND initial_survey_completed_at IS NULL",
             [userId]
           );
         } else if (row.stage === 'weekly') {
           await pool.query(
-            "UPDATE users SET last_weekly_survey_date = CURRENT_DATE WHERE id = $1",
+            "UPDATE users SET last_weekly_survey_date = (CURRENT_TIMESTAMP AT TIME ZONE 'America/New_York')::date WHERE id = $1",
             [userId]
           );
         } else if (row.stage === 'final') {
           await pool.query(
-            "UPDATE users SET final_survey_completed_at = CURRENT_TIMESTAMP WHERE id = $1",
+            "UPDATE users SET final_survey_completed_at = CURRENT_TIMESTAMP WHERE id = $1 AND final_survey_completed_at IS NULL",
             [userId]
           );
         }
       }
     }
-    
+
     res.status(200).json({ message: "Response saved", responseId: result.rows[0].id });
   } catch (e) {
     console.error("Error saving survey response:", e);
@@ -1803,22 +1811,37 @@ app.get("/api/surveys/responses", requireAuth, async (req, res) => {
   }
 
   try {
-    const query = `
-      SELECT sr.question_id, sr.response
+    // Weekly surveys reuse the same question IDs every week — only resume answers
+    // from the current ISO week so prior weeks do not look "already done".
+    const query =
+      stage === "weekly"
+        ? `
+      SELECT DISTINCT ON (sr.question_id) sr.question_id, sr.response
+      FROM survey_responses sr
+      JOIN survey_questions sq ON sr.question_id = sq.id
+      WHERE sr.user_id = $1
+        AND sq.stage = 'weekly'
+        AND to_char(sr.response_date, 'IYYY-IW') = to_char(NOW(), 'IYYY-IW')
+      ORDER BY sr.question_id, sr.response_date DESC
+    `
+        : `
+      SELECT DISTINCT ON (sr.question_id) sr.question_id, sr.response
       FROM survey_responses sr
       JOIN survey_questions sq ON sr.question_id = sq.id
       WHERE sr.user_id = $1 AND sq.stage = $2
-      ORDER BY sq.id
+      ORDER BY sr.question_id, sr.response_date DESC
     `;
-    
-    const result = await pool.query(query, [userId, stage]);
-    
-    // Convert to object keyed by question_id for easy lookup
+
+    const result = await pool.query(
+      query,
+      stage === "weekly" ? [userId] : [userId, stage]
+    );
+
     const responses = {};
-    result.rows.forEach(row => {
+    result.rows.forEach((row) => {
       responses[row.question_id] = row.response;
     });
-    
+
     res.json(responses);
   } catch (error) {
     console.error("Error fetching survey responses:", error);
@@ -1853,7 +1876,7 @@ app.get("/api/surveys/status/:userId", requireAuth, requireSelfUserId, async (re
     const initialCompleted = initialResult.rows[0].answered_initial_count == initial_count;
 
     const completedWeeksQuery = `
-      SELECT 
+      SELECT
         to_char(response_date, 'IYYY-IW') AS year_week,
         MAX(response_date) AS last_response_date,
         COUNT(DISTINCT question_id) AS answered_count
@@ -1866,13 +1889,12 @@ app.get("/api/surveys/status/:userId", requireAuth, requireSelfUserId, async (re
       ORDER BY last_response_date ASC
     `;
     const completedWeeksResult = await pool.query(completedWeeksQuery, [userId, weekly_count]);
-    const weeklyCompletedCount = completedWeeksResult.rows.length;
-    const lastWeeklyCompletion =
+    let weeklyCompletedCount = completedWeeksResult.rows.length;
+    const lastWeeklyFromResponses =
       weeklyCompletedCount > 0
         ? completedWeeksResult.rows[weeklyCompletedCount - 1].last_response_date
         : null;
-    
-    // Get initial survey completion date
+
     const initialCompletionQuery = `
       SELECT MIN(response_date) AS initial_completion_date
       FROM survey_responses
@@ -1881,44 +1903,74 @@ app.get("/api/surveys/status/:userId", requireAuth, requireSelfUserId, async (re
       )
     `;
     const initialCompletionResult = await pool.query(initialCompletionQuery, [userId]);
-    const initialCompletionDate = initialCompletionResult.rows.length > 0 && initialCompletionResult.rows[0].initial_completion_date 
-      ? initialCompletionResult.rows[0].initial_completion_date 
+    const initialCompletionDate = initialCompletionResult.rows.length > 0 && initialCompletionResult.rows[0].initial_completion_date
+      ? initialCompletionResult.rows[0].initial_completion_date
       : null;
 
     const finalStatusResult = await pool.query(
-      `SELECT final_survey_triggered, final_survey_completed_at
+      `SELECT final_survey_triggered, final_survey_completed_at, last_weekly_survey_date
        FROM users WHERE id = $1`,
       [userId]
     );
     const finalRow = finalStatusResult.rows[0] || {};
     const finalCompleted = Boolean(finalRow.final_survey_completed_at);
     const finalTriggered = Boolean(finalRow.final_survey_triggered);
-    
-    // Check if weekly survey is due (7 days since last completion or 7 days since initial survey completion)
+    // Prefer the user column — response ISO-week grouping misses completions when
+    // answers span weeks or prior-week answers were reused without re-saving.
+    const lastWeeklyCompletion =
+      finalRow.last_weekly_survey_date || lastWeeklyFromResponses;
+
+    const toNyCalendarDay = (value) => {
+      if (!value) return null;
+      if (value instanceof Date) {
+        const y = value.getUTCFullYear();
+        const m = String(value.getUTCMonth() + 1).padStart(2, "0");
+        const d = String(value.getUTCDate()).padStart(2, "0");
+        return moment.tz(`${y}-${m}-${d}`, "YYYY-MM-DD", "America/New_York");
+      }
+      const raw = String(value);
+      const dateOnly = raw.length >= 10 ? raw.slice(0, 10) : raw;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
+        return moment.tz(dateOnly, "YYYY-MM-DD", "America/New_York");
+      }
+      return moment.tz(value, "America/New_York").startOf("day");
+    };
+
+    if (
+      finalRow.last_weekly_survey_date &&
+      weeklyCompletedCount === 0
+    ) {
+      weeklyCompletedCount = 1;
+    } else if (finalRow.last_weekly_survey_date && lastWeeklyFromResponses) {
+      const userWeek = toNyCalendarDay(finalRow.last_weekly_survey_date).format("GGGG-WW");
+      const responseWeeks = new Set(
+        completedWeeksResult.rows.map((row) =>
+          toNyCalendarDay(row.last_response_date).format("GGGG-WW")
+        )
+      );
+      if (!responseWeeks.has(userWeek)) {
+        weeklyCompletedCount += 1;
+      }
+    }
+
     let weeklyDue = false;
     let daysSinceLastWeekly = null;
-    
-    if (initialCompleted) { // Only check for weekly surveys if initial is completed
+
+    if (initialCompleted) {
       if (!lastWeeklyCompletion) {
-        // Never completed a weekly survey - check if 7 days have passed since initial survey completion
         if (initialCompletionDate) {
-          const initialDate = moment.tz(initialCompletionDate, 'America/New_York');
-          const today = moment.tz('America/New_York');
-          const daysSinceInitial = today.diff(initialDate, 'days');
-          // Only set weeklyDue if at least 7 days have passed since initial survey completion
+          const initialDate = toNyCalendarDay(initialCompletionDate);
+          const today = moment.tz("America/New_York").startOf("day");
+          const daysSinceInitial = today.diff(initialDate, "days");
           weeklyDue = daysSinceInitial >= 7;
-          daysSinceLastWeekly = daysSinceInitial; // Use days since initial as reference
+          daysSinceLastWeekly = daysSinceInitial;
         } else {
-          // Can't determine initial completion date, don't show weekly survey yet
           weeklyDue = false;
         }
       } else {
-        // Calculate days since last weekly survey
-        const lastDate = moment.tz(lastWeeklyCompletion, 'America/New_York');
-        const today = moment.tz('America/New_York');
-        daysSinceLastWeekly = today.diff(lastDate, 'days');
-        
-        // Weekly survey is due if 7 or more days have passed
+        const lastDate = toNyCalendarDay(lastWeeklyCompletion);
+        const today = moment.tz("America/New_York").startOf("day");
+        daysSinceLastWeekly = today.diff(lastDate, "days");
         weeklyDue = daysSinceLastWeekly >= 7;
       }
     }
