@@ -52,12 +52,12 @@ const FoodLog = () => {
   const [loading, setLoading] = useState(false);
   const [loggingPurchase, setLoggingPurchase] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
-  const dateParam = searchParams.get("date");
-  const [selectedDate, setSelectedDate] = useState(() =>
-    dateParam && dayjs(dateParam, "YYYY-MM-DD", true).isValid()
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const dateParam = searchParams.get("date");
+    return dateParam && dayjs(dateParam, "YYYY-MM-DD", true).isValid()
       ? dayjs(dateParam, "YYYY-MM-DD")
-      : dayjs()
-  );
+      : dayjs();
+  });
   const { data: sessionData } = useSessionData();
   const [showDailyTasksPopup, setShowDailyTasksPopup] = useState(false);
   const [surveyReminderBlocking, setSurveyReminderBlocking] = useState(false);
@@ -152,25 +152,27 @@ const FoodLog = () => {
     return () => window.removeEventListener("sessionLogin", onLogin);
   }, [fetchFoodPurchases]);
 
-  // Only touch the URL while this tab is visible — otherwise a kept-alive FoodLog
-  // will re-apply ?date= onto /survey (and other routes) whenever setSearchParams changes.
+  // One-shot deep link from Summary (`/log?date=YYYY-MM-DD`). Apply while this
+  // tab is visible, then drop the param so day picks stay local state only.
   useEffect(() => {
     if (!isTabActive) return;
 
     const param = searchParams.get("date");
-    if (param && dayjs(param, "YYYY-MM-DD", true).isValid()) {
-      const fromUrl = dayjs(param, "YYYY-MM-DD");
-      if (!fromUrl.isSame(selectedDate, "day")) {
-        setSelectedDate(fromUrl);
-        return;
-      }
-    }
+    if (!param || !dayjs(param, "YYYY-MM-DD", true).isValid()) return;
 
-    const dateStr = selectedDate.format("YYYY-MM-DD");
-    if (param !== dateStr) {
-      setSearchParams({ date: dateStr }, { replace: true });
-    }
-  }, [isTabActive, selectedDate, searchParams, setSearchParams]);
+    const fromUrl = dayjs(param, "YYYY-MM-DD");
+    setSelectedDate((prev) => (fromUrl.isSame(prev, "day") ? prev : fromUrl));
+
+    setSearchParams(
+      (prev) => {
+        if (!prev.has("date")) return prev;
+        const next = new URLSearchParams(prev);
+        next.delete("date");
+        return next;
+      },
+      { replace: true }
+    );
+  }, [isTabActive, searchParams, setSearchParams]);
 
   useEffect(() => {
     tryShowDailyTasksPopup();
