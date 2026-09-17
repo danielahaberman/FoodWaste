@@ -7,13 +7,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5" />
     <meta name="theme-color" content="#f97316" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <!-- 
-      Status bar style options:
-      - "default": Opaque status bar, content starts below it (recommended)
-      - "black": Black opaque status bar
-      - "black-translucent": Transparent status bar, content can extend underneath (requires proper safe-area-inset padding)
+    <!--
+      black-translucent: content draws under the status bar and env(safe-area-inset-*)
+      is non-zero. "default" often leaves content under the notch with inset-top = 0.
     -->
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Food Hero" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

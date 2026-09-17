@@ -1550,13 +1550,13 @@ function ConsumeWaste({ onGoToDate }) {
 
 		{/* Overall trends dialog */}
 		<Dialog open={overallOpen && isTabActive} onClose={() => setOverallOpen(false)} fullScreen>
-			<Box sx={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden' }}>
+			<Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
 			<Box sx={{ 
 				flexShrink: 0,
 				backgroundColor: 'primary.main',
 				color: 'white',
 				px: { xs: 2, sm: 3 },
-				pt: 'calc(12px + env(safe-area-inset-top, 0px))',
+				pt: 1.5,
 				pb: 2,
 				display: 'flex',
 				alignItems: 'center',

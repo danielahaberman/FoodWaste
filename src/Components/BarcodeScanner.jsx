@@ -201,7 +201,7 @@ const BarcodeScanner = ({ open, onClose, onScan, onError, onManualAdd }) => {
           borderRadius: { xs: 0, sm: 2 },
           display: 'flex',
           flexDirection: 'column',
-          height: { xs: '100dvh', sm: 'auto' },
+          height: { xs: '100%', sm: 'auto' },
         },
       }}
     >

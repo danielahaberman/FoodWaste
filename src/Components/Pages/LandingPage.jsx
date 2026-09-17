@@ -65,7 +65,9 @@ function LandingPage() {
   return (
     <Box
       sx={{
-        minHeight: '100dvh',
+        flex: 1,
+        minHeight: '100%',
+        height: '100%',
         display: 'flex',
         flexDirection: 'column',
         position: 'relative',
@@ -107,7 +109,7 @@ function LandingPage() {
           aria-label="Clear app data"
           sx={{
             position: 'absolute',
-            top: { xs: 'calc(12px + env(safe-area-inset-top, 0px))', sm: 16 },
+            top: { xs: 12, sm: 16 },
             right: 16,
             zIndex: 1,
             color: 'text.secondary',

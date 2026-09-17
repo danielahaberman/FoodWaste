@@ -328,7 +328,7 @@ function AddNewPurchase({
       sx={{
         width: "100%",
         maxWidth: "100%",
-        height: "100vh",
+        height: "100%",
         display: "flex",
         flexDirection: "column",
         boxSizing: "border-box",

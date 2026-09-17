@@ -71,8 +71,9 @@ const SidebarLayout = () => {
       sx={{
         display: "flex",
         flexDirection: "column",
-        height: "100dvh",
-        minHeight: "100vh",
+        flex: 1,
+        height: "100%",
+        minHeight: 0,
         width: "100%",
         maxWidth: "600px",
         margin: "0 auto",
