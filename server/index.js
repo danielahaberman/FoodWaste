@@ -1781,8 +1781,16 @@ app.post("/survey-response", requireAuth, async (req, res) => {
             [userId]
           );
         } else if (row.stage === 'weekly') {
+          // Only stamp completion once per ISO week — later saves must not push the due clock forward.
           await pool.query(
-            "UPDATE users SET last_weekly_survey_date = (CURRENT_TIMESTAMP AT TIME ZONE 'America/New_York')::date WHERE id = $1",
+            `UPDATE users
+             SET last_weekly_survey_date = (CURRENT_TIMESTAMP AT TIME ZONE 'America/New_York')::date
+             WHERE id = $1
+               AND (
+                 last_weekly_survey_date IS NULL
+                 OR to_char(last_weekly_survey_date, 'IYYY-IW')
+                    IS DISTINCT FROM to_char(NOW() AT TIME ZONE 'America/New_York', 'IYYY-IW')
+               )`,
             [userId]
           );
         } else if (row.stage === 'final') {

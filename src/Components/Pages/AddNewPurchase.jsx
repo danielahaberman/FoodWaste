@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import dayjs from "dayjs";
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
@@ -33,6 +32,7 @@ import { getCurrentUserId } from "../../utils/authUtils";
 import { Alert, Snackbar } from "@mui/material";
 import { mapToAppCategory } from "../../utils/categoryMapper";
 import { mapToAppQuantityType } from "../../utils/quantityTypeMapper";
+import { getAppToday } from "../../utils/appDate";
 function AddNewPurchase({
   foodItems,
   fetchFoodItems,
@@ -166,7 +166,7 @@ function AddNewPurchase({
   };
 
   const handleAddToPurchase = async (foodItem) => {
-    const today = dayjs();
+    const today = getAppToday();
     const isSelectedDateInPast = selectedDate.isBefore(today, 'day');
 
     if (isSelectedDateInPast) {
@@ -227,7 +227,7 @@ function AddNewPurchase({
 
   const handleConfirmDateChoice = async (useToday) => {
     if (pendingFoodItem) {
-      const targetDate = useToday ? dayjs() : selectedDate;
+      const targetDate = useToday ? getAppToday() : selectedDate;
       await addFoodToDate(pendingFoodItem, targetDate);
       // Reset form and close modal after purchase is added
       setNewFoodItem(initialNewFoodItem);
@@ -246,7 +246,7 @@ function AddNewPurchase({
       };
 
       // Check if selected date is in the past (not today)
-      const today = dayjs();
+      const today = getAppToday();
       const isSelectedDateInPast = selectedDate.isBefore(today, 'day');
       
       if (isSelectedDateInPast) {
@@ -818,7 +818,7 @@ function AddNewPurchase({
              color="text.secondary"
              sx={{ fontStyle: "italic", display: "block" }}
            >
-             Today is {dayjs().format("dddd, MMMM D, YYYY")}
+             Today is {getAppToday().format("dddd, MMMM D, YYYY")}
            </Typography>
          </Stack>
        </AppConfirmDialog>

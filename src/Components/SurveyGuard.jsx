@@ -11,7 +11,6 @@ import EventNoteOutlinedIcon from "@mui/icons-material/EventNoteOutlined";
 import AppConfirmDialog from "./AppConfirmDialog";
 import {
   isWeeklySurveyForced,
-  markInitialSurveyModalShown,
   markWeeklySurveyModalShown,
   markWeeklySurveySnoozed,
   notifySurveyReminderClose,
@@ -57,16 +56,19 @@ function SurveyGuard({ children }) {
   }, [location.pathname, surveyStatus, applyReminderState]);
 
   useEffect(() => {
-    const blocking = showWelcomeModal || showWeeklyModal;
+    const initialBlocking =
+      Boolean(surveyStatus) &&
+      !surveyStatus.initialCompleted &&
+      !isPublicPage(location.pathname);
+    const blocking = initialBlocking || showWelcomeModal || showWeeklyModal;
     if (blocking) {
       notifySurveyReminderOpen();
     } else {
       notifySurveyReminderClose();
     }
-  }, [showWelcomeModal, showWeeklyModal]);
+  }, [location.pathname, showWelcomeModal, showWeeklyModal, surveyStatus]);
 
   const handleStartSurvey = () => {
-    markInitialSurveyModalShown();
     setShowWelcomeModal(false);
     navigate("/survey?stage=initial", { replace: true });
   };
@@ -107,7 +109,7 @@ function SurveyGuard({ children }) {
       <>
         {children}
         <AppConfirmDialog
-          open={showWelcomeModal && !isPublicPage(location.pathname)}
+          open
           tone="primary"
           icon={<AssignmentOutlinedIcon />}
           title="Welcome to Food Hero!"

@@ -21,13 +21,14 @@ import { StaticDatePicker } from "@mui/x-date-pickers/StaticDatePicker";
 import { PickersDay } from "@mui/x-date-pickers/PickersDay";
 import dayjs from "dayjs";
 import { primaryAlpha } from "../themeColors";
+import { getAppToday } from "../utils/appDate";
 
 const DateNavigator = ({ value, onChange, datesWithFood = [] }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
-  const today = dayjs();
+  const today = getAppToday();
   const isToday = dayjs(value).isSame(today, "day");
   const isFuture = dayjs(value).isAfter(today, "day");
 

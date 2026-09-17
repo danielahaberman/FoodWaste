@@ -1,8 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
-import dayjs from "dayjs";
 import { surveyAPI } from "../../api";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import weekOfYear from "dayjs/plugin/weekOfYear";
 
 import Survey from "../Survey";
 import SurveyMap from "../SurveyProgressMap/SurveyMap";
@@ -23,8 +21,8 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import PageWrapper from "../PageWrapper";
 import { getCurrentUserId } from "../../utils/authUtils";
 import { colors } from "../../themeColors";
-
-dayjs.extend(weekOfYear);
+import { isSameAppIsoWeek } from "../../utils/appDate";
+import { fetchSessionData } from "../../utils/sessionDataCache";
 
 const cardSx = {
   borderRadius: 3,
@@ -42,9 +40,7 @@ function resolveWeeklyCompletedCount(status) {
 
 function isWeeklyDoneThisWeek(status) {
   return Boolean(
-    status?.lastWeeklyCompletion &&
-      dayjs(status.lastWeeklyCompletion).week() === dayjs().week() &&
-      dayjs(status.lastWeeklyCompletion).year() === dayjs().year()
+    status?.lastWeeklyCompletion && isSameAppIsoWeek(status.lastWeeklyCompletion)
   );
 }
 
@@ -288,6 +284,11 @@ function QaPage() {
       setActiveStage(null);
       // Refresh shared session cache so SurveyGuard drops overdue/weekly modals.
       window.dispatchEvent(new CustomEvent("taskCompleted"));
+      try {
+        await fetchSessionData(true);
+      } catch (err) {
+        console.error("Error refreshing session after survey:", err);
+      }
       await loadStatus();
     },
     [activeStage, loadStatus]

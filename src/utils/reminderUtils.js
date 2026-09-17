@@ -98,11 +98,14 @@ export function shouldOfferWeeklySurveyModal(surveyStatus, pathname, isPublicPag
 export function shouldOfferInitialSurveyModal(surveyStatus, pathname, isPublicPage) {
   if (surveyStatus?.initialCompleted) return false;
   if (isPublicPage(pathname)) return false;
-  return localStorage.getItem("surveyModalShown") !== "true";
+  // Always block until the initial survey is completed — leaving /survey unfinished
+  // must reopen the gate on the next protected route.
+  return true;
 }
 
+/** @deprecated Kept for call-site compatibility; initial gate no longer uses localStorage. */
 export function markInitialSurveyModalShown() {
-  localStorage.setItem("surveyModalShown", "true");
+  // no-op: completion is server-driven via surveyStatus.initialCompleted
 }
 
 export const SURVEY_REMINDER_OPEN = "surveyReminderOpen";

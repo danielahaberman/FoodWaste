@@ -7,6 +7,7 @@ import { ThemeProvider, createTheme } from "@mui/material/styles";
 import dayjs from "dayjs";
 import FoodLog from "./FoodLog";
 import { TabVisibilityContext } from "../../context/TabVisibilityContext";
+import { getAppToday } from "../../utils/appDate";
 
 vi.mock("../../api", () => ({
   foodPurchaseAPI: {
@@ -14,7 +15,7 @@ vi.mock("../../api", () => ({
       data: [
         {
           purchase_id: 1,
-          purchase_date: dayjs().subtract(1, "day").format("YYYY-MM-DD"),
+          purchase_date: "2026-09-15",
           price: "3.50",
           food_name: "Test Apple",
         },
@@ -143,12 +144,12 @@ describe("FoodLog date navigation", () => {
     const user = userEvent.setup();
     renderFoodLog("/log");
 
-    const today = dayjs().format("YYYY-MM-DD");
+    const today = getAppToday().format("YYYY-MM-DD");
     expect(await screen.findByTestId("selected-date")).toHaveTextContent(today);
 
     await user.click(screen.getByRole("button", { name: "Previous day" }));
 
-    const yesterday = dayjs().subtract(1, "day").format("YYYY-MM-DD");
+    const yesterday = getAppToday().subtract(1, "day").format("YYYY-MM-DD");
     await waitFor(() => {
       expect(screen.getByTestId("selected-date")).toHaveTextContent(yesterday);
     });

@@ -1,6 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import dayjs from "dayjs";
+import customParseFormat from "dayjs/plugin/customParseFormat";
 import { foodPurchaseAPI } from "../../api";
 import { useSessionData } from "../../hooks/useSessionData";
 import { LocalizationProvider } from "@mui/x-date-pickers";
@@ -33,6 +34,9 @@ import {
   SURVEY_REMINDER_CLOSE,
   SURVEY_REMINDER_OPEN,
 } from "../../utils/reminderUtils";
+import { getAppToday } from "../../utils/appDate";
+
+dayjs.extend(customParseFormat);
 
 const cardSx = {
   borderRadius: 3,
@@ -56,7 +60,7 @@ const FoodLog = () => {
     const dateParam = searchParams.get("date");
     return dateParam && dayjs(dateParam, "YYYY-MM-DD", true).isValid()
       ? dayjs(dateParam, "YYYY-MM-DD")
-      : dayjs();
+      : getAppToday();
   });
   const { data: sessionData } = useSessionData();
   const [showDailyTasksPopup, setShowDailyTasksPopup] = useState(false);
@@ -229,10 +233,11 @@ const FoodLog = () => {
     [filteredPurchases]
   );
 
-  const isWithin7Days = !selectedDate.isBefore(dayjs().subtract(7, "day"), "day");
-  const isDateInFuture = selectedDate.isAfter(dayjs(), "day");
+  const appToday = getAppToday();
+  const isWithin7Days = !selectedDate.isBefore(appToday.subtract(7, "day"), "day");
+  const isDateInFuture = selectedDate.isAfter(appToday, "day");
   const canModify = isWithin7Days && !isDateInFuture;
-  const isToday = selectedDate.isSame(dayjs(), "day");
+  const isToday = selectedDate.isSame(appToday, "day");
 
   return (
     <PageWrapper title="Food Log" showLogo>
