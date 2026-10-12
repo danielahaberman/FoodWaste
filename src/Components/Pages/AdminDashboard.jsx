@@ -1280,10 +1280,18 @@ function AdminDashboard({ onLogout }) {
 
               {/* Waste by Category */}
               <Grid item xs={12} md={6}>
-                <Card>
+                <AdminCategoryBars
+                  title="Waste by category"
+                  rows={wastePatterns.byCategory || []}
+                  labelKey="category"
+                  valueKey="count"
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2.5 }}>
                   <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      Waste by Category
+                    <Typography variant="h6" sx={{ fontWeight: 700 }} gutterBottom>
+                      Waste by category (detail)
                     </Typography>
                     <TableContainer>
                       <Table size="small">
@@ -1296,7 +1304,7 @@ function AdminDashboard({ onLogout }) {
                           </TableRow>
                         </TableHead>
                         <TableBody>
-                          {wastePatterns.byCategory?.map((row, index) => (
+                          {(wastePatterns.byCategory?.length ? wastePatterns.byCategory : []).map((row, index) => (
                             <TableRow key={index}>
                               <TableCell>{row.category || 'Unknown'}</TableCell>
                               <TableCell>{row.count}</TableCell>
@@ -1304,6 +1312,15 @@ function AdminDashboard({ onLogout }) {
                               <TableCell>{row.waste_percentage || 0}%</TableCell>
                             </TableRow>
                           ))}
+                          {!wastePatterns.byCategory?.length && (
+                            <TableRow>
+                              <TableCell colSpan={4}>
+                                <Typography variant="body2" color="text.secondary">
+                                  No waste-by-category data for this range
+                                </Typography>
+                              </TableCell>
+                            </TableRow>
+                          )}
                         </TableBody>
                       </Table>
                     </TableContainer>
@@ -1393,9 +1410,14 @@ function AdminDashboard({ onLogout }) {
               </Grid>
             </Grid>
           ) : (
-            <Typography variant="body1" color="textSecondary" align="center">
-              Click the tab to load waste patterns data
-            </Typography>
+            <Box textAlign="center" py={6}>
+              <Typography variant="h6" color="text.secondary" gutterBottom>
+                No waste patterns loaded
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Switch to this tab again or adjust the date range, then reopen Waste.
+              </Typography>
+            </Box>
           )}
         </TabPanel>
 
@@ -1476,9 +1498,14 @@ function AdminDashboard({ onLogout }) {
             </Grid>
           </Grid>
         ) : (
-          <Typography variant="body1" color="textSecondary" align="center">
-            Click the tab to load purchase trends data
-          </Typography>
+          <Box textAlign="center" py={6}>
+            <Typography variant="h6" color="text.secondary" gutterBottom>
+              No purchase trends loaded
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Switch to this tab again or adjust the date range, then reopen Purchases.
+            </Typography>
+          </Box>
         )}
       </TabPanel>
 
