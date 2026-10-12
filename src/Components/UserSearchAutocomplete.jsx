@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Box,
   TextField,
@@ -9,57 +9,86 @@ import {
   Typography,
   CircularProgress,
   InputAdornment,
-  IconButton
+  IconButton,
 } from '@mui/material';
 import {
   Search as SearchIcon,
   Clear as ClearIcon,
-  Person as PersonIcon
+  Person as PersonIcon,
 } from '@mui/icons-material';
 import { adminAPI } from '../api';
 
-const UserSearchAutocomplete = ({ onUserSelect, placeholder = "Search by User ID or Username..." }) => {
+const UserSearchAutocomplete = ({
+  onUserSelect,
+  placeholder = 'Search by User ID or Username...',
+  defaultLimit = 15,
+}) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [suggestions, setSuggestions] = useState([]);
+  const [defaultUsers, setDefaultUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
-  
+  const [hasLoadedDefaults, setHasLoadedDefaults] = useState(false);
+
   const inputRef = useRef(null);
-  const suggestionsRef = useRef(null);
+  const listRef = useRef(null);
   const debounceRef = useRef(null);
 
-  // Debounced search function
+  const loadDefaultUsers = useCallback(async () => {
+    try {
+      const response = await adminAPI.searchUsers('', defaultLimit);
+      setDefaultUsers(response.data || []);
+      setHasLoadedDefaults(true);
+      return response.data || [];
+    } catch (error) {
+      console.error('Error loading default users:', error);
+      setDefaultUsers([]);
+      setHasLoadedDefaults(true);
+      return [];
+    }
+  }, [defaultLimit]);
+
+  useEffect(() => {
+    // Show recent users immediately so admins don't have to guess who to search
+    loadDefaultUsers().then((users) => {
+      setSuggestions(users);
+      setShowSuggestions(true);
+    });
+  }, [loadDefaultUsers]);
+
   const searchUsers = async (query) => {
-    if (!query || query.length < 1) {
-      setSuggestions([]);
-      setShowSuggestions(false);
+    const trimmed = (query || '').trim();
+
+    if (!trimmed) {
+      const users = defaultUsers.length ? defaultUsers : await loadDefaultUsers();
+      setSuggestions(users);
+      setSelectedIndex(-1);
       return;
     }
 
     setLoading(true);
     try {
-      const response = await adminAPI.searchUsers(query, 10);
-      setSuggestions(response.data);
-      setShowSuggestions(true);
+      const response = await adminAPI.searchUsers(trimmed, 10);
+      setSuggestions(response.data || []);
       setSelectedIndex(-1);
     } catch (error) {
       console.error('Error searching users:', error);
       setSuggestions([]);
-      setShowSuggestions(false);
     } finally {
       setLoading(false);
     }
   };
 
-  // Debounce search requests
   useEffect(() => {
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
     }
 
     debounceRef.current = setTimeout(() => {
-      searchUsers(searchTerm);
+      if (showSuggestions) {
+        searchUsers(searchTerm);
+      }
     }, 300);
 
     return () => {
@@ -67,39 +96,43 @@ const UserSearchAutocomplete = ({ onUserSelect, placeholder = "Search by User ID
         clearTimeout(debounceRef.current);
       }
     };
-  }, [searchTerm]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- searchUsers closes over latest defaults
+  }, [searchTerm, showSuggestions]);
 
-  // Handle input change
   const handleInputChange = (event) => {
-    const value = event.target.value;
-    setSearchTerm(value);
+    setSearchTerm(event.target.value);
+    setShowSuggestions(true);
   };
 
-  // Handle user selection
+  const handleFocus = async () => {
+    setShowSuggestions(true);
+    if (!searchTerm.trim()) {
+      const users = defaultUsers.length ? defaultUsers : await loadDefaultUsers();
+      setSuggestions(users);
+    }
+  };
+
   const handleUserSelect = (user) => {
-    setSearchTerm(user.id.toString());
+    setSearchTerm(user.username || user.id.toString());
     setShowSuggestions(false);
     setSelectedIndex(-1);
     onUserSelect(user);
   };
 
-  // Handle clear
   const handleClear = () => {
     setSearchTerm('');
-    setSuggestions([]);
-    setShowSuggestions(false);
+    setSuggestions(defaultUsers);
+    setShowSuggestions(true);
     setSelectedIndex(-1);
     onUserSelect(null);
     inputRef.current?.focus();
   };
 
-  // Handle keyboard navigation
   const handleKeyDown = (event) => {
     if (!showSuggestions || suggestions.length === 0) {
       if (event.key === 'Enter' && searchTerm.trim()) {
-        // Try to search with current term
-        const numericId = parseInt(searchTerm.trim());
-        if (!isNaN(numericId)) {
+        const numericId = parseInt(searchTerm.trim(), 10);
+        if (!Number.isNaN(numericId)) {
           handleUserSelect({ id: numericId, username: `User ${numericId}` });
         }
       }
@@ -109,13 +142,13 @@ const UserSearchAutocomplete = ({ onUserSelect, placeholder = "Search by User ID
     switch (event.key) {
       case 'ArrowDown':
         event.preventDefault();
-        setSelectedIndex(prev => 
+        setSelectedIndex((prev) =>
           prev < suggestions.length - 1 ? prev + 1 : prev
         );
         break;
       case 'ArrowUp':
         event.preventDefault();
-        setSelectedIndex(prev => prev > 0 ? prev - 1 : -1);
+        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : -1));
         break;
       case 'Enter':
         event.preventDefault();
@@ -127,15 +160,16 @@ const UserSearchAutocomplete = ({ onUserSelect, placeholder = "Search by User ID
         setShowSuggestions(false);
         setSelectedIndex(-1);
         break;
+      default:
+        break;
     }
   };
 
-  // Handle click outside to close suggestions
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
-        suggestionsRef.current &&
-        !suggestionsRef.current.contains(event.target) &&
+        listRef.current &&
+        !listRef.current.contains(event.target) &&
         inputRef.current &&
         !inputRef.current.contains(event.target)
       ) {
@@ -150,13 +184,22 @@ const UserSearchAutocomplete = ({ onUserSelect, placeholder = "Search by User ID
     };
   }, []);
 
+  const showingDefaults = showSuggestions && !searchTerm.trim();
+  const showList = showSuggestions && (suggestions.length > 0 || loading || hasLoadedDefaults);
+  const showEmptySearch =
+    showSuggestions &&
+    searchTerm.trim() &&
+    suggestions.length === 0 &&
+    !loading;
+
   return (
-    <Box sx={{ position: 'relative', width: '100%' }}>
+    <Box sx={{ position: 'relative', width: '100%', overflow: 'visible' }}>
       <TextField
-        ref={inputRef}
+        inputRef={inputRef}
         fullWidth
         value={searchTerm}
         onChange={handleInputChange}
+        onFocus={handleFocus}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         size="small"
@@ -170,11 +213,7 @@ const UserSearchAutocomplete = ({ onUserSelect, placeholder = "Search by User ID
             <InputAdornment position="end">
               {loading && <CircularProgress size={16} />}
               {searchTerm && (
-                <IconButton
-                  size="small"
-                  onClick={handleClear}
-                  edge="end"
-                >
+                <IconButton size="small" onClick={handleClear} edge="end">
                   <ClearIcon fontSize="small" />
                 </IconButton>
               )}
@@ -184,74 +223,92 @@ const UserSearchAutocomplete = ({ onUserSelect, placeholder = "Search by User ID
         sx={{
           '& .MuiOutlinedInput-root': {
             backgroundColor: 'background.paper',
-          }
+          },
         }}
       />
 
-      {/* Suggestions Dropdown */}
-      {showSuggestions && suggestions.length > 0 && (
+      {showList && (
         <Paper
-          ref={suggestionsRef}
+          ref={listRef}
           elevation={3}
           sx={{
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            right: 0,
-            zIndex: 9999,
-            maxHeight: 300,
+            // In-flow (not absolute) so parent cards can't clip the list
+            position: 'relative',
+            zIndex: 2,
+            maxHeight: 320,
             overflow: 'auto',
-            mt: 0.5,
+            mt: 1,
             border: '1px solid',
             borderColor: 'divider',
             backgroundColor: 'background.paper',
           }}
         >
-          <List dense sx={{ p: 0 }}>
-            {suggestions.map((user, index) => (
-              <ListItem
-                key={user.id}
-                onClick={() => handleUserSelect(user)}
-                sx={{
-                  cursor: 'pointer',
-                  backgroundColor: index === selectedIndex ? 'action.hover' : 'transparent',
-                  '&:hover': {
-                    backgroundColor: 'action.hover',
-                  },
-                  borderBottom: index < suggestions.length - 1 ? '1px solid' : 'none',
-                  borderBottomColor: 'divider',
-                }}
-              >
-                <PersonIcon sx={{ mr: 1, color: 'text.secondary' }} />
-                <ListItemText
-                  primary={
-                    <Box>
-                      <Typography variant="body2" fontWeight="bold">
-                        {user.username}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        ID: {user.id} • Created: {new Date(user.created_at).toLocaleDateString()}
-                      </Typography>
-                    </Box>
-                  }
-                />
-              </ListItem>
-            ))}
-          </List>
+          {showingDefaults && (
+            <Box sx={{ px: 2, py: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+              <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                Recent users — click one or type to filter
+              </Typography>
+            </Box>
+          )}
+
+          {loading && suggestions.length === 0 ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+              <CircularProgress size={22} />
+            </Box>
+          ) : suggestions.length > 0 ? (
+            <List dense sx={{ p: 0 }}>
+              {suggestions.map((user, index) => (
+                <ListItem
+                  key={user.id}
+                  onClick={() => handleUserSelect(user)}
+                  sx={{
+                    cursor: 'pointer',
+                    backgroundColor:
+                      index === selectedIndex ? 'action.hover' : 'transparent',
+                    '&:hover': {
+                      backgroundColor: 'action.hover',
+                    },
+                    borderBottom:
+                      index < suggestions.length - 1 ? '1px solid' : 'none',
+                    borderBottomColor: 'divider',
+                  }}
+                >
+                  <PersonIcon sx={{ mr: 1, color: 'text.secondary' }} />
+                  <ListItemText
+                    primary={
+                      <Box>
+                        <Typography variant="body2" fontWeight="bold">
+                          {user.username || `User ${user.id}`}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          ID: {user.id}
+                          {user.created_at
+                            ? ` • Created: ${new Date(user.created_at).toLocaleDateString()}`
+                            : ''}
+                        </Typography>
+                      </Box>
+                    }
+                  />
+                </ListItem>
+              ))}
+            </List>
+          ) : (
+            <Box sx={{ p: 2 }}>
+              <Typography variant="body2" color="text.secondary" align="center">
+                No users available
+              </Typography>
+            </Box>
+          )}
         </Paper>
       )}
 
-      {/* No results message */}
-      {showSuggestions && searchTerm && suggestions.length === 0 && !loading && (
+      {showEmptySearch && (
         <Paper
           elevation={3}
           sx={{
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            right: 0,
-            zIndex: 9999,
-            mt: 0.5,
+            position: 'relative',
+            zIndex: 2,
+            mt: 1,
             p: 2,
             border: '1px solid',
             borderColor: 'divider',
@@ -259,7 +316,7 @@ const UserSearchAutocomplete = ({ onUserSelect, placeholder = "Search by User ID
           }}
         >
           <Typography variant="body2" color="text.secondary" align="center">
-            No users found matching "{searchTerm}"
+            No users found matching &quot;{searchTerm}&quot;
           </Typography>
         </Paper>
       )}

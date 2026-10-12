@@ -234,9 +234,8 @@ const FoodLog = () => {
   );
 
   const appToday = getAppToday();
-  const isWithin7Days = !selectedDate.isBefore(appToday.subtract(7, "day"), "day");
   const isDateInFuture = selectedDate.isAfter(appToday, "day");
-  const canModify = isWithin7Days && !isDateInFuture;
+  const canModify = !isDateInFuture;
   const isToday = selectedDate.isSame(appToday, "day");
 
   return (
@@ -327,7 +326,7 @@ const FoodLog = () => {
               color="text.secondary"
               sx={{ display: "block", textAlign: "center", mt: 1 }}
             >
-              You can only add or remove items from the last 7 days.
+              You can&apos;t add or remove items on future dates.
             </Typography>
           )}
         </Paper>

@@ -37,8 +37,15 @@ import {
   generateFakeUsersWithData,
   cleanupFakeUsers,
   getFakeUsersCount,
-  generateTrendingDataForUser
+  generateTrendingDataForUser,
+  listFakeUsers,
+  deleteFakeUser,
 } from "./fakeDataGenerator.js";
+import {
+  parseAdminDateRange,
+  pushDateRangeFilter,
+  hasDateRange,
+} from "./utils/adminDateRange.js";
 
 // Initialize database and start server
 async function startServer() {
@@ -2023,24 +2030,53 @@ app.use("/admin", requireAdmin);
 // GET admin analytics overview
 app.get("/admin/analytics/overview", async (req, res) => {
   try {
-    // Get total users
-    const totalUsersResult = await pool.query("SELECT COUNT(*) as total FROM users WHERE id > 0");
+    const range = parseAdminDateRange(req.query);
+    if (range.error) return res.status(400).json({ error: range.error });
+    const { startDate, endDate } = range;
+
+    const userParts = ["id > 0"];
+    const userParams = [];
+    pushDateRangeFilter(userParts, userParams, "terms_accepted_at", startDate, endDate);
+    const totalUsersResult = await pool.query(
+      `SELECT COUNT(*) as total FROM users WHERE ${userParts.join(" AND ")}`,
+      userParams
+    );
     const totalUsers = totalUsersResult.rows[0].total;
 
-    // Get users who completed initial survey
-    const initialSurveyResult = await pool.query("SELECT COUNT(*) as completed FROM users WHERE initial_survey_completed_at IS NOT NULL AND id > 0");
+    const initialParts = ["id > 0", "initial_survey_completed_at IS NOT NULL"];
+    const initialParams = [];
+    pushDateRangeFilter(initialParts, initialParams, "initial_survey_completed_at", startDate, endDate);
+    const initialSurveyResult = await pool.query(
+      `SELECT COUNT(*) as completed FROM users WHERE ${initialParts.join(" AND ")}`,
+      initialParams
+    );
     const initialSurveyCompleted = initialSurveyResult.rows[0].completed;
 
-    // Get users who completed final survey
-    const finalSurveyResult = await pool.query("SELECT COUNT(*) as completed FROM users WHERE final_survey_completed_at IS NOT NULL AND id > 0");
+    const finalParts = ["id > 0", "final_survey_completed_at IS NOT NULL"];
+    const finalParams = [];
+    pushDateRangeFilter(finalParts, finalParams, "final_survey_completed_at", startDate, endDate);
+    const finalSurveyResult = await pool.query(
+      `SELECT COUNT(*) as completed FROM users WHERE ${finalParts.join(" AND ")}`,
+      finalParams
+    );
     const finalSurveyCompleted = finalSurveyResult.rows[0].completed;
 
-    // Get total purchases
-    const purchasesResult = await pool.query("SELECT COUNT(*) as total FROM purchases WHERE user_id > 0");
+    const purchaseParts = ["user_id > 0"];
+    const purchaseParams = [];
+    pushDateRangeFilter(purchaseParts, purchaseParams, "purchase_date", startDate, endDate);
+    const purchasesResult = await pool.query(
+      `SELECT COUNT(*) as total FROM purchases WHERE ${purchaseParts.join(" AND ")}`,
+      purchaseParams
+    );
     const totalPurchases = purchasesResult.rows[0].total;
 
-    // Get total survey responses
-    const responsesResult = await pool.query("SELECT COUNT(*) as total FROM survey_responses WHERE user_id > 0");
+    const responseParts = ["user_id > 0"];
+    const responseParams = [];
+    pushDateRangeFilter(responseParts, responseParams, "response_date", startDate, endDate);
+    const responsesResult = await pool.query(
+      `SELECT COUNT(*) as total FROM survey_responses WHERE ${responseParts.join(" AND ")}`,
+      responseParams
+    );
     const totalResponses = responsesResult.rows[0].total;
 
     res.json({
@@ -2050,7 +2086,9 @@ app.get("/admin/analytics/overview", async (req, res) => {
       totalPurchases: parseInt(totalPurchases),
       totalResponses: parseInt(totalResponses),
       initialSurveyCompletionRate: totalUsers > 0 ? Math.round((initialSurveyCompleted / totalUsers) * 100) : 0,
-      finalSurveyCompletionRate: totalUsers > 0 ? Math.round((finalSurveyCompleted / totalUsers) * 100) : 0
+      finalSurveyCompletionRate: totalUsers > 0 ? Math.round((finalSurveyCompleted / totalUsers) * 100) : 0,
+      startDate,
+      endDate,
     });
   } catch (err) {
     console.error("Error getting analytics overview:", err);
@@ -2061,43 +2099,45 @@ app.get("/admin/analytics/overview", async (req, res) => {
 // GET user demographics
 app.get("/admin/analytics/demographics", async (req, res) => {
   try {
-    // Get total user count
-    const userCountQuery = `
-      SELECT COUNT(DISTINCT user_id) as total_users
-      FROM survey_responses 
-      WHERE user_id > 0
-    `;
-    const userCountResult = await pool.query(userCountQuery);
+    const range = parseAdminDateRange(req.query);
+    if (range.error) return res.status(400).json({ error: range.error });
+    const { startDate, endDate } = range;
 
-    // Get gender distribution
-    const genderQuery = `
-      SELECT sr.response, COUNT(*) as count
-      FROM survey_responses sr
-      JOIN survey_questions sq ON sr.question_id = sq.id
-      WHERE sq.question_text = 'What is your gender?' AND sr.user_id > 0
-      GROUP BY sr.response
-    `;
-    const genderResult = await pool.query(genderQuery);
+    const buildDemoQuery = (questionText) => {
+      const parts = ["sr.user_id > 0", "sq.question_text = $1"];
+      const params = [questionText];
+      pushDateRangeFilter(parts, params, "sr.response_date", startDate, endDate);
+      return {
+        text: `
+          SELECT sr.response, COUNT(*) as count
+          FROM survey_responses sr
+          JOIN survey_questions sq ON sr.question_id = sq.id
+          WHERE ${parts.join(" AND ")}
+          GROUP BY sr.response
+        `,
+        params,
+      };
+    };
 
-    // Get age distribution
-    const ageQuery = `
-      SELECT sr.response, COUNT(*) as count
-      FROM survey_responses sr
-      JOIN survey_questions sq ON sr.question_id = sq.id
-      WHERE sq.question_text = 'How old are you?' AND sr.user_id > 0
-      GROUP BY sr.response
-    `;
-    const ageResult = await pool.query(ageQuery);
+    const userCountParts = ["user_id > 0"];
+    const userCountParams = [];
+    pushDateRangeFilter(userCountParts, userCountParams, "response_date", startDate, endDate);
+    const userCountResult = await pool.query(
+      `SELECT COUNT(DISTINCT user_id) as total_users
+       FROM survey_responses
+       WHERE ${userCountParts.join(" AND ")}`,
+      userCountParams
+    );
 
-    // Get income distribution
-    const incomeQuery = `
-      SELECT sr.response, COUNT(*) as count
-      FROM survey_responses sr
-      JOIN survey_questions sq ON sr.question_id = sq.id
-      WHERE sq.question_text = 'What is your yearly income?' AND sr.user_id > 0
-      GROUP BY sr.response
-    `;
-    const incomeResult = await pool.query(incomeQuery);
+    const genderQ = buildDemoQuery("What is your gender?");
+    const ageQ = buildDemoQuery("How old are you?");
+    const incomeQ = buildDemoQuery("What is your yearly income?");
+
+    const [genderResult, ageResult, incomeResult] = await Promise.all([
+      pool.query(genderQ.text, genderQ.params),
+      pool.query(ageQ.text, ageQ.params),
+      pool.query(incomeQ.text, incomeQ.params),
+    ]);
 
     res.json({
       totalUsers: userCountResult.rows[0]?.total_users || 0,
@@ -2115,23 +2155,28 @@ app.get("/admin/analytics/demographics", async (req, res) => {
 app.get("/admin/analytics/survey-responses", async (req, res) => {
   try {
     const { stage } = req.query;
-    let query = `
+    const range = parseAdminDateRange(req.query);
+    if (range.error) return res.status(400).json({ error: range.error });
+    const { startDate, endDate } = range;
+
+    const parts = ["sr.user_id > 0"];
+    const params = [];
+    if (stage) {
+      params.push(stage);
+      parts.push(`sq.stage = $${params.length}`);
+    }
+    pushDateRangeFilter(parts, params, "sr.response_date", startDate, endDate);
+
+    const query = `
       SELECT sq.id as question_id, sq.question_text, sr.response, COUNT(*) as count
       FROM survey_responses sr
       JOIN survey_questions sq ON sr.question_id = sq.id
-      WHERE sr.user_id > 0
+      WHERE ${parts.join(" AND ")}
+      GROUP BY sq.id, sq.question_text, sr.response
+      ORDER BY sq.question_text, count DESC
     `;
-    
-    if (stage) {
-      query += ` AND sq.stage = $1`;
-      query += ` GROUP BY sq.id, sq.question_text, sr.response ORDER BY sq.question_text, count DESC`;
-      const result = await pool.query(query, [stage]);
-      res.json(result.rows);
-    } else {
-      query += ` GROUP BY sq.id, sq.question_text, sr.response ORDER BY sq.question_text, count DESC`;
-      const result = await pool.query(query);
-      res.json(result.rows);
-    }
+    const result = await pool.query(query, params);
+    res.json(result.rows);
   } catch (err) {
     console.error("Error getting survey responses:", err);
     res.status(500).json({ error: err.message });
@@ -2142,12 +2187,14 @@ app.get("/admin/analytics/survey-responses", async (req, res) => {
 app.get("/admin/analytics/question-responses", async (req, res) => {
   try {
     const { questionId, stage } = req.query;
+    const range = parseAdminDateRange(req.query);
+    if (range.error) return res.status(400).json({ error: range.error });
+    const { startDate, endDate } = range;
     
     if (!questionId) {
       return res.status(400).json({ error: "Question ID is required" });
     }
 
-    // Get question details
     const questionQuery = `
       SELECT id, question_text, type, stage
       FROM survey_questions 
@@ -2160,28 +2207,25 @@ app.get("/admin/analytics/question-responses", async (req, res) => {
     }
 
     const question = questionResult.rows[0];
-    
-    // Get all responses for this question
-    let responsesQuery = `
-      SELECT sr.response, sr.user_id, sr.response_date
-      FROM survey_responses sr
-      WHERE sr.question_id = $1 AND sr.user_id > 0
-    `;
-    
+
+    const parts = ["sr.question_id = $1", "sr.user_id > 0"];
+    const params = [questionId];
     if (stage) {
-      responsesQuery += ` AND sr.question_id IN (SELECT id FROM survey_questions WHERE stage = $2)`;
-      const responsesResult = await pool.query(responsesQuery, [questionId, stage]);
-      res.json({
-        question: question,
-        responses: responsesResult.rows
-      });
-    } else {
-      const responsesResult = await pool.query(responsesQuery, [questionId]);
-      res.json({
-        question: question,
-        responses: responsesResult.rows
-      });
+      params.push(stage);
+      parts.push(`sr.question_id IN (SELECT id FROM survey_questions WHERE stage = $${params.length})`);
     }
+    pushDateRangeFilter(parts, params, "sr.response_date", startDate, endDate);
+
+    const responsesResult = await pool.query(
+      `SELECT sr.response, sr.user_id, sr.response_date
+       FROM survey_responses sr
+       WHERE ${parts.join(" AND ")}`,
+      params
+    );
+    res.json({
+      question,
+      responses: responsesResult.rows
+    });
   } catch (err) {
     console.error("Error getting question responses:", err);
     res.status(500).json({ error: err.message });
@@ -2211,54 +2255,74 @@ app.get("/admin/debug/consumption-logs", async (req, res) => {
 // GET waste patterns
 app.get("/admin/analytics/waste-patterns", async (req, res) => {
   try {
-    // Get overall waste vs consumption totals
-    const overallQuery = `
-      SELECT 
+    const range = parseAdminDateRange(req.query);
+    if (range.error) return res.status(400).json({ error: range.error });
+    const { startDate, endDate } = range;
+
+    const overallParts = ["cl.user_id > 0"];
+    const overallParams = [];
+    pushDateRangeFilter(overallParts, overallParams, "cl.logged_at", startDate, endDate);
+    const overallResult = await pool.query(
+      `SELECT 
         cl.action,
         COUNT(*) as count,
         SUM(cl.cost_value) as total_cost,
         AVG(cl.cost_value) as avg_cost
       FROM consumption_logs cl
-      WHERE cl.user_id > 0
+      WHERE ${overallParts.join(" AND ")}
       GROUP BY cl.action
-      ORDER BY total_cost DESC
-    `;
-    const overallResult = await pool.query(overallQuery);
+      ORDER BY total_cost DESC`,
+      overallParams
+    );
 
-    // Get waste by category for all users
-    const categoryQuery = `
-      SELECT 
-        p.category,
-        COUNT(*) as count,
-        SUM(cl.cost_value) as total_cost,
-        AVG(cl.cost_value) as avg_cost,
-        ROUND((SUM(cl.cost_value) / NULLIF((SELECT SUM(cost_value) FROM consumption_logs WHERE user_id > 0 AND action = 'wasted'), 0)) * 100, 2) as waste_percentage
-      FROM consumption_logs cl
-      JOIN purchases p ON cl.purchase_id = p.id
-      WHERE cl.user_id > 0 AND cl.action = 'wasted' AND p.category IS NOT NULL
-      GROUP BY p.category
-      ORDER BY total_cost DESC
-    `;
-    const categoryResult = await pool.query(categoryQuery);
+    const categoryFilterParts = ["cl.user_id > 0"];
+    const categoryParams = [];
+    pushDateRangeFilter(categoryFilterParts, categoryParams, "cl.logged_at", startDate, endDate);
+    const categoryResult = await pool.query(
+      `WITH filtered AS (
+         SELECT cl.cost_value, cl.action, p.category
+         FROM consumption_logs cl
+         JOIN purchases p ON cl.purchase_id = p.id
+         WHERE ${categoryFilterParts.join(" AND ")}
+       ),
+       wasted_total AS (
+         SELECT SUM(cost_value) AS total FROM filtered WHERE action = 'wasted'
+       )
+       SELECT
+         category,
+         COUNT(*) as count,
+         SUM(cost_value) as total_cost,
+         AVG(cost_value) as avg_cost,
+         ROUND((SUM(cost_value) / NULLIF((SELECT total FROM wasted_total), 0)) * 100, 2) as waste_percentage
+       FROM filtered
+       WHERE action = 'wasted' AND category IS NOT NULL
+       GROUP BY category
+       ORDER BY total_cost DESC`,
+      categoryParams
+    );
 
-    // Get waste trends over time (weekly)
-    const trendQuery = `
-      SELECT 
+    const trendParts = ["cl.user_id > 0", "cl.action = 'wasted'"];
+    const trendParams = [];
+    pushDateRangeFilter(trendParts, trendParams, "cl.logged_at", startDate, endDate);
+    const trendLimit = hasDateRange(startDate, endDate) ? "" : " LIMIT 12";
+    const trendResult = await pool.query(
+      `SELECT 
         DATE_TRUNC('week', cl.logged_at) as week_start,
         COUNT(*) as count,
         SUM(cl.cost_value) as total_cost,
         AVG(cl.cost_value) as avg_cost
       FROM consumption_logs cl
-      WHERE cl.user_id > 0 AND cl.action = 'wasted'
+      WHERE ${trendParts.join(" AND ")}
       GROUP BY DATE_TRUNC('week', cl.logged_at)
-      ORDER BY week_start DESC
-      LIMIT 12
-    `;
-    const trendResult = await pool.query(trendQuery);
+      ORDER BY week_start DESC${trendLimit}`,
+      trendParams
+    );
 
-    // Get detailed breakdown by category and week
-    const detailedQuery = `
-      SELECT 
+    const detailedParts = ["cl.user_id > 0"];
+    const detailedParams = [];
+    pushDateRangeFilter(detailedParts, detailedParams, "cl.logged_at", startDate, endDate);
+    const detailedResult = await pool.query(
+      `SELECT 
         cl.action,
         p.category,
         COUNT(*) as count,
@@ -2269,11 +2333,11 @@ app.get("/admin/analytics/waste-patterns", async (req, res) => {
         DATE_TRUNC('month', cl.logged_at) as month_start
       FROM consumption_logs cl
       JOIN purchases p ON cl.purchase_id = p.id
-      WHERE cl.user_id > 0
+      WHERE ${detailedParts.join(" AND ")}
       GROUP BY cl.action, p.category, DATE_TRUNC('week', cl.logged_at), DATE_TRUNC('day', cl.logged_at), DATE_TRUNC('month', cl.logged_at)
-      ORDER BY week_start DESC, total_cost DESC
-    `;
-    const detailedResult = await pool.query(detailedQuery);
+      ORDER BY week_start DESC, total_cost DESC`,
+      detailedParams
+    );
 
     res.json({
       overall: overallResult.rows,
@@ -2290,30 +2354,38 @@ app.get("/admin/analytics/waste-patterns", async (req, res) => {
 // GET purchase trends
 app.get("/admin/analytics/purchase-trends", async (req, res) => {
   try {
-    // Get purchases by week
-    const weeklyQuery = `
-      SELECT 
+    const range = parseAdminDateRange(req.query);
+    if (range.error) return res.status(400).json({ error: range.error });
+    const { startDate, endDate } = range;
+
+    const weeklyParts = ["user_id > 0"];
+    const weeklyParams = [];
+    pushDateRangeFilter(weeklyParts, weeklyParams, "purchase_date", startDate, endDate);
+    const weeklyLimit = hasDateRange(startDate, endDate) ? "" : " LIMIT 12";
+    const weeklyResult = await pool.query(
+      `SELECT 
         DATE_TRUNC('week', purchase_date) as week_start,
         COUNT(*) as purchase_count,
         SUM(price) as total_spent
       FROM purchases 
-      WHERE user_id > 0
+      WHERE ${weeklyParts.join(" AND ")}
       GROUP BY DATE_TRUNC('week', purchase_date)
-      ORDER BY week_start DESC
-      LIMIT 12
-    `;
-    const weeklyResult = await pool.query(weeklyQuery);
+      ORDER BY week_start DESC${weeklyLimit}`,
+      weeklyParams
+    );
 
-    // Get top categories
-    const categoryQuery = `
-      SELECT category, COUNT(*) as purchase_count, SUM(price) as total_spent
+    const categoryParts = ["user_id > 0", "category IS NOT NULL"];
+    const categoryParams = [];
+    pushDateRangeFilter(categoryParts, categoryParams, "purchase_date", startDate, endDate);
+    const categoryResult = await pool.query(
+      `SELECT category, COUNT(*) as purchase_count, SUM(price) as total_spent
       FROM purchases 
-      WHERE user_id > 0 AND category IS NOT NULL
+      WHERE ${categoryParts.join(" AND ")}
       GROUP BY category
       ORDER BY total_spent DESC
-      LIMIT 10
-    `;
-    const categoryResult = await pool.query(categoryQuery);
+      LIMIT 10`,
+      categoryParams
+    );
 
     res.json({
       weekly: weeklyResult.rows,
@@ -2441,7 +2513,21 @@ function convertToCSV(data, headers) {
 // GET export raw data
 app.get("/admin/export/raw-data", async (req, res) => {
   try {
-    // Get all user data with survey responses
+    const range = parseAdminDateRange(req.query);
+    if (range.error) return res.status(400).json({ error: range.error });
+    const { startDate, endDate } = range;
+
+    const parts = ["u.id > 0"];
+    const params = [];
+    // Prefer response_date when present; fall back to terms_accepted_at for users with no responses
+    pushDateRangeFilter(
+      parts,
+      params,
+      "COALESCE(sr.response_date, u.terms_accepted_at)",
+      startDate,
+      endDate
+    );
+
     const query = `
       SELECT 
         u.id as user_id,
@@ -2458,10 +2544,10 @@ app.get("/admin/export/raw-data", async (req, res) => {
       FROM users u
       LEFT JOIN survey_responses sr ON u.id = sr.user_id
       LEFT JOIN survey_questions sq ON sr.question_id = sq.id
-      WHERE u.id > 0
+      WHERE ${parts.join(" AND ")}
       ORDER BY u.id, sr.response_date
     `;
-    const result = await pool.query(query);
+    const result = await pool.query(query, params);
 
     const headers = ['user_id', 'username', 'name', 'terms_accepted_at', 'initial_survey_completed_at', 'last_weekly_survey_date', 'final_survey_triggered', 'final_survey_completed_at', 'question_text', 'response', 'response_date'];
     const csv = convertToCSV(result.rows, headers);
@@ -2479,7 +2565,19 @@ app.get("/admin/export/raw-data", async (req, res) => {
 app.get("/admin/export/survey-responses", async (req, res) => {
   try {
     const { stage } = req.query;
-    let query = `
+    const range = parseAdminDateRange(req.query);
+    if (range.error) return res.status(400).json({ error: range.error });
+    const { startDate, endDate } = range;
+
+    const parts = ["sr.user_id > 0"];
+    const params = [];
+    if (stage) {
+      params.push(stage);
+      parts.push(`sq.stage = $${params.length}`);
+    }
+    pushDateRangeFilter(parts, params, "sr.response_date", startDate, endDate);
+
+    const query = `
       SELECT 
         u.id as user_id,
         u.username,
@@ -2490,31 +2588,20 @@ app.get("/admin/export/survey-responses", async (req, res) => {
       FROM survey_responses sr
       JOIN survey_questions sq ON sr.question_id = sq.id
       JOIN users u ON sr.user_id = u.id
-      WHERE sr.user_id > 0
+      WHERE ${parts.join(" AND ")}
+      ORDER BY u.id, sr.response_date
     `;
-    
-    if (stage) {
-      query += ` AND sq.stage = $1`;
-      query += ` ORDER BY u.id, sr.response_date`;
-      const result = await pool.query(query, [stage]);
-      
-      const headers = ['user_id', 'username', 'stage', 'question_text', 'response', 'response_date'];
-      const csv = convertToCSV(result.rows, headers);
-      
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename="survey_responses_${stage}.csv"`);
-      res.send(csv);
-    } else {
-      query += ` ORDER BY u.id, sr.response_date`;
-      const result = await pool.query(query);
-      
-      const headers = ['user_id', 'username', 'stage', 'question_text', 'response', 'response_date'];
-      const csv = convertToCSV(result.rows, headers);
-      
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', 'attachment; filename="survey_responses_all.csv"');
-      res.send(csv);
-    }
+    const result = await pool.query(query, params);
+
+    const headers = ['user_id', 'username', 'stage', 'question_text', 'response', 'response_date'];
+    const csv = convertToCSV(result.rows, headers);
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="survey_responses_${stage || 'all'}.csv"`
+    );
+    res.send(csv);
   } catch (err) {
     console.error("Error exporting survey responses:", err);
     res.status(500).json({ error: err.message });
@@ -2524,6 +2611,14 @@ app.get("/admin/export/survey-responses", async (req, res) => {
 // GET export user demographics
 app.get("/admin/export/user-demographics", async (req, res) => {
   try {
+    const range = parseAdminDateRange(req.query);
+    if (range.error) return res.status(400).json({ error: range.error });
+    const { startDate, endDate } = range;
+
+    const parts = ["u.id > 0"];
+    const params = [];
+    pushDateRangeFilter(parts, params, "u.terms_accepted_at", startDate, endDate);
+
     const query = `
       SELECT 
         u.id as user_id,
@@ -2553,10 +2648,10 @@ app.get("/admin/export/user-demographics", async (req, res) => {
         AND household.question_id = (SELECT id FROM survey_questions WHERE question_text = 'How many people live in your household?' LIMIT 1)
       LEFT JOIN survey_responses housing ON u.id = housing.user_id 
         AND housing.question_id = (SELECT id FROM survey_questions WHERE question_text = 'Do you rent or own?' LIMIT 1)
-      WHERE u.id > 0
+      WHERE ${parts.join(" AND ")}
       ORDER BY u.id
     `;
-    const result = await pool.query(query);
+    const result = await pool.query(query, params);
 
     const headers = ['user_id', 'username', 'name', 'terms_accepted_at', 'initial_survey_completed_at', 'last_weekly_survey_date', 'final_survey_triggered', 'final_survey_completed_at', 'gender', 'age', 'income', 'children', 'household_size', 'housing_status'];
     const csv = convertToCSV(result.rows, headers);
@@ -2573,7 +2668,22 @@ app.get("/admin/export/user-demographics", async (req, res) => {
 // GET export waste patterns
 app.get("/admin/export/waste-patterns", async (req, res) => {
   try {
-    const { timeframe } = req.query;
+    const range = parseAdminDateRange(req.query);
+    if (range.error) return res.status(400).json({ error: range.error });
+    const { startDate, endDate } = range;
+
+    const parts = [
+      "sr.user_id > 0",
+      "sq.stage = 'weekly'",
+      `sq.question_text IN (
+        'How many meals that you didn''t finish did you throw out?',
+        'Do you think you wasted less food compared to last week?',
+        'Are you becoming more aware of your amount of food waste/consumption habits?'
+      )`,
+    ];
+    const params = [];
+    pushDateRangeFilter(parts, params, "sr.response_date", startDate, endDate);
+
     const query = `
       SELECT 
         u.id as user_id,
@@ -2585,15 +2695,10 @@ app.get("/admin/export/waste-patterns", async (req, res) => {
       FROM survey_responses sr
       JOIN survey_questions sq ON sr.question_id = sq.id
       JOIN users u ON sr.user_id = u.id
-      WHERE sr.user_id > 0 AND sq.stage = 'weekly'
-      AND sq.question_text IN (
-        'How many meals that you didn''t finish did you throw out?',
-        'Do you think you wasted less food compared to last week?',
-        'Are you becoming more aware of your amount of food waste/consumption habits?'
-      )
+      WHERE ${parts.join(" AND ")}
       ORDER BY u.id, sr.response_date
     `;
-    const result = await pool.query(query);
+    const result = await pool.query(query, params);
 
     const headers = ['user_id', 'username', 'question_text', 'response', 'response_date', 'week_start'];
     const csv = convertToCSV(result.rows, headers);
@@ -2612,19 +2717,37 @@ app.get("/admin/export/waste-patterns", async (req, res) => {
 // Generate fake users with data
 app.post("/admin/generate-fake-data", async (req, res) => {
   try {
-    const { count = 5 } = req.body;
+    const { count = 5, weeks = 4, persona = 'mixed' } = req.body;
+    const parsedCount = parseInt(count, 10);
+    const parsedWeeks = parseInt(weeks, 10);
+    const allowedPersonas = ['mixed', 'high_waste', 'low_waste', 'improving'];
     
-    if (count < 1 || count > 20) {
+    if (Number.isNaN(parsedCount) || parsedCount < 1 || parsedCount > 20) {
       return res.status(400).json({ 
         error: "Count must be between 1 and 20" 
       });
     }
+    if (Number.isNaN(parsedWeeks) || parsedWeeks < 1 || parsedWeeks > 12) {
+      return res.status(400).json({
+        error: "Weeks must be between 1 and 12",
+      });
+    }
+    if (!allowedPersonas.includes(persona)) {
+      return res.status(400).json({
+        error: `persona must be one of: ${allowedPersonas.join(', ')}`,
+      });
+    }
     
-    console.log(`Generating ${count} fake users with data...`);
-    const results = await generateFakeUsersWithData(count);
+    console.log(`Generating ${parsedCount} fake users (weeks=${parsedWeeks}, persona=${persona})...`);
+    const results = await generateFakeUsersWithData(parsedCount, {
+      weeks: parsedWeeks,
+      persona,
+    });
     
     res.status(200).json({
       message: `Successfully generated ${results.length} fake users with complete data`,
+      persona,
+      weeks: parsedWeeks,
       users: results.map(r => ({
         id: r.user.id,
         username: r.user.username,
@@ -2656,6 +2779,31 @@ app.get("/admin/fake-users-count", async (req, res) => {
   } catch (error) {
     console.error("Error getting fake users count:", error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// List fake users with activity counts
+app.get("/admin/fake-users", async (req, res) => {
+  try {
+    const users = await listFakeUsers();
+    res.status(200).json({ users, count: users.length });
+  } catch (error) {
+    console.error("Error listing fake users:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete one fake user
+app.delete("/admin/fake-users/:userId", async (req, res) => {
+  try {
+    const deleted = await deleteFakeUser(req.params.userId);
+    res.status(200).json({
+      message: `Deleted fake user ${deleted.username}`,
+      user: deleted,
+    });
+  } catch (error) {
+    console.error("Error deleting fake user:", error);
+    res.status(error.status || 500).json({ error: error.message });
   }
 });
 
@@ -2777,27 +2925,41 @@ app.delete("/admin/delete-all-user-data", async (req, res) => {
 // GET search users by partial ID or username (for autocomplete)
 app.get("/admin/search-users", async (req, res) => {
   const { q = '', limit = 10 } = req.query;
-  
+  const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 50);
+
   try {
-    if (!q || q.length < 1) {
-      return res.json([]);
+    // Empty query: return recent real users so admins don't have to guess names
+    if (!q || String(q).trim().length < 1) {
+      const recent = await pool.query(
+        `
+        SELECT id, username, email, created_at
+        FROM users
+        WHERE id > 0
+        ORDER BY id DESC
+        LIMIT $1
+        `,
+        [parsedLimit]
+      );
+      return res.json(recent.rows);
     }
-    
+
+    const query = String(q).trim();
+
     // Search by partial ID or username
     const result = await pool.query(`
       SELECT id, username, email, created_at
-      FROM users 
-      WHERE id::text LIKE $1 OR username ILIKE $2
-      ORDER BY 
-        CASE 
-          WHEN id::text = $1 THEN 1
-          WHEN username ILIKE $3 THEN 2
+      FROM users
+      WHERE id > 0 AND (id::text LIKE $1 OR username ILIKE $2)
+      ORDER BY
+        CASE
+          WHEN id::text = $3 THEN 1
+          WHEN username ILIKE $4 THEN 2
           ELSE 3
         END,
-        id
-      LIMIT $4
-    `, [`${q}%`, `%${q}%`, `${q}%`, parseInt(limit)]);
-    
+        id DESC
+      LIMIT $5
+    `, [`${query}%`, `%${query}%`, query, `${query}%`, parsedLimit]);
+
     res.json(result.rows);
   } catch (err) {
     console.error("Error searching users:", err);
@@ -2832,19 +2994,37 @@ app.get("/admin/search-user/:userId", async (req, res) => {
 
     const user = userResult.rows[0];
 
-    // Get user's data counts
     const dataCountsQuery = `
       SELECT 
         (SELECT COUNT(*) FROM purchases WHERE user_id = $1) as purchases_count,
         (SELECT COUNT(*) FROM consumption_logs WHERE user_id = $1) as consumption_logs_count,
         (SELECT COUNT(*) FROM survey_responses WHERE user_id = $1) as survey_responses_count,
-        (SELECT COUNT(*) FROM food_items WHERE user_id = $1) as food_items_count
+        (SELECT COUNT(*) FROM food_items WHERE user_id = $1) as food_items_count,
+        (SELECT COALESCE(SUM(cost_value), 0) FROM consumption_logs WHERE user_id = $1 AND action = 'wasted') as wasted_cost,
+        (SELECT COALESCE(SUM(cost_value), 0) FROM consumption_logs WHERE user_id = $1 AND action = 'consumed') as consumed_cost,
+        (SELECT MAX(purchase_date) FROM purchases WHERE user_id = $1) as last_purchase_date,
+        (SELECT MAX(logged_at) FROM consumption_logs WHERE user_id = $1) as last_log_date
     `;
     const countsResult = await pool.query(dataCountsQuery, [userId]);
+    const counts = countsResult.rows[0] || {};
+    const lastActivityCandidates = [
+      user.terms_accepted_at,
+      counts.last_purchase_date,
+      counts.last_log_date,
+    ].filter(Boolean).map((d) => new Date(d).getTime());
     
     res.json({
       user,
-      dataCounts: countsResult.rows[0]
+      dataCounts: counts,
+      activity: {
+        lastActivityAt: lastActivityCandidates.length
+          ? new Date(Math.max(...lastActivityCandidates)).toISOString()
+          : null,
+        wastedCost: parseFloat(counts.wasted_cost || 0),
+        consumedCost: parseFloat(counts.consumed_cost || 0),
+        initialSurveyCompleted: Boolean(user.initial_survey_completed_at),
+        finalSurveyCompleted: Boolean(user.final_survey_completed_at),
+      },
     });
   } catch (err) {
     console.error("Error searching user:", err);

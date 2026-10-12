@@ -198,28 +198,41 @@ export const leaderboardAPI = {
 
 // Admin Analytics endpoints
 export const adminAPI = {
-  getOverview: () => api.get("/admin/analytics/overview"),
-  getDemographics: () => api.get("/admin/analytics/demographics"),
-  getSurveyResponses: (stage) => api.get(`/admin/analytics/survey-responses${stage ? `?stage=${stage}` : ''}`),
-  getQuestionResponses: (questionId, stage) => {
-    const params = new URLSearchParams();
-    if (questionId) params.append('questionId', questionId);
-    if (stage) params.append('stage', stage);
-    const queryString = params.toString();
-    return api.get(`/admin/analytics/question-responses${queryString ? `?${queryString}` : ''}`);
-  },
-  getWastePatterns: () => api.get("/admin/analytics/waste-patterns"),
-  getPurchaseTrends: () => api.get("/admin/analytics/purchase-trends"),
+  getOverview: (params = {}) => api.get("/admin/analytics/overview", { params }),
+  getDemographics: (params = {}) => api.get("/admin/analytics/demographics", { params }),
+  getSurveyResponses: (stage, params = {}) =>
+    api.get("/admin/analytics/survey-responses", {
+      params: { ...params, ...(stage ? { stage } : {}) },
+    }),
+  getQuestionResponses: (questionId, stage, params = {}) =>
+    api.get("/admin/analytics/question-responses", {
+      params: {
+        ...params,
+        ...(questionId ? { questionId } : {}),
+        ...(stage ? { stage } : {}),
+      },
+    }),
+  getWastePatterns: (params = {}) => api.get("/admin/analytics/waste-patterns", { params }),
+  getPurchaseTrends: (params = {}) => api.get("/admin/analytics/purchase-trends", { params }),
   
   // Export endpoints
-  exportRawData: () => api.get("/admin/export/raw-data"),
-  exportSurveyResponses: (stage) => api.get(`/admin/export/survey-responses${stage ? `?stage=${stage}` : ''}`),
-  exportUserDemographics: () => api.get("/admin/export/user-demographics"),
-  exportWastePatterns: () => api.get("/admin/export/waste-patterns"),
+  exportRawData: (params = {}) => api.get("/admin/export/raw-data", { params }),
+  exportSurveyResponses: (stage, params = {}) =>
+    api.get("/admin/export/survey-responses", {
+      params: { ...params, ...(stage ? { stage } : {}) },
+    }),
+  exportUserDemographics: (params = {}) => api.get("/admin/export/user-demographics", { params }),
+  exportWastePatterns: (params = {}) => api.get("/admin/export/waste-patterns", { params }),
   
   // Fake Data Management endpoints
-  generateFakeData: (count) => api.post("/admin/generate-fake-data", { count }),
+  generateFakeData: (payload) =>
+    api.post(
+      "/admin/generate-fake-data",
+      typeof payload === "number" ? { count: payload } : payload
+    ),
   getFakeUsersCount: () => api.get("/admin/fake-users-count"),
+  listFakeUsers: () => api.get("/admin/fake-users"),
+  deleteFakeUser: (userId) => api.delete(`/admin/fake-users/${userId}`),
   cleanupFakeData: () => api.delete("/admin/cleanup-fake-data"),
   generateDtestTrendingData: () => api.post("/admin/generate-dtest-trending-data", {}, { timeout: 120000 }), // 2 minute timeout
   

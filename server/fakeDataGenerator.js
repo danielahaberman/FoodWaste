@@ -188,9 +188,43 @@ export const generateFakePurchases = async (userId, weeks = 4) => {
   }
 };
 
+function getPersonaWasteProbability(persona, purchase, purchases) {
+  const foodName = (purchase.name || '').toLowerCase();
+  let base;
+  if (foodName.includes('bread') || foodName.includes('milk') || foodName.includes('banana') ||
+      foodName.includes('lettuce') || foodName.includes('spinach')) {
+    base = 0.4;
+  } else if (foodName.includes('apple') || foodName.includes('orange') ||
+             foodName.includes('potato') || foodName.includes('onion')) {
+    base = 0.25;
+  } else if (foodName.includes('meat') || foodName.includes('chicken') ||
+             foodName.includes('beef') || foodName.includes('fish')) {
+    base = 0.15;
+  } else {
+    base = 0.3;
+  }
+
+  if (persona === 'high_waste') {
+    base = Math.max(base, 0.55);
+  } else if (persona === 'low_waste') {
+    base = Math.min(base, 0.12);
+  } else if (persona === 'improving' && purchases.length > 1) {
+    const times = purchases.map((p) => new Date(p.purchaseDate).getTime());
+    const minT = Math.min(...times);
+    const maxT = Math.max(...times);
+    const span = Math.max(1, maxT - minT);
+    const progress = (new Date(purchase.purchaseDate).getTime() - minT) / span; // 0 early → 1 late
+    // Start wasteful, finish thrifty
+    base = 0.55 * (1 - progress) + 0.1 * progress;
+  }
+
+  base += (Math.random() - 0.5) * 0.15;
+  return Math.max(0.05, Math.min(0.75, base));
+}
+
 // Generate fake consumption/waste logs
-export const generateFakeConsumptionLogs = async (userId, purchases) => {
-  console.log(`Generating fake consumption logs for user ${userId}...`);
+export const generateFakeConsumptionLogs = async (userId, purchases, persona = 'mixed') => {
+  console.log(`Generating fake consumption logs for user ${userId} (persona=${persona})...`);
   const logs = [];
   
   try {
@@ -201,29 +235,7 @@ export const generateFakeConsumptionLogs = async (userId, purchases) => {
       
       for (let e = 0; e < eventsCount && remainingQuantity > 0; e++) {
         const isLastEvent = e === eventsCount - 1;
-        
-        // More varied consumed vs wasted ratios based on food type and user behavior
-        let wasteProbability;
-        const foodName = purchase.name.toLowerCase();
-        
-        // Different waste probabilities based on food type
-        if (foodName.includes('bread') || foodName.includes('milk') || foodName.includes('banana') || 
-            foodName.includes('lettuce') || foodName.includes('spinach')) {
-          wasteProbability = 0.4; // 40% waste for perishables
-        } else if (foodName.includes('apple') || foodName.includes('orange') || 
-                   foodName.includes('potato') || foodName.includes('onion')) {
-          wasteProbability = 0.25; // 25% waste for longer-lasting items
-        } else if (foodName.includes('meat') || foodName.includes('chicken') || 
-                   foodName.includes('beef') || foodName.includes('fish')) {
-          wasteProbability = 0.15; // 15% waste for expensive proteins
-        } else {
-          wasteProbability = 0.3; // 30% waste for other items
-        }
-        
-        // Add some randomness to make it more varied
-        wasteProbability += (Math.random() - 0.5) * 0.2; // ±10% variation
-        wasteProbability = Math.max(0.05, Math.min(0.6, wasteProbability)); // Clamp between 5% and 60%
-        
+        const wasteProbability = getPersonaWasteProbability(persona, purchase, purchases);
         const action = Math.random() < wasteProbability ? 'wasted' : 'consumed';
         
         // For the last event, consume/waste whatever is left
@@ -473,20 +485,13 @@ export const generateFakeStreakData = async (userId) => {
 };
 
 // Main function to generate all fake data for a user
-export const generateFakeDataForUser = async (userId) => {
-  console.log(`Generating complete fake data for user ${userId}...`);
+export const generateFakeDataForUser = async (userId, { weeks = 4, persona = 'mixed' } = {}) => {
+  console.log(`Generating complete fake data for user ${userId} (weeks=${weeks}, persona=${persona})...`);
   
   try {
-    // Generate purchases
-    const purchases = await generateFakePurchases(userId, 4);
-    
-    // Generate consumption logs
-    const consumptionLogs = await generateFakeConsumptionLogs(userId, purchases);
-    
-    // Generate survey responses
+    const purchases = await generateFakePurchases(userId, weeks);
+    const consumptionLogs = await generateFakeConsumptionLogs(userId, purchases, persona);
     const surveyResponses = await generateFakeSurveyResponses(userId);
-    
-    // Generate streak data
     const streakData = await generateFakeStreakData(userId);
     
     return {
@@ -502,23 +507,21 @@ export const generateFakeDataForUser = async (userId) => {
 };
 
 // Main function to generate fake users with all their data
-export const generateFakeUsersWithData = async (count = 5) => {
-  console.log(`Generating ${count} fake users with complete data...`);
+export const generateFakeUsersWithData = async (count = 5, { weeks = 4, persona = 'mixed' } = {}) => {
+  console.log(`Generating ${count} fake users with complete data (weeks=${weeks}, persona=${persona})...`);
   
   try {
-    // Generate fake users
     const users = await generateFakeUsers(count);
     
     if (users.length === 0) {
       throw new Error('No users were created. Check database connection and schema.');
     }
     
-    // Generate data for each user
     const results = [];
     for (const user of users) {
       try {
         console.log(`Generating data for user ${user.username} (ID: ${user.id})...`);
-        const userData = await generateFakeDataForUser(user.id);
+        const userData = await generateFakeDataForUser(user.id, { weeks, persona });
         results.push({
           user,
           ...userData
@@ -526,7 +529,6 @@ export const generateFakeUsersWithData = async (count = 5) => {
         console.log(`✅ Completed data generation for user ${user.username}`);
       } catch (userError) {
         console.error(`❌ Error generating data for user ${user.username}:`, userError);
-        // Continue with other users even if one fails
         results.push({
           user,
           purchases: [],
@@ -543,6 +545,37 @@ export const generateFakeUsersWithData = async (count = 5) => {
     console.error('Error generating fake users with data:', error);
     throw error;
   }
+};
+
+export const listFakeUsers = async () => {
+  const result = await pool.query(`
+    SELECT
+      u.id,
+      u.username,
+      u.name,
+      u.terms_accepted_at,
+      (SELECT COUNT(*)::int FROM purchases p WHERE p.user_id = u.id) AS purchases_count,
+      (SELECT COUNT(*)::int FROM consumption_logs cl WHERE cl.user_id = u.id) AS consumption_logs_count,
+      (SELECT COUNT(*)::int FROM survey_responses sr WHERE sr.user_id = u.id) AS survey_responses_count
+    FROM users u
+    WHERE u.username LIKE 'DummyUser%'
+    ORDER BY CAST(SUBSTRING(u.username FROM 'DummyUser(\\d+)') AS INTEGER) DESC
+  `);
+  return result.rows;
+};
+
+export const deleteFakeUser = async (userId) => {
+  const check = await pool.query(
+    `SELECT id, username FROM users WHERE id = $1 AND username LIKE 'DummyUser%'`,
+    [userId]
+  );
+  if (check.rows.length === 0) {
+    const err = new Error('Fake user not found (must be a DummyUser*)');
+    err.status = 404;
+    throw err;
+  }
+  await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+  return check.rows[0];
 };
 
 // Function to clean up all fake users and their data

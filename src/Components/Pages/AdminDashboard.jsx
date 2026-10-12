@@ -18,7 +18,6 @@ import {
   CircularProgress,
   Alert,
   Chip,
-  Divider,
   Select,
   MenuItem,
   FormControl,
@@ -26,12 +25,9 @@ import {
   List,
   ListItem,
   ListItemText,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
   TextField
 } from '@mui/material';
-import { Lock } from '@mui/icons-material';
+import { Lock, CalendarMonthOutlined } from '@mui/icons-material';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -45,6 +41,11 @@ import {
 import { Line } from 'react-chartjs-2';
 import { adminAPI } from '../../api.jsx';
 import UserSearchAutocomplete from '../UserSearchAutocomplete';
+import AdminKpiCards from '../Admin/AdminKpiCards';
+import AdminDistributionCharts, { AdminCategoryBars } from '../Admin/AdminDistributionCharts';
+import AdminFakeDataPanel from '../Admin/AdminFakeDataPanel';
+import AdminUserManagementPanel from '../Admin/AdminUserManagementPanel';
+import { colors } from '../../themeColors';
 
 // Register Chart.js components
 ChartJS.register(
@@ -66,7 +67,7 @@ function TabPanel({ children, value, index, ...other }) {
       aria-labelledby={`admin-tab-${index}`}
       {...other}
     >
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
+      {value === index && <Box sx={{ py: 1 }}>{children}</Box>}
     </div>
   );
 }
@@ -98,18 +99,7 @@ function AdminDashboard({ onLogout }) {
   const [questionResponses, setQuestionResponses] = useState(null);
   const [loadingQuestionResponses, setLoadingQuestionResponses] = useState(false);
   
-  // Fake data management states
-  const [fakeUsersCount, setFakeUsersCount] = useState(0);
-  const [loadingFakeData, setLoadingFakeData] = useState(false);
-  const [fakeDataMessage, setFakeDataMessage] = useState('');
   const [chartTimeframe, setChartTimeframe] = useState('daily');
-  
-  // Data management states
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [searchedUser, setSearchedUser] = useState(null);
-  const [loadingUserSearch, setLoadingUserSearch] = useState(false);
-  const [dataManagementMessage, setDataManagementMessage] = useState('');
-  const [loadingDataOperation, setLoadingDataOperation] = useState(false);
   
   // User trends states
   const [trendsUser, setTrendsUser] = useState(null);
@@ -118,33 +108,52 @@ function AdminDashboard({ onLogout }) {
   const [userTrendsPeriod, setUserTrendsPeriod] = useState('week');
   const [userTrendsError, setUserTrendsError] = useState(null);
 
+  // Date range filter (draft inputs + applied values used for API calls)
+  const [startDateInput, setStartDateInput] = useState('');
+  const [endDateInput, setEndDateInput] = useState('');
+  const [appliedRange, setAppliedRange] = useState({ startDate: '', endDate: '' });
+  const [dateFilterError, setDateFilterError] = useState('');
+  const [refreshingFilter, setRefreshingFilter] = useState(false);
+
+  const dateParams = (range = appliedRange) => {
+    const params = {};
+    if (range.startDate) params.startDate = range.startDate;
+    if (range.endDate) params.endDate = range.endDate;
+    return params;
+  };
+
+  const hasActiveDateFilter = Boolean(appliedRange.startDate || appliedRange.endDate);
+
   useEffect(() => {
     loadOverviewData();
-    loadFakeUsersCount();
   }, []);
 
-  const loadOverviewData = async () => {
+  const loadOverviewData = async (range = appliedRange, { isInitial = !overview } = {}) => {
     try {
-      setLoading(true);
+      if (isInitial) setLoading(true);
+      else setRefreshingFilter(true);
+      const params = dateParams(range);
       const [overviewData, demographicsData] = await Promise.all([
-        adminAPI.getOverview(),
-        adminAPI.getDemographics()
+        adminAPI.getOverview(params),
+        adminAPI.getDemographics(params)
       ]);
       
       setOverview(overviewData.data);
       setDemographics(demographicsData.data);
-      setLoading(false);
+      setError(null);
     } catch (err) {
       console.error('Error loading overview data:', err);
       setError('Failed to load dashboard data');
+    } finally {
       setLoading(false);
+      setRefreshingFilter(false);
     }
   };
 
-  const loadSurveyResponses = async (stage = null) => {
+  const loadSurveyResponses = async (stage = null, range = appliedRange) => {
     try {
       setLoadingSurveyResponses(true);
-      const response = await adminAPI.getSurveyResponses(stage);
+      const response = await adminAPI.getSurveyResponses(stage, dateParams(range));
       setSurveyResponses(response.data);
       setCurrentSurveyFilter(stage || 'all');
       
@@ -168,12 +177,16 @@ function AdminDashboard({ onLogout }) {
     }
   };
 
-  const loadQuestionResponses = async (questionId) => {
+  const loadQuestionResponses = async (questionId, range = appliedRange) => {
     if (!questionId) return;
     
     try {
       setLoadingQuestionResponses(true);
-      const response = await adminAPI.getQuestionResponses(questionId, currentSurveyFilter === 'all' ? null : currentSurveyFilter);
+      const response = await adminAPI.getQuestionResponses(
+        questionId,
+        currentSurveyFilter === 'all' ? null : currentSurveyFilter,
+        dateParams(range)
+      );
       setQuestionResponses(response.data);
     } catch (err) {
       console.error('Error loading question responses:', err);
@@ -183,10 +196,10 @@ function AdminDashboard({ onLogout }) {
     }
   };
 
-  const loadWastePatterns = async () => {
+  const loadWastePatterns = async (range = appliedRange) => {
     try {
       setLoadingWastePatterns(true);
-      const response = await adminAPI.getWastePatterns();
+      const response = await adminAPI.getWastePatterns(dateParams(range));
       setWastePatterns(response.data);
     } catch (err) {
       console.error('Error loading waste patterns:', err);
@@ -196,10 +209,10 @@ function AdminDashboard({ onLogout }) {
     }
   };
 
-  const loadPurchaseTrends = async () => {
+  const loadPurchaseTrends = async (range = appliedRange) => {
     try {
       setLoadingPurchaseTrends(true);
-      const response = await adminAPI.getPurchaseTrends();
+      const response = await adminAPI.getPurchaseTrends(dateParams(range));
       setPurchaseTrends(response.data);
     } catch (err) {
       console.error('Error loading purchase trends:', err);
@@ -209,256 +222,71 @@ function AdminDashboard({ onLogout }) {
     }
   };
 
-  const loadFakeUsersCount = async () => {
-    try {
-      const response = await adminAPI.getFakeUsersCount();
-      setFakeUsersCount(response.data.count);
-    } catch (err) {
-      console.error('Error loading fake users count:', err);
-    }
-  };
-
-  const handleGenerateFakeData = async (count) => {
-    try {
-      setLoadingFakeData(true);
-      setFakeDataMessage('');
-      const response = await adminAPI.generateFakeData(count);
-      setFakeDataMessage(`✅ ${response.data.message}`);
-      await loadFakeUsersCount();
-      await loadOverviewData(); // Refresh overview to show new users
-    } catch (err) {
-      console.error('Error generating fake data:', err);
-      setFakeDataMessage(`❌ Error: ${err.response?.data?.error || err.message}`);
-    } finally {
-      setLoadingFakeData(false);
-    }
-  };
-
-  const handleCleanupFakeData = async () => {
-    if (!window.confirm('Are you sure you want to delete ALL fake users and their data? This action cannot be undone.')) {
-      return;
-    }
-    
-    try {
-      setLoadingFakeData(true);
-      setFakeDataMessage('');
-      const response = await adminAPI.cleanupFakeData();
-      setFakeDataMessage(`✅ ${response.data.message}`);
-      await loadFakeUsersCount();
-      await loadOverviewData(); // Refresh overview to show updated counts
-    } catch (err) {
-      console.error('Error cleaning up fake data:', err);
-      setFakeDataMessage(`❌ Error: ${err.response?.data?.error || err.message}`);
-    } finally {
-      setLoadingFakeData(false);
-    }
-  };
-
-  const handleGenerateDtestTrendingData = async () => {
-    try {
-      setLoadingFakeData(true);
-      setFakeDataMessage('⏳ Generating trending data for dtest user... This may take 1-2 minutes. Check the server terminal for progress updates.');
-      const response = await adminAPI.generateDtestTrendingData();
-      setFakeDataMessage(`✅ ${response.data.message} - ${response.data.data.purchases} purchases, ${response.data.data.consumptionLogs} consumption logs from ${response.data.data.startDate} to ${response.data.data.endDate}`);
-      await loadOverviewData(); // Refresh overview to show updated counts
-    } catch (err) {
-      console.error('Error generating dtest trending data:', err);
-      if (err.code === 'ECONNABORTED') {
-        setFakeDataMessage(`❌ Request timed out. The operation may still be running on the server. Check the server logs.`);
-      } else {
-        setFakeDataMessage(`❌ Error: ${err.response?.data?.error || err.message}`);
-      }
-    } finally {
-      setLoadingFakeData(false);
-    }
-  };
-
-  // Data Management Functions
-  const handleDeleteAllUsers = async () => {
-    const confirmText = 'DELETE_ALL_USERS';
-    const userInput = window.prompt(
-      `⚠️ CRITICAL WARNING: This will PERMANENTLY DELETE ALL USERS and ALL their data.\n\nThis action CANNOT be undone!\n\nType "${confirmText}" to confirm this irreversible action:`
-    );
-    
-    if (userInput !== confirmText) {
-      setDataManagementMessage('❌ Operation cancelled - confirmation text did not match');
+  const applyDateFilter = async () => {
+    if (startDateInput && endDateInput && startDateInput > endDateInput) {
+      setDateFilterError('Start date must be on or before end date');
       return;
     }
 
-    setLoadingDataOperation(true);
-    setDataManagementMessage('');
+    const nextRange = { startDate: startDateInput, endDate: endDateInput };
+    setAppliedRange(nextRange);
+    setDateFilterError('');
 
-    try {
-      const response = await adminAPI.deleteAllUsers(confirmText);
-      setDataManagementMessage(`✅ ${response.data.message}`);
-      setSearchedUser(null); // Clear search results
-      loadOverviewData(); // Refresh overview
-    } catch (err) {
-      console.error('Error deleting all users:', err);
-      setDataManagementMessage(`❌ Failed to delete all users: ${err.response?.data?.error || err.message}`);
-    } finally {
-      setLoadingDataOperation(false);
+    // Invalidate tab caches so they reload with the new range
+    setSurveyResponses(null);
+    setWastePatterns(null);
+    setPurchaseTrends(null);
+    setQuestionResponses(null);
+
+    await loadOverviewData(nextRange, { isInitial: false });
+
+    if (tabValue === 1) {
+      await loadSurveyResponses(
+        currentSurveyFilter === 'all' ? null : currentSurveyFilter,
+        nextRange
+      );
+    } else if (tabValue === 2) {
+      await loadWastePatterns(nextRange);
+    } else if (tabValue === 3) {
+      await loadPurchaseTrends(nextRange);
     }
   };
 
-  const handleDeleteAllUserData = async () => {
-    const confirmText = 'DELETE_ALL_DATA';
-    const userInput = window.prompt(
-      `⚠️ WARNING: This will delete ALL user data (purchases, logs, surveys) but keep user accounts.\n\nType "${confirmText}" to confirm this irreversible action:`
-    );
-    
-    if (userInput !== confirmText) {
-      setDataManagementMessage('❌ Operation cancelled - confirmation text did not match');
-      return;
-    }
+  const clearDateFilter = async () => {
+    setStartDateInput('');
+    setEndDateInput('');
+    const nextRange = { startDate: '', endDate: '' };
+    setAppliedRange(nextRange);
+    setDateFilterError('');
 
-    setLoadingDataOperation(true);
-    setDataManagementMessage('');
+    setSurveyResponses(null);
+    setWastePatterns(null);
+    setPurchaseTrends(null);
+    setQuestionResponses(null);
 
-    try {
-      const response = await adminAPI.deleteAllUserData(confirmText);
-      setDataManagementMessage(`✅ ${response.data.message}`);
-      loadOverviewData(); // Refresh overview
-    } catch (err) {
-      console.error('Error deleting all user data:', err);
-      setDataManagementMessage('❌ Failed to delete user data');
-    } finally {
-      setLoadingDataOperation(false);
-    }
-  };
+    await loadOverviewData(nextRange, { isInitial: false });
 
-  const handleUserSelect = (user) => {
-    setSelectedUser(user);
-    if (user) {
-      handleSearchUser(user.id);
-    } else {
-      setSearchedUser(null);
-      setDataManagementMessage('');
-    }
-  };
-
-  const handleSearchUser = async (userId) => {
-    if (!userId) {
-      setDataManagementMessage('❌ Please select a user');
-      return;
-    }
-
-    setLoadingUserSearch(true);
-    setDataManagementMessage('');
-    setSearchedUser(null);
-
-    try {
-      const response = await adminAPI.searchUser(userId);
-      setSearchedUser(response.data);
-      setDataManagementMessage('✅ User found');
-    } catch (err) {
-      console.error('Error searching user:', err);
-      if (err.response?.status === 404) {
-        setDataManagementMessage('❌ User not found');
-      } else {
-        setDataManagementMessage('❌ Failed to search user');
-      }
-    } finally {
-      setLoadingUserSearch(false);
-    }
-  };
-
-  const handleDeleteUser = async (userId, username) => {
-    const confirmText = 'DELETE_USER_AND_DATA';
-    const userInput = window.prompt(
-      `⚠️ WARNING: This will permanently delete user "${username}" and ALL their data.\n\nType "${confirmText}" to confirm this irreversible action:`
-    );
-    
-    if (userInput !== confirmText) {
-      setDataManagementMessage('❌ Operation cancelled - confirmation text did not match');
-      return;
-    }
-
-    setLoadingDataOperation(true);
-    setDataManagementMessage('');
-
-    try {
-      const response = await adminAPI.deleteUser(userId, confirmText);
-      setDataManagementMessage(`✅ ${response.data.message}`);
-      setSearchedUser(null); // Clear search results
-      loadOverviewData(); // Refresh overview
-    } catch (err) {
-      console.error('Error deleting user:', err);
-      setDataManagementMessage('❌ Failed to delete user');
-    } finally {
-      setLoadingDataOperation(false);
-    }
-  };
-
-  const handleDeleteUserDataOnly = async (userId, username) => {
-    const confirmText = 'DELETE_USER_DATA_ONLY';
-    const userInput = window.prompt(
-      `⚠️ WARNING: This will delete ALL data for user "${username}" but keep their account.\n\nType "${confirmText}" to confirm this irreversible action:`
-    );
-    
-    if (userInput !== confirmText) {
-      setDataManagementMessage('❌ Operation cancelled - confirmation text did not match');
-      return;
-    }
-
-    setLoadingDataOperation(true);
-    setDataManagementMessage('');
-
-    try {
-      const response = await adminAPI.deleteUserData(userId, confirmText);
-      setDataManagementMessage(`✅ ${response.data.message}`);
-      // Refresh user search to show updated counts
-      await handleSearchUser();
-      loadOverviewData(); // Refresh overview
-    } catch (err) {
-      console.error('Error deleting user data:', err);
-      setDataManagementMessage('❌ Failed to delete user data');
-    } finally {
-      setLoadingDataOperation(false);
-    }
-  };
-
-  const handleDeleteUserStreak = async (userId, username) => {
-    const confirmText = 'DELETE_USER_STREAK';
-    const userInput = window.prompt(
-      `⚠️ WARNING: This will delete streak data for user "${username}" (current streak, longest streak, total completions).\n\nType "${confirmText}" to confirm this action:`
-    );
-    
-    if (userInput !== confirmText) {
-      setDataManagementMessage('❌ Operation cancelled - confirmation text did not match');
-      return;
-    }
-
-    setLoadingDataOperation(true);
-    setDataManagementMessage('');
-
-    try {
-      const response = await adminAPI.deleteUserStreak(userId, confirmText);
-      setDataManagementMessage(`✅ ${response.data.message}`);
-      // Refresh user search to show updated counts
-      await handleSearchUser();
-      loadOverviewData(); // Refresh overview
-    } catch (err) {
-      console.error('Error deleting user streak:', err);
-      setDataManagementMessage('❌ Failed to delete user streak data');
-    } finally {
-      setLoadingDataOperation(false);
+    if (tabValue === 1) {
+      await loadSurveyResponses(
+        currentSurveyFilter === 'all' ? null : currentSurveyFilter,
+        nextRange
+      );
+    } else if (tabValue === 2) {
+      await loadWastePatterns(nextRange);
+    } else if (tabValue === 3) {
+      await loadPurchaseTrends(nextRange);
     }
   };
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
     
-    // Load data for specific tabs
     if (newValue === 1 && !surveyResponses) {
       loadSurveyResponses();
     } else if (newValue === 2 && !wastePatterns) {
       loadWastePatterns();
     } else if (newValue === 3 && !purchaseTrends) {
       loadPurchaseTrends();
-    } else if (newValue === 5) {
-      // Fake Data Management tab - refresh count
-      loadFakeUsersCount();
     }
   };
 
@@ -991,9 +819,17 @@ function AdminDashboard({ onLogout }) {
     );
   }
 
+  const exportCards = [
+    { title: 'Raw data', description: 'Users joined with survey responses', action: () => handleExport(() => adminAPI.exportRawData(dateParams()), 'raw_data.csv') },
+    { title: 'Demographics', description: 'Profile answers per user', action: () => handleExport(() => adminAPI.exportUserDemographics(dateParams()), 'user_demographics.csv') },
+    { title: 'Initial survey', description: 'Initial-stage responses CSV', action: () => handleExport(() => adminAPI.exportSurveyResponses('initial', dateParams()), 'survey_responses_initial.csv') },
+    { title: 'Weekly survey', description: 'Weekly check-in responses', action: () => handleExport(() => adminAPI.exportSurveyResponses('weekly', dateParams()), 'survey_responses_weekly.csv') },
+    { title: 'Final survey', description: 'Final-stage responses CSV', action: () => handleExport(() => adminAPI.exportSurveyResponses('final', dateParams()), 'survey_responses_final.csv') },
+    { title: 'Waste patterns', description: 'Weekly waste survey answers', action: () => handleExport(() => adminAPI.exportWastePatterns(dateParams()), 'waste_patterns.csv') },
+  ];
+
   return (
     <Box sx={{ 
-      p: 3,
       width: '100vw', 
       maxWidth: '100vw', 
       boxSizing: 'border-box',
@@ -1003,156 +839,156 @@ function AdminDashboard({ onLogout }) {
       right: 0,
       bottom: 0,
       overflow: 'auto',
-      backgroundColor: '#f5f5f5',
+      backgroundColor: colors.bg,
       zIndex: 1000
     }}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-        <Typography variant="h4">
-          Admin Analytics Dashboard
-        </Typography>
-        <Button
-          variant="outlined"
-          color="error"
-          onClick={onLogout}
-          startIcon={<Lock />}
+      <Box
+        sx={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 20,
+          px: { xs: 2, md: 3 },
+          py: 2,
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          backgroundColor: 'rgba(255,249,242,0.92)',
+          backdropFilter: 'blur(10px)',
+        }}
+      >
+        <Box display="flex" justifyContent="space-between" alignItems="center" gap={2} mb={1.5}>
+          <Box>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              Admin dashboard
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Analytics, exports, fake data, and user tools
+            </Typography>
+          </Box>
+          <Button
+            variant="outlined"
+            color="error"
+            onClick={onLogout}
+            startIcon={<Lock />}
+          >
+            Logout
+          </Button>
+        </Box>
+
+      <Paper
+        elevation={0}
+        sx={{
+          p: 1.5,
+          border: '1px solid',
+          borderColor: 'divider',
+          borderRadius: 2,
+          backgroundColor: colors.surface,
+        }}
+      >
+        <Box
+          display="flex"
+          flexWrap="wrap"
+          gap={1.5}
+          alignItems="center"
         >
-          Logout
-        </Button>
+          <CalendarMonthOutlined fontSize="small" color="action" />
+          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+            Date range
+          </Typography>
+          <TextField
+            label="From"
+            type="date"
+            size="small"
+            value={startDateInput}
+            onChange={(e) => setStartDateInput(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+            sx={{ minWidth: 160 }}
+          />
+          <TextField
+            label="To"
+            type="date"
+            size="small"
+            value={endDateInput}
+            onChange={(e) => setEndDateInput(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+            sx={{ minWidth: 160 }}
+          />
+          <Button
+            variant="contained"
+            onClick={applyDateFilter}
+            disabled={refreshingFilter}
+          >
+            Apply
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={clearDateFilter}
+            disabled={refreshingFilter || (!hasActiveDateFilter && !startDateInput && !endDateInput)}
+          >
+            Clear
+          </Button>
+          {refreshingFilter && <CircularProgress size={22} />}
+          {hasActiveDateFilter ? (
+            <Chip
+              color="primary"
+              label={`Showing ${appliedRange.startDate || '…'} → ${appliedRange.endDate || '…'}`}
+            />
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              Leave blank for all time. Either bound can be set alone (e.g. From only = after that date).
+            </Typography>
+          )}
+        </Box>
+        {dateFilterError && (
+          <Alert severity="warning" sx={{ mt: 1.5 }}>
+            {dateFilterError}
+          </Alert>
+        )}
+      </Paper>
       </Box>
-      
-      {/* Overview Cards */}
-      {overview && (
-        <Grid container spacing={3} sx={{ mb: 3 }}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Typography color="textSecondary" gutterBottom>
-                  Total Users
-                </Typography>
-                <Typography variant="h4">
-                  {overview.totalUsers}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Typography color="textSecondary" gutterBottom>
-                  Initial Survey
-                </Typography>
-                <Typography variant="h4">
-                  {overview.initialSurveyCompleted}
-                </Typography>
-                <Typography variant="body2" color="textSecondary">
-                  {overview.initialSurveyCompletionRate}% completion rate
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Typography color="textSecondary" gutterBottom>
-                  Final Survey
-                </Typography>
-                <Typography variant="h4">
-                  {overview.finalSurveyCompleted}
-                </Typography>
-                <Typography variant="body2" color="textSecondary">
-                  {overview.finalSurveyCompletionRate}% completion rate
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Typography color="textSecondary" gutterBottom>
-                  Total Purchases
-                </Typography>
-                <Typography variant="h4">
-                  {overview.totalPurchases}
-                </Typography>
-                <Typography variant="body2" color="textSecondary">
-                  {overview.totalResponses} survey responses
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-      )}
+
+      <Box sx={{ px: { xs: 2, md: 3 }, py: 3 }}>
+      <AdminKpiCards overview={overview} />
 
       {/* Tabs */}
-      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-        <Tabs value={tabValue} onChange={handleTabChange}>
+      <Paper
+        elevation={0}
+        sx={{
+          border: '1px solid',
+          borderColor: 'divider',
+          borderRadius: 2.5,
+          mb: 2,
+          backgroundColor: colors.surface,
+        }}
+      >
+        <Tabs
+          value={tabValue}
+          onChange={handleTabChange}
+          variant="scrollable"
+          scrollButtons="auto"
+          sx={{
+            px: 1,
+            minHeight: 52,
+            '& .MuiTab-root': {
+              textTransform: 'none',
+              fontWeight: 600,
+              minHeight: 52,
+            },
+          }}
+        >
           <Tab label="Demographics" />
-          <Tab label="Survey Responses" />
-          <Tab label="Waste Patterns" />
-          <Tab label="Purchase Trends" />
-          <Tab label="User Trends" />
-          <Tab label="Data Export" />
-          <Tab label="Fake Data Management" />
-        <Tab label="Data Management" />
+          <Tab label="Surveys" />
+          <Tab label="Waste" />
+          <Tab label="Purchases" />
+          <Tab label="User trends" />
+          <Tab label="Export" />
+          <Tab label="Fake data" />
+          <Tab label="Users" />
         </Tabs>
-      </Box>
+      </Paper>
 
       {/* Demographics Tab */}
       <TabPanel value={tabValue} index={0}>
-        {demographics && (
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={4}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Gender Distribution
-                  </Typography>
-                  {demographics.gender.map((item, index) => (
-                    <Box key={index} display="flex" justifyContent="space-between" mb={1}>
-                      <Typography>{item.response}</Typography>
-                      <Chip label={item.count} size="small" />
-                    </Box>
-                  ))}
-                </CardContent>
-              </Card>
-            </Grid>
-            
-            <Grid item xs={12} md={4}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Age Distribution
-                  </Typography>
-                  {demographics.age.map((item, index) => (
-                    <Box key={index} display="flex" justifyContent="space-between" mb={1}>
-                      <Typography>{item.response}</Typography>
-                      <Chip label={item.count} size="small" />
-                    </Box>
-                  ))}
-                </CardContent>
-              </Card>
-            </Grid>
-            
-            <Grid item xs={12} md={4}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Income Distribution
-                  </Typography>
-                  {demographics.income.map((item, index) => (
-                    <Box key={index} display="flex" justifyContent="space-between" mb={1}>
-                      <Typography variant="body2">{item.response}</Typography>
-                      <Chip label={item.count} size="small" />
-                    </Box>
-                  ))}
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-        )}
+        <AdminDistributionCharts demographics={demographics} />
       </TabPanel>
 
       {/* Survey Responses Tab */}
@@ -1570,12 +1406,20 @@ function AdminDashboard({ onLogout }) {
             <CircularProgress />
           </Box>
         ) : purchaseTrends ? (
-          <Grid container spacing={3}>
+          <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
-              <Card>
+              <AdminCategoryBars
+                title="Top categories by purchase count"
+                rows={purchaseTrends.categories}
+                labelKey="category"
+                valueKey="purchase_count"
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2.5 }}>
                 <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Top Categories by Spending
+                  <Typography variant="h6" sx={{ fontWeight: 700 }} gutterBottom>
+                    Top categories by spending
                   </Typography>
                   <TableContainer>
                     <Table size="small">
@@ -1601,11 +1445,11 @@ function AdminDashboard({ onLogout }) {
               </Card>
             </Grid>
             
-            <Grid item xs={12} md={6}>
-              <Card>
+            <Grid item xs={12}>
+              <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2.5 }}>
                 <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Weekly Purchase Trends
+                  <Typography variant="h6" sx={{ fontWeight: 700 }} gutterBottom>
+                    Weekly purchase trends
                   </Typography>
                   <TableContainer>
                     <Table size="small">
@@ -1617,13 +1461,13 @@ function AdminDashboard({ onLogout }) {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                                                 {purchaseTrends.weekly.map((row, index) => (
-                           <TableRow key={index}>
-                             <TableCell>{new Date(row.week_start).toLocaleDateString()}</TableCell>
-                             <TableCell>{row.purchase_count}</TableCell>
-                             <TableCell>${(Number(row.total_spent) || 0).toFixed(2)}</TableCell>
-                           </TableRow>
-                         ))}
+                        {purchaseTrends.weekly.map((row, index) => (
+                          <TableRow key={index}>
+                            <TableCell>{new Date(row.week_start).toLocaleDateString()}</TableCell>
+                            <TableCell>{row.purchase_count}</TableCell>
+                            <TableCell>${(Number(row.total_spent) || 0).toFixed(2)}</TableCell>
+                          </TableRow>
+                        ))}
                       </TableBody>
                     </Table>
                   </TableContainer>
@@ -1650,12 +1494,12 @@ function AdminDashboard({ onLogout }) {
         <Grid container spacing={3}>
           {/* User Selection */}
           <Grid item xs={12}>
-            <Card>
-              <CardContent>
+            <Card sx={{ overflow: 'visible' }}>
+              <CardContent sx={{ overflow: 'visible' }}>
                 <Typography variant="subtitle1" gutterBottom>
                   Select User
                 </Typography>
-                <Box sx={{ mb: 2 }}>
+                <Box sx={{ mb: 2, overflow: 'visible' }}>
                   <UserSearchAutocomplete
                     onUserSelect={handleTrendsUserSelect}
                     placeholder="Search by User ID or Username..."
@@ -1878,7 +1722,7 @@ function AdminDashboard({ onLogout }) {
                       Select a user to view their waste trends
                     </Typography>
                     <Typography variant="body2" color="textSecondary">
-                      Use the search box above to find and select a user
+                      Pick someone from the recent users list above, or type to search
                     </Typography>
                   </Box>
                 </CardContent>
@@ -1890,477 +1734,43 @@ function AdminDashboard({ onLogout }) {
 
       {/* Data Export Tab */}
       <TabPanel value={tabValue} index={5}>
-        <Typography variant="h6" gutterBottom>
-          Export Data to CSV (Google Sheets Compatible)
+        <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
+          Export data
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Downloads respect the date range filter above. CSV files import cleanly into Google Sheets.
         </Typography>
         <Grid container spacing={2}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Button
-              variant="contained"
-              fullWidth
-              onClick={() => handleExport(adminAPI.exportRawData, 'raw_data.csv')}
-            >
-              Export Raw Data
-            </Button>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <Button
-              variant="contained"
-              fullWidth
-              onClick={() => handleExport(adminAPI.exportUserDemographics, 'user_demographics.csv')}
-            >
-              Export Demographics
-            </Button>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <Button
-              variant="contained"
-              fullWidth
-              onClick={() => handleExport(() => adminAPI.exportSurveyResponses('initial'), 'survey_responses_initial.csv')}
-            >
-              Export Initial Survey
-            </Button>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <Button
-              variant="contained"
-              fullWidth
-              onClick={() => handleExport(() => adminAPI.exportSurveyResponses('weekly'), 'survey_responses_weekly.csv')}
-            >
-              Export Weekly Survey
-            </Button>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <Button
-              variant="contained"
-              fullWidth
-              onClick={() => handleExport(() => adminAPI.exportSurveyResponses('final'), 'survey_responses_final.csv')}
-            >
-              Export Final Survey
-            </Button>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <Button
-              variant="contained"
-              fullWidth
-              onClick={() => handleExport(adminAPI.exportWastePatterns, 'waste_patterns.csv')}
-            >
-              Export Waste Patterns
-            </Button>
-          </Grid>
+          {exportCards.map((card) => (
+            <Grid item xs={12} sm={6} md={4} key={card.title}>
+              <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2.5, height: '100%' }}>
+                <CardContent sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                    {card.title}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2, flex: 1 }}>
+                    {card.description}
+                  </Typography>
+                  <Button variant="contained" onClick={card.action}>
+                    Download CSV
+                  </Button>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
         </Grid>
-        
-        <Box sx={{ mt: 3 }}>
-          <Typography variant="body2" color="textSecondary">
-            💡 Tip: Click any export button to download CSV files that can be directly imported into Google Sheets.
-          </Typography>
-        </Box>
       </TabPanel>
 
-      {/* Fake Data Management Tab */}
+      {/* Fake Data Tab */}
       <TabPanel value={tabValue} index={6}>
-        <Typography variant="h6" gutterBottom>
-          Fake Data Management
-        </Typography>
-        
-        <Typography variant="body2" color="textSecondary" sx={{ mb: 3 }}>
-          Generate fake users with realistic test data for development and testing purposes. 
-          All fake users are easily identifiable (DummyUser1, DummyUser2, etc.) and can be safely deleted.
-        </Typography>
-
-        {/* Current Status */}
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Current Status
-            </Typography>
-            <Typography variant="h4" color="primary">
-              {fakeUsersCount} Fake Users
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
-              Currently in the database
-            </Typography>
-          </CardContent>
-        </Card>
-
-        {/* Action Buttons */}
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Button
-              variant="contained"
-              color="primary"
-              fullWidth
-              onClick={() => handleGenerateFakeData(3)}
-              disabled={loadingFakeData}
-              sx={{ mb: 1 }}
-            >
-              Generate 3 Users
-            </Button>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <Button
-              variant="contained"
-              color="primary"
-              fullWidth
-              onClick={() => handleGenerateFakeData(5)}
-              disabled={loadingFakeData}
-              sx={{ mb: 1 }}
-            >
-              Generate 5 Users
-            </Button>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <Button
-              variant="contained"
-              color="primary"
-              fullWidth
-              onClick={() => handleGenerateFakeData(10)}
-              disabled={loadingFakeData}
-              sx={{ mb: 1 }}
-            >
-              Generate 10 Users
-            </Button>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <Button
-              variant="contained"
-              color="error"
-              fullWidth
-              onClick={handleCleanupFakeData}
-              disabled={loadingFakeData || fakeUsersCount === 0}
-              sx={{ mb: 1 }}
-            >
-              Delete All Fake Data
-            </Button>
-          </Grid>
-        </Grid>
-
-        {/* Trending Data for dtest User */}
-        <Card sx={{ mb: 3, bgcolor: 'var(--color-primary-light)' }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Generate Trending Data for "dtest" User
-            </Typography>
-            <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-              Creates data from August 23rd to today showing a progression from junk food with high waste to healthy food with low waste.
-              User will be created if it doesn't exist (password: testtest).
-            </Typography>
-            <Button
-              variant="contained"
-              color="secondary"
-              onClick={handleGenerateDtestTrendingData}
-              disabled={loadingFakeData}
-            >
-              Generate dtest Trending Data
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Status Message */}
-        {fakeDataMessage && (
-          <Alert 
-            severity={fakeDataMessage.includes('✅') ? 'success' : 'error'} 
-            sx={{ mb: 3 }}
-          >
-            {fakeDataMessage}
-          </Alert>
-        )}
-
-        {/* Loading Indicator */}
-        {loadingFakeData && (
-          <Box display="flex" justifyContent="center" alignItems="center" sx={{ mb: 3 }}>
-            <CircularProgress />
-            <Typography variant="body2" sx={{ ml: 2 }}>
-              Processing fake data...
-            </Typography>
-          </Box>
-        )}
-
-        {/* Information Cards */}
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  What Gets Generated
-                </Typography>
-                <List dense>
-                  <ListItem>
-                    <ListItemText 
-                      primary="User Accounts" 
-                      secondary="DummyUser1, DummyUser2, etc. with hashed passwords"
-                    />
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText 
-                      primary="Food Purchases" 
-                      secondary="5-15 purchases per week over 4 weeks with realistic prices and quantities"
-                    />
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText 
-                      primary="Consumption Logs" 
-                      secondary="2-5 events per purchase with varied waste ratios based on food type"
-                    />
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText 
-                      primary="Survey Responses" 
-                      secondary="Complete initial, weekly, and final survey answers"
-                    />
-                  </ListItem>
-                </List>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          <Grid item xs={12} md={6}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Safety Features
-                </Typography>
-                <List dense>
-                  <ListItem>
-                    <ListItemText 
-                      primary="Easy Identification" 
-                      secondary="All fake users have 'DummyUser' prefix"
-                    />
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText 
-                      primary="Complete Cleanup" 
-                      secondary="Deleting fake users removes ALL associated data"
-                    />
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText 
-                      primary="Cascade Delete" 
-                      secondary="Database constraints ensure no orphaned data"
-                    />
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText 
-                      primary="Confirmation Required" 
-                      secondary="Delete action requires confirmation"
-                    />
-                  </ListItem>
-                </List>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-
-        {/* Warning */}
-        <Alert severity="warning" sx={{ mt: 3 }}>
-          <Typography variant="body2">
-            <strong>Warning:</strong> Fake data is for development and testing only. 
-            Always clean up fake data before deploying to production or sharing with real users.
-          </Typography>
-        </Alert>
+        <AdminFakeDataPanel onDataChanged={() => loadOverviewData(appliedRange, { isInitial: false })} />
       </TabPanel>
 
-      {/* Data Management Tab */}
+      {/* Users / Data Management Tab */}
       <TabPanel value={tabValue} index={7}>
-        <Typography variant="h6" gutterBottom>
-          User Data Management
-        </Typography>
-        <Typography variant="body2" color="textSecondary" sx={{ mb: 3 }}>
-          Powerful admin tools for managing user data. Use with extreme caution.
-        </Typography>
-
-        <Grid container spacing={3}>
-          {/* Delete All Users */}
-          <Grid item xs={12}>
-            <Card sx={{ border: '3px solid', borderColor: 'error.main', backgroundColor: 'rgba(211, 47, 47, 0.05)' }}>
-              <CardContent>
-                <Typography variant="h6" color="error.main" gutterBottom>
-                  🗑️ Delete All Users
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 2 }}>
-                  <strong>CRITICAL:</strong> This will PERMANENTLY DELETE ALL USERS and ALL their associated data (purchases, logs, surveys, streaks).
-                  This action CANNOT be undone. Use this to clear the database for fresh testing.
-                </Typography>
-                <Button
-                  variant="contained"
-                  color="error"
-                  onClick={handleDeleteAllUsers}
-                  disabled={loadingDataOperation}
-                  sx={{ mb: 1 }}
-                >
-                  {loadingDataOperation ? 'Deleting...' : 'Delete All Users'}
-                </Button>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* Bulk Data Deletion */}
-          <Grid item xs={12}>
-            <Card sx={{ border: '2px solid', borderColor: 'error.main' }}>
-              <CardContent>
-                <Typography variant="h6" color="error.main" gutterBottom>
-                  ⚠️ Bulk Data Deletion
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 2 }}>
-                  Delete ALL user data (purchases, consumption logs, surveys) while preserving user accounts.
-                  Users can continue to log in but will start fresh.
-                </Typography>
-                <Button
-                  variant="contained"
-                  color="error"
-                  onClick={handleDeleteAllUserData}
-                  disabled={loadingDataOperation}
-                  sx={{ mb: 1 }}
-                >
-                  Delete All User Data
-                </Button>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* User Search and Management */}
-          <Grid item xs={12}>
-            <Card sx={{ overflow: 'visible' }}>
-              <CardContent sx={{ overflow: 'visible' }}>
-                <Typography variant="h6" gutterBottom>
-                  🔍 User Search & Management
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 2 }}>
-                  Search for a specific user and manage their data or account.
-                </Typography>
-                
-                <Box sx={{ mb: 2, position: 'relative', zIndex: 1 }}>
-                  <UserSearchAutocomplete
-                    onUserSelect={handleUserSelect}
-                    placeholder="Search by User ID or Username..."
-                  />
-                  {loadingUserSearch && (
-                    <Box display="flex" alignItems="center" sx={{ mt: 1 }}>
-                      <CircularProgress size={16} />
-                      <Typography variant="body2" sx={{ ml: 1 }}>
-                        Loading user details...
-                      </Typography>
-                    </Box>
-                  )}
-                </Box>
-
-                {searchedUser && (
-                  <Card variant="outlined" sx={{ mt: 2, p: 2 }}>
-                    <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                      User Found: {searchedUser.user.username}
-                    </Typography>
-                    
-                    <Grid container spacing={2} sx={{ mb: 2 }}>
-                      <Grid item xs={6} sm={3}>
-                        <Typography variant="body2">
-                          <strong>ID:</strong> {searchedUser.user.id}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={6} sm={3}>
-                        <Typography variant="body2">
-                          <strong>Username:</strong> {searchedUser.user.username || 'N/A'}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={6} sm={3}>
-                        <Typography variant="body2">
-                          <strong>Email:</strong> {searchedUser.user.email || 'N/A'}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={6} sm={3}>
-                        <Typography variant="body2">
-                          <strong>Created:</strong> {new Date(searchedUser.user.created_at).toLocaleDateString()}
-                        </Typography>
-                      </Grid>
-                    </Grid>
-
-                    <Typography variant="subtitle2" gutterBottom>
-                      Data Summary:
-                    </Typography>
-                    <Grid container spacing={2} sx={{ mb: 2 }}>
-                      <Grid item xs={6} sm={3}>
-                        <Chip 
-                          label={`${searchedUser.dataCounts.purchases_count} Purchases`} 
-                          color="primary" 
-                          size="small" 
-                        />
-                      </Grid>
-                      <Grid item xs={6} sm={3}>
-                        <Chip 
-                          label={`${searchedUser.dataCounts.consumption_logs_count} Logs`} 
-                          color="secondary" 
-                          size="small" 
-                        />
-                      </Grid>
-                      <Grid item xs={6} sm={3}>
-                        <Chip 
-                          label={`${searchedUser.dataCounts.survey_responses_count} Surveys`} 
-                          color="info" 
-                          size="small" 
-                        />
-                      </Grid>
-                      <Grid item xs={6} sm={3}>
-                        <Chip 
-                          label={`${searchedUser.dataCounts.food_items_count} Food Items`} 
-                          color="success" 
-                          size="small" 
-                        />
-                      </Grid>
-                    </Grid>
-
-                    <Box display="flex" gap={2} flexWrap="wrap">
-                      <Button
-                        variant="outlined"
-                        color="info"
-                        onClick={() => handleDeleteUserStreak(searchedUser.user.id, searchedUser.user.username)}
-                        disabled={loadingDataOperation}
-                        size="small"
-                      >
-                        Delete Streak Data
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        color="warning"
-                        onClick={() => handleDeleteUserDataOnly(searchedUser.user.id, searchedUser.user.username)}
-                        disabled={loadingDataOperation}
-                        size="small"
-                      >
-                        Delete Data Only
-                      </Button>
-                      <Button
-                        variant="contained"
-                        color="error"
-                        onClick={() => handleDeleteUser(searchedUser.user.id, searchedUser.user.username)}
-                        disabled={loadingDataOperation}
-                        size="small"
-                      >
-                        Delete User & Data
-                      </Button>
-                    </Box>
-                  </Card>
-                )}
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-
-        {/* Status Message */}
-        {dataManagementMessage && (
-          <Alert 
-            severity={dataManagementMessage.includes('✅') ? 'success' : 'error'} 
-            sx={{ mt: 2 }}
-          >
-            {dataManagementMessage}
-          </Alert>
-        )}
+        <AdminUserManagementPanel onDataChanged={() => loadOverviewData(appliedRange, { isInitial: false })} />
       </TabPanel>
+      </Box>
     </Box>
   );
 }
