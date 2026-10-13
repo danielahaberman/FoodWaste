@@ -349,11 +349,13 @@ function ConsumeWaste({ onGoToDate }) {
     return `${start.format('MMM D')} - ${end.format('MMM D, YYYY')}`;
   };
 
+  // Any current/past week can be edited; future weeks stay locked.
   const isWeekEditable = (weekOf) => {
-    const editableWeeks = getEditableWeeks();
-    return (
-      weekOf === editableWeeks.previousWeek || weekOf === editableWeeks.currentWeek
-    );
+    const weekStart = moment.tz(weekOf, 'MM/DD/YYYY', 'America/New_York').startOf('day');
+    if (!weekStart.isValid()) return false;
+    const now = moment.tz('America/New_York');
+    const currentWeekStart = now.clone().subtract(now.day(), 'days').startOf('day');
+    return !weekStart.isAfter(currentWeekStart, 'day');
   };
 
   const getItemEmoji = (item) => {
@@ -461,9 +463,24 @@ function ConsumeWaste({ onGoToDate }) {
     const resolveWeek = (weekOf) =>
       weeklySummary.find((week) => week.weekOf === weekOf) || { weekOf, purchases: [] };
 
+    const weekKeys = new Set([
+      editableWeeks.currentWeek,
+      editableWeeks.previousWeek,
+      ...weeklySummary.map((week) => week.weekOf),
+    ]);
+
+    const weeks = Array.from(weekKeys)
+      .filter((weekOf) => isWeekEditable(weekOf))
+      .sort(
+        (a, b) =>
+          moment.tz(b, 'MM/DD/YYYY', 'America/New_York').valueOf() -
+          moment.tz(a, 'MM/DD/YYYY', 'America/New_York').valueOf()
+      )
+      .map(resolveWeek);
+
     return {
       editableWeeks,
-      weeks: [resolveWeek(editableWeeks.currentWeek), resolveWeek(editableWeeks.previousWeek)],
+      weeks,
     };
   };
   useEffect(() => {
@@ -835,7 +852,7 @@ function ConsumeWaste({ onGoToDate }) {
                 letterSpacing: "0.06em",
               }}
             >
-              Recent weeks
+              Weeks
             </Typography>
 
             {editableWeekList.map((week) => {
@@ -958,7 +975,9 @@ function ConsumeWaste({ onGoToDate }) {
                     >
                       {weekLabel === "Last week"
                         ? "Add food for last week"
-                        : "Add food for this week"}
+                        : weekLabel === "This week"
+                          ? "Add food for this week"
+                          : "Add food"}
                     </Button>
                   ) : (
                     <Button
@@ -1151,7 +1170,7 @@ function ConsumeWaste({ onGoToDate }) {
 
             {!editable && (
               <Chip
-                label="View only — this week can't be edited"
+                label="View only — future weeks can't be edited"
                 size="small"
                 sx={{ mb: 1.5, fontWeight: 600 }}
               />
