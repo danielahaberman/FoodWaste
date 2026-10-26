@@ -42,6 +42,7 @@ server/.env.production.local
 FoodHero/.gradle/
 FoodHero/build/
 FoodHero/app/build/
+FoodHero/app/release/
 FoodHero/.kotlin/
 FoodHero/local.properties
 FoodHero/.vscode/

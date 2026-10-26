@@ -1,4 +1,4 @@
-package com.example.foodhero
+package com.foodsuperhero.app
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -19,7 +19,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
-import com.example.foodhero.databinding.ActivityMainBinding
+import com.foodsuperhero.app.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 
